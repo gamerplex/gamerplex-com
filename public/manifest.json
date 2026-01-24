@@ -1,0 +1,10 @@
+{
+  "songs": [
+    {
+      "id": "genesis",
+      "title": "THE_ORIGIN_GENESIS",
+      "composer": "AI_AGENT_01",
+      "isAI": true
+    }
+  ]
+}
