@@ -15,8 +15,8 @@ const WHITEPAPER_SECTIONS = [
     content: "Gamerplex is a self-assembling digital reality where humans provide the Architectural Intent (Vibe) and AI Agents provide the Labor (Bricks). It is an infinite, agent-driven economy deployed on the Sonic SVM (Solana L2)."
   },
   {
-    title: "2. THE SOVEREIGN ENGINE: XIRTAMEHT",
-    content: "Xirtameht bridges the visual, physical, and economic layers. Utilizing Web-Nanite (Auto-LOD) and GreasedLine geometry, it ensures 60 FPS performance regardless of complexity."
+    title: "2. THE SOVEREIGN ENGINE: GAMERPLEX",
+    content: "Gamerplex bridges the visual, physical, and economic layers. Utilizing Web-Nanite (Auto-LOD) and GreasedLine geometry, it ensures 60 FPS performance regardless of complexity."
   },
   {
     title: "3. AGENTIC FINANCE: X402",
@@ -31,6 +31,7 @@ const WHITEPAPER_SECTIONS = [
 export default function Home() {
   const [showWhitepaper, setShowWhitepaper] = useState(false);
   const [showTelemetry, setShowTelemetry] = useState(true);
+  const [showMainUI, setShowMainUI] = useState(true);
   const [mounted, setMounted] = useState(false);
   const [stats, setStats] = useState({ fps: '0', meshes: 0, memory: '0' });
 
@@ -65,108 +66,141 @@ export default function Home() {
         <InterstellarSymphony onStatsUpdate={setStats} />
       </div>
 
+      {/* UI TOGGLE ARROW */}
+      <button 
+        onClick={() => setShowMainUI(!showMainUI)}
+        style={{
+          position: 'absolute',
+          bottom: '40px',
+          right: '40px',
+          zIndex: 100,
+          backgroundColor: 'rgba(0,0,0,0.85)',
+          border: '2px solid rgba(20,241,149,0.5)',
+          color: '#14F195',
+          cursor: 'pointer',
+          padding: '10px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          pointerEvents: 'auto',
+          transition: 'transform 0.3s ease'
+        }}
+      >
+        {showMainUI ? <ChevronRight size={24} /> : <ChevronLeft size={24} />}
+      </button>
+
       {/* REZ UI OVERLAY */}
-      <div style={{ position: 'absolute', inset: 0, zIndex: 40, pointerEvents: 'none' }}>
-        <div style={{ position: 'absolute', inset: '16px', border: '1px solid rgba(153,50,204,0.1)' }} />
-        <div style={{ position: 'absolute', inset: '32px', border: '1px solid rgba(0,255,153,0.05)' }} />
-      </div>
-
-      {/* TELEMETRY SLIDE-OUT PANEL */}
-      <div style={{ 
-        position: 'absolute', 
-        top: '40px', 
-        left: showTelemetry ? '40px' : '-440px',
-        zIndex: 60, 
-        padding: '32px', 
-        borderLeft: '2px solid rgba(20,241,149,0.5)', 
-        borderTop: '2px solid rgba(20,241,149,0.5)',
-        backgroundColor: 'rgba(0,0,0,0.85)', 
-        color: '#14F195', 
-        fontSize: '11px', 
-        letterSpacing: '3px', 
-        textTransform: 'uppercase',
-        backdropFilter: 'blur(20px)',
-        boxShadow: '20px 20px 60px rgba(0,0,0,0.5)',
-        transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
-        minWidth: '420px',
-        userSelect: 'auto',
-        WebkitUserSelect: 'auto'
-      }}>
-        <button 
-          onClick={() => setShowTelemetry(!showTelemetry)}
-          style={{
-            position: 'absolute',
-            right: '-40px',
-            top: '0',
-            height: '40px',
-            width: '40px',
-            backgroundColor: 'rgba(0,0,0,0.85)',
-            border: '2px solid rgba(20,241,149,0.5)',
-            borderLeft: 'none',
-            color: '#14F195',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}
-        >
-          {showTelemetry ? <ChevronLeft size={18} /> : <BarChart3 size={18} />}
-        </button>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          <p style={{ display: 'flex', justifyContent: 'space-between', gap: '80px', opacity: 0.6 }}><span>COORDINATE_SEED:</span> <span style={{ color: 'white' }}>0xSAGA_ORIGIN</span></p>
-          <p style={{ display: 'flex', justifyContent: 'space-between', gap: '80px', opacity: 0.6 }}><span>LATENCY_SYNC:</span> <span style={{ color: 'white' }}>42MS_LOCKED</span></p>
-          <p style={{ display: 'flex', justifyContent: 'space-between', gap: '80px', opacity: 0.6 }}><span>MOBILE_NATIVE:</span> <span style={{ color: 'white' }}>SOLANA_APP_KIT_ACTIVE</span></p>
-          <div style={{ margin: '10px 0', padding: '15px 0', borderTop: '1px solid rgba(20,241,149,0.2)', borderBottom: '1px solid rgba(20,241,149,0.2)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <p style={{ display: 'flex', justifyContent: 'space-between' }}><span>RENDER_FPS:</span> <span style={{ color: '#00ff99', fontWeight: 'bold' }}>{stats.fps} FPS</span></p>
-            <p style={{ display: 'flex', justifyContent: 'space-between' }}><span>ACTIVE_MESHES:</span> <span style={{ color: '#00ff99', fontWeight: 'bold' }}>{stats.meshes}</span></p>
-            <p style={{ display: 'flex', justifyContent: 'space-between' }}><span>JS_HEAP_MEM:</span> <span style={{ color: '#00ff99', fontWeight: 'bold' }}>{stats.memory} MB</span></p>
-          </div>
-          <p style={{ marginTop: '10px', fontWeight: '900', fontSize: '14px', color: '#fff', textDecoration: 'underline', textUnderlineOffset: '8px' }}>Destination: THE_ORIGIN</p>
-        </div>
-      </div>
-
-      {/* MAIN HERO */}
-      <div style={{ 
-        position: 'absolute', 
-        inset: 0, 
-        zIndex: 50, 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'center', 
-        padding: '24px',
-        transition: 'all 1s cubic-bezier(0.4, 0, 0.2, 1)',
-        opacity: showWhitepaper ? 0 : 1,
-        pointerEvents: showWhitepaper ? 'none' : 'auto',
-        transform: showWhitepaper ? 'scale(0.9) translateY(50px)' : 'scale(1)',
-        filter: showWhitepaper ? 'blur(30px)' : 'none'
-      }}>
-        <div style={{ maxWidth: '1200px', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          
-          <div style={{ marginBottom: '40px', display: 'flex', alignItems: 'center', gap: '16px', background: 'linear-gradient(90deg, rgba(153,50,204,0.1), rgba(0,255,153,0.1))', padding: '8px 32px', border: '1px solid rgba(0,255,153,0.3)', borderRadius: '2px' }}>
-            <Zap style={{ width: '16px', height: '16px', color: '#00ff99' }} />
-            <span style={{ color: '#00ff99', fontSize: '12px', letterSpacing: '6px', fontWeight: '900' }}>[ SYSTEM_SYNC // ORIGIN_LINK_ESTABLISHED ]</span>
+      {showMainUI && (
+        <>
+          <div style={{ position: 'absolute', inset: 0, zIndex: 40, pointerEvents: 'none' }}>
+            <div style={{ position: 'absolute', inset: '16px', border: '1px solid rgba(153,50,204,0.1)' }} />
+            <div style={{ position: 'absolute', inset: '32px', border: '1px solid rgba(0,255,153,0.05)' }} />
           </div>
 
-          <h1 style={{ background: 'linear-gradient(135deg, #9945FF 0%, #14F195 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontSize: '12vw', fontWeight: '900', letterSpacing: '-0.02em', lineHeight: '0.7', marginBottom: '40px', textTransform: 'uppercase', fontStyle: 'italic', filter: 'drop-shadow(0 0 40px rgba(20,241,149,0.3))' }}>GAMERPLEX</h1>
-          
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '80px' }}>
-            <p style={{ color: '#fff', fontSize: '28px', fontWeight: '900', letterSpacing: '20px', opacity: 0.9, textTransform: 'uppercase', textAlign: 'center', marginBottom: '12px', fontStyle: 'italic' }}>The Sovereign Infinite</p>
-            <p style={{ color: '#9945FF', fontSize: '18px', letterSpacing: '12px', opacity: 0.6, textTransform: 'uppercase', textAlign: 'center' }}>Synthetic Autonomous Origin</p>
-          </div>
-          
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '40px', width: '100%', maxWidth: '900px' }}>
-            <button style={{ background: 'linear-gradient(90deg, #9945FF, #14F195)', color: 'black', padding: '32px 56px', border: 'none', fontSize: '28px', fontWeight: '900', textTransform: 'uppercase', cursor: 'pointer', fontStyle: 'italic', boxShadow: '0 0 60px rgba(20,241,149,0.4)', transition: 'all 0.3s' }}>Enter_The_Origin</button>
-            <button onClick={() => setShowWhitepaper(true)} style={{ backgroundColor: 'transparent', color: '#14F195', padding: '32px 56px', border: '4px solid #14F195', fontSize: '28px', fontWeight: '900', textTransform: 'uppercase', cursor: 'pointer', fontStyle: 'italic', transition: 'all 0.3s' }}>Read_Manifesto</button>
+          {/* TELEMETRY SLIDE-OUT PANEL */}
+          <div style={{ 
+            position: 'absolute', 
+            top: '40px', 
+            left: showTelemetry ? '40px' : '-440px',
+            zIndex: 60, 
+            padding: '32px', 
+            borderLeft: '2px solid rgba(20,241,149,0.5)', 
+            borderTop: '2px solid rgba(20,241,149,0.5)',
+            backgroundColor: 'rgba(0,0,0,0.85)', 
+            color: '#14F195', 
+            fontSize: '11px', 
+            letterSpacing: '3px', 
+            textTransform: 'uppercase',
+            backdropFilter: 'blur(20px)',
+            boxShadow: '20px 20px 60px rgba(0,0,0,0.5)',
+            transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+            minWidth: '420px',
+            userSelect: 'auto',
+            WebkitUserSelect: 'auto'
+          }}>
+            <button 
+              onClick={() => setShowTelemetry(!showTelemetry)}
+              style={{
+                position: 'absolute',
+                right: '-40px',
+                top: '0',
+                height: '40px',
+                width: '40px',
+                backgroundColor: 'rgba(0,0,0,0.85)',
+                border: '2px solid rgba(20,241,149,0.5)',
+                borderLeft: 'none',
+                color: '#14F195',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              {showTelemetry ? <ChevronLeft size={18} /> : <BarChart3 size={18} />}
+            </button>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <p style={{ display: 'flex', justifyContent: 'space-between', gap: '80px', opacity: 0.6 }}><span>COORDINATE_SEED:</span> <span style={{ color: 'white' }}>0xSAGA_ORIGIN</span></p>
+              <p style={{ display: 'flex', justifyContent: 'space-between', gap: '80px', opacity: 0.6 }}><span>LATENCY_SYNC:</span> <span style={{ color: 'white' }}>42MS_LOCKED</span></p>
+              <p style={{ display: 'flex', justifyContent: 'space-between', gap: '80px', opacity: 0.6 }}><span>MOBILE_NATIVE:</span> <span style={{ color: 'white' }}>SOLANA_APP_KIT_ACTIVE</span></p>
+              <div style={{ margin: '10px 0', padding: '15px 0', borderTop: '1px solid rgba(20,241,149,0.2)', borderBottom: '1px solid rgba(20,241,149,0.2)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <p style={{ display: 'flex', justifyContent: 'space-between' }}><span>RENDER_FPS:</span> <span style={{ color: '#00ff99', fontWeight: 'bold' }}>{stats.fps} FPS</span></p>
+                <p style={{ display: 'flex', justifyContent: 'space-between' }}><span>ACTIVE_MESHES:</span> <span style={{ color: '#00ff99', fontWeight: 'bold' }}>{stats.meshes}</span></p>
+                <p style={{ display: 'flex', justifyContent: 'space-between' }}><span>JS_HEAP_MEM:</span> <span style={{ color: '#00ff99', fontWeight: 'bold' }}>{stats.memory} MB</span></p>
+              </div>
+              <p style={{ marginTop: '10px', fontWeight: '900', fontSize: '14px', color: '#fff', textDecoration: 'underline', textUnderlineOffset: '8px' }}>Destination: THE_ORIGIN</p>
+            </div>
           </div>
 
-          <div style={{ marginTop: '100px', display: 'flex', gap: '60px', opacity: 0.5 }}>
-            <Shield style={{ width: '24px', height: '24px', color: '#14F195' }} />
-            <Cpu style={{ width: '24px', height: '24px', color: '#14F195' }} />
-            <Globe style={{ width: '24px', height: '24px', color: '#14F195' }} />
+          {/* MAIN HERO */}
+          <div style={{ 
+            position: 'absolute', 
+            inset: 0, 
+            zIndex: 50, 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            padding: '24px',
+            transition: 'all 1s cubic-bezier(0.4, 0, 0.2, 1)',
+            opacity: showWhitepaper ? 0 : 1,
+            pointerEvents: showWhitepaper ? 'none' : 'auto',
+            transform: showWhitepaper ? 'scale(0.9) translateY(50px)' : 'scale(1)',
+            filter: showWhitepaper ? 'blur(30px)' : 'none'
+          }}>
+            <div style={{ maxWidth: '1200px', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              
+              <div style={{ marginBottom: '40px', display: 'flex', alignItems: 'center', gap: '16px', background: 'linear-gradient(90deg, rgba(153,50,204,0.1), rgba(0,255,153,0.1))', padding: '8px 32px', border: '1px solid rgba(0,255,153,0.3)', borderRadius: '2px' }}>
+                <Zap style={{ width: '16px', height: '16px', color: '#00ff99' }} />
+                <span style={{ color: '#00ff99', fontSize: '12px', letterSpacing: '6px', fontWeight: '900' }}>[ SYSTEM_SYNC // ORIGIN_LINK_ESTABLISHED ]</span>
+              </div>
+
+              <h1 style={{ background: 'linear-gradient(135deg, #9945FF 0%, #14F195 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontSize: '12vw', fontWeight: '900', letterSpacing: '-0.02em', lineHeight: '0.7', marginBottom: '40px', textTransform: 'uppercase', fontStyle: 'italic', filter: 'drop-shadow(0 0 40px rgba(20,241,149,0.3))' }}>GAMERPLEX</h1>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '80px' }}>
+                <p style={{ color: '#fff', fontSize: '28px', fontWeight: '900', letterSpacing: '20px', opacity: 0.9, textTransform: 'uppercase', textAlign: 'center', marginBottom: '12px', fontStyle: 'italic' }}>The Sovereign Infinite</p>
+                <p style={{ color: '#9945FF', fontSize: '18px', letterSpacing: '12px', opacity: 0.6, textTransform: 'uppercase', textAlign: 'center' }}>Synthetic Autonomous Origin</p>
+              </div>
+              
+              <div style={{ display: 'flex', gap: '40px', width: '100%', maxWidth: '900px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                <button style={{ background: 'linear-gradient(90deg, #9945FF, #14F195)', color: 'black', padding: '32px 56px', border: 'none', fontSize: '28px', fontWeight: '900', textTransform: 'uppercase', cursor: 'pointer', fontStyle: 'italic', boxShadow: '0 0 60px rgba(20,241,149,0.4)', transition: 'all 0.3s' }}>Enter_The_Origin</button>
+                <button onClick={() => setShowWhitepaper(true)} style={{ backgroundColor: 'transparent', color: '#14F195', padding: '32px 56px', border: '4px solid #14F195', fontSize: '28px', fontWeight: '900', textTransform: 'uppercase', cursor: 'pointer', fontStyle: 'italic', transition: 'all 0.3s' }}>Read_Manifesto</button>
+              </div>
+
+              <div style={{ marginTop: '100px', display: 'flex', gap: '60px', opacity: 0.5 }}>
+                <Shield style={{ width: '24px', height: '24px', color: '#14F195' }} />
+                <Cpu style={{ width: '24px', height: '24px', color: '#14F195' }} />
+                <Globe style={{ width: '24px', height: '24px', color: '#14F195' }} />
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
+
+          {/* TOP RIGHT NAV */}
+          <div style={{ position: 'absolute', top: '60px', right: '60px', zIndex: 55, display: 'flex', gap: '40px', fontSize: '12px', letterSpacing: '6px', fontWeight: '900', textTransform: 'uppercase', fontStyle: 'italic' }}>
+            <a href="https://twitter.com/gamerplex_com" target="_blank" style={{ color: '#14F195', textDecoration: 'none', opacity: 0.7, pointerEvents: 'auto' }}>X_PORTAL</a>
+            <a href="#" style={{ color: '#14F195', textDecoration: 'none', opacity: 0.7, pointerEvents: 'auto' }}>GRID_MAP</a>
+          </div>
+        </>
+      )}
 
       {/* WHITEPAPER OVERLAY */}
       {showWhitepaper && (
@@ -185,11 +219,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* TOP RIGHT NAV */}
-      <div style={{ position: 'absolute', top: '60px', right: '60px', zIndex: 55, display: 'flex', gap: '40px', fontSize: '12px', letterSpacing: '6px', fontWeight: '900', textTransform: 'uppercase', fontStyle: 'italic' }}>
-        <a href="https://twitter.com/gamerplex_com" target="_blank" style={{ color: '#14F195', textDecoration: 'none', opacity: 0.7 }}>X_PORTAL</a>
-        <a href="#" style={{ color: '#14F195', textDecoration: 'none', opacity: 0.7 }}>GRID_MAP</a>
-      </div>
+      {/* TOP RIGHT NAV (Original - removed for wrap) */}
     </div>
   );
 }

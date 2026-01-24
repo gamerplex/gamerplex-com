@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import * as BABYLON from "@babylonjs/core";
-import { SensorySystem } from "../../xirtameht-lib/visual/SensorySystem";
-import { KineticSystem } from "../../xirtameht-lib/kinetic/KineticSystem";
+import { SensorySystem } from "../../gamerplex-lib/visual/SensorySystem";
+import { KineticSystem } from "../../gamerplex-lib/kinetic/KineticSystem";
 
 /**
  * SISAO C3D BUILDER
