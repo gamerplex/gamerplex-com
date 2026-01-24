@@ -2,11 +2,11 @@
 
 import dynamic from "next/dynamic";
 import { useState, useEffect } from "react";
-import { Shield, Zap, Cpu, Globe, Terminal, ChevronRight, X, ChevronLeft, BarChart3 } from "lucide-react";
+import { Shield, Zap, Cpu, Globe, Terminal, ChevronRight, X, ChevronLeft, BarChart3, Activity } from "lucide-react";
 
 const InterstellarSymphony = dynamic(() => import("../components/InterstellarSymphony"), { 
     ssr: false,
-    loading: () => <div style={{ position: 'fixed', inset: 0, backgroundColor: 'black', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'monospace', color: '#00ccff' }}>INITIALIZING_QUANTUM_STREAM...</div>
+    loading: () => null // Managed in our status bar
 });
 
 const WHITEPAPER_SECTIONS = [
@@ -34,10 +34,25 @@ export default function Home() {
   const [showMainUI, setShowMainUI] = useState(true);
   const [mounted, setMounted] = useState(false);
   const [stats, setStats] = useState({ fps: '0', meshes: 0, memory: '0' });
+  const [isAudioInitialized, setIsAudioInitialized] = useState(false);
+  const [logs, setLogs] = useState<string[]>(["[SYS] INITIALIZING_QUANTUM_STREAM..."]);
 
   useEffect(() => {
     setMounted(true);
+    const bootLogs = [
+        "[SYS] CONNECTING_TO_ROLLUP...",
+        "[SYS] LOADING_GAMERPLEX_SOVEREIGN_ENGINE...",
+        "[SYS] FREQUENCY_STREAM_READY"
+    ];
+    bootLogs.forEach((log, i) => {
+        setTimeout(() => setLogs(prev => [...prev.slice(-4), log]), (i + 1) * 800);
+    });
   }, []);
+
+  const triggerAudioInit = () => {
+    setIsAudioInitialized(true);
+    setLogs(prev => [...prev.slice(-4), "[SISAO] AUDIO_STREAM_STARTED", "[SISAO] RESONANCE_LOCKED"]);
+  };
 
   if (!mounted) return <div style={{ backgroundColor: 'black', width: '100vw', height: '100vh' }} />;
 
@@ -53,7 +68,7 @@ export default function Home() {
       userSelect: 'none',
       WebkitUserSelect: 'none'
     }}>
-      {/* Background Interstellar Symphony - Full Screen Force */}
+      {/* Background Interstellar Symphony */}
       <div style={{ 
         position: 'absolute', 
         top: 0, left: 0,
@@ -63,10 +78,10 @@ export default function Home() {
         transform: 'scale(1.1)',
         pointerEvents: 'none'
       }}>
-        <InterstellarSymphony onStatsUpdate={setStats} />
+        <InterstellarSymphony onStatsUpdate={setStats} showJoystick={!showMainUI} />
       </div>
 
-      {/* UI TOGGLE ARROW */}
+      {/* UI TOGGLE ARROW (Bottom Right) */}
       <button 
         onClick={() => setShowMainUI(!showMainUI)}
         style={{
@@ -89,67 +104,100 @@ export default function Home() {
         {showMainUI ? <ChevronRight size={24} /> : <ChevronLeft size={24} />}
       </button>
 
+      {/* COMPACT HUD & LOGS (Top Left) */}
+      <div style={{ 
+        position: 'absolute', 
+        top: '20px', 
+        left: '20px',
+        zIndex: 90, 
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '10px',
+        pointerEvents: 'auto'
+      }}>
+        {/* Status Bar */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '15px',
+          backgroundColor: 'rgba(0,0,0,0.85)', 
+          border: '1px solid rgba(20,241,149,0.3)',
+          color: '#14F195', 
+          fontSize: '10px', 
+          padding: '8px 15px',
+          borderRadius: '4px',
+          backdropFilter: 'blur(10px)',
+          transition: 'all 0.5s ease'
+        }}>
+          <button 
+            onClick={() => setShowTelemetry(!showTelemetry)}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#14F195',
+              cursor: 'pointer',
+              padding: 0,
+              display: 'flex',
+              alignItems: 'center'
+            }}
+          >
+            {showTelemetry ? <ChevronLeft size={14} /> : <Activity size={14} />}
+          </button>
+
+          {showTelemetry && (
+            <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+              <span style={{ display: 'flex', gap: '8px' }}><span style={{ opacity: 0.6 }}>FPS:</span> <span style={{ color: 'white' }}>{stats.fps}</span></span>
+              <span style={{ display: 'flex', gap: '8px' }}><span style={{ opacity: 0.6 }}>MESH:</span> <span style={{ color: 'white' }}>{stats.meshes}</span></span>
+              <span style={{ display: 'flex', gap: '8px' }}><span style={{ opacity: 0.6 }}>MEM:</span> <span style={{ color: 'white' }}>{stats.memory}MB</span></span>
+              <span style={{ display: 'flex', gap: '8px' }}><span style={{ opacity: 0.6 }}>SYNC:</span> <span style={{ color: 'white' }}>MB_EPHEMERAL_ROLLUP</span></span>
+              <span style={{ display: 'flex', gap: '8px' }}><span style={{ opacity: 0.6 }}>CTRL:</span> <span style={{ color: 'white' }}>WASD+MOUSE</span></span>
+              {!isAudioInitialized && (
+                <button 
+                  onClick={triggerAudioInit}
+                  style={{ 
+                    backgroundColor: '#14F195', 
+                    color: 'black', 
+                    border: 'none', 
+                    padding: '2px 8px', 
+                    fontSize: '9px', 
+                    fontWeight: 'bold', 
+                    cursor: 'pointer',
+                    borderRadius: '2px'
+                  }}
+                >
+                  INITIALIZE_AUDIO
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Gray Logs Stream */}
+        {showTelemetry && (
+            <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '4px',
+                padding: '0 15px',
+                opacity: 0.5,
+                fontSize: '9px',
+                color: '#aaa',
+                textTransform: 'uppercase',
+                letterSpacing: '1px'
+            }}>
+                {logs.map((log, i) => (
+                    <div key={i}>{log}</div>
+                ))}
+            </div>
+        )}
+      </div>
+
       {/* REZ UI OVERLAY */}
       {showMainUI && (
         <>
           <div style={{ position: 'absolute', inset: 0, zIndex: 40, pointerEvents: 'none' }}>
             <div style={{ position: 'absolute', inset: '16px', border: '1px solid rgba(153,50,204,0.1)' }} />
             <div style={{ position: 'absolute', inset: '32px', border: '1px solid rgba(0,255,153,0.05)' }} />
-          </div>
-
-          {/* TELEMETRY SLIDE-OUT PANEL */}
-          <div style={{ 
-            position: 'absolute', 
-            top: '40px', 
-            left: showTelemetry ? '40px' : '-440px',
-            zIndex: 60, 
-            padding: '32px', 
-            borderLeft: '2px solid rgba(20,241,149,0.5)', 
-            borderTop: '2px solid rgba(20,241,149,0.5)',
-            backgroundColor: 'rgba(0,0,0,0.85)', 
-            color: '#14F195', 
-            fontSize: '11px', 
-            letterSpacing: '3px', 
-            textTransform: 'uppercase',
-            backdropFilter: 'blur(20px)',
-            boxShadow: '20px 20px 60px rgba(0,0,0,0.5)',
-            transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
-            minWidth: '420px',
-            userSelect: 'auto',
-            WebkitUserSelect: 'auto'
-          }}>
-            <button 
-              onClick={() => setShowTelemetry(!showTelemetry)}
-              style={{
-                position: 'absolute',
-                right: '-40px',
-                top: '0',
-                height: '40px',
-                width: '40px',
-                backgroundColor: 'rgba(0,0,0,0.85)',
-                border: '2px solid rgba(20,241,149,0.5)',
-                borderLeft: 'none',
-                color: '#14F195',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-            >
-              {showTelemetry ? <ChevronLeft size={18} /> : <BarChart3 size={18} />}
-            </button>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <p style={{ display: 'flex', justifyContent: 'space-between', gap: '80px', opacity: 0.6 }}><span>COORDINATE_SEED:</span> <span style={{ color: 'white' }}>0xSAGA_ORIGIN</span></p>
-              <p style={{ display: 'flex', justifyContent: 'space-between', gap: '80px', opacity: 0.6 }}><span>LATENCY_SYNC:</span> <span style={{ color: 'white' }}>42MS_LOCKED</span></p>
-              <p style={{ display: 'flex', justifyContent: 'space-between', gap: '80px', opacity: 0.6 }}><span>MOBILE_NATIVE:</span> <span style={{ color: 'white' }}>SOLANA_APP_KIT_ACTIVE</span></p>
-              <div style={{ margin: '10px 0', padding: '15px 0', borderTop: '1px solid rgba(20,241,149,0.2)', borderBottom: '1px solid rgba(20,241,149,0.2)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <p style={{ display: 'flex', justifyContent: 'space-between' }}><span>RENDER_FPS:</span> <span style={{ color: '#00ff99', fontWeight: 'bold' }}>{stats.fps} FPS</span></p>
-                <p style={{ display: 'flex', justifyContent: 'space-between' }}><span>ACTIVE_MESHES:</span> <span style={{ color: '#00ff99', fontWeight: 'bold' }}>{stats.meshes}</span></p>
-                <p style={{ display: 'flex', justifyContent: 'space-between' }}><span>JS_HEAP_MEM:</span> <span style={{ color: '#00ff99', fontWeight: 'bold' }}>{stats.memory} MB</span></p>
-              </div>
-              <p style={{ marginTop: '10px', fontWeight: '900', fontSize: '14px', color: '#fff', textDecoration: 'underline', textUnderlineOffset: '8px' }}>Destination: THE_ORIGIN</p>
-            </div>
           </div>
 
           {/* MAIN HERO */}
@@ -196,8 +244,9 @@ export default function Home() {
 
           {/* TOP RIGHT NAV */}
           <div style={{ position: 'absolute', top: '60px', right: '60px', zIndex: 55, display: 'flex', gap: '40px', fontSize: '12px', letterSpacing: '6px', fontWeight: '900', textTransform: 'uppercase', fontStyle: 'italic' }}>
-            <a href="https://twitter.com/gamerplex_com" target="_blank" style={{ color: '#14F195', textDecoration: 'none', opacity: 0.7, pointerEvents: 'auto' }}>X_PORTAL</a>
-            <a href="#" style={{ color: '#14F195', textDecoration: 'none', opacity: 0.7, pointerEvents: 'auto' }}>GRID_MAP</a>
+            <a href="https://x.com/gamerplex_com" target="_blank" style={{ color: '#14F195', textDecoration: 'none', opacity: 0.7, pointerEvents: 'auto', display: 'flex', alignItems: 'center' }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+            </a>
           </div>
         </>
       )}
@@ -218,8 +267,6 @@ export default function Home() {
             </div>
         </div>
       )}
-
-      {/* TOP RIGHT NAV (Original - removed for wrap) */}
     </div>
   );
 }
