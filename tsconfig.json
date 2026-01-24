@@ -17,6 +17,9 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "preserve",
+    "paths": {
+      "@gamerplex-lib/*": ["../gamerplex-lib/*"]
+    },
     "plugins": [
       {
         "name": "next"
