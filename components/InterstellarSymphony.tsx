@@ -8,13 +8,13 @@ import { StakeFlare } from "@gamerplex-lib/visual/StakeFlare";
 import { SensorySystem } from "@gamerplex-lib/visual/SensorySystem";
 
 function generateAI(minutes: number) {
-    const score = []; const scales = [36, 48, 52, 55, 60, 64, 67, 72, 76, 79]; let t = 0.1;
-    for(let i=0; i<minutes*10; i++) {
+    const score = []; const scales = [36, 48, 52, 55, 60, 64, 67, 72, 76, 79]; let t = 1.0;
+    for(let i=0; i<minutes*120; i++) {
         score.push({"note":{"onTime": t, "pitch": scales[Math.floor(Math.random()*3)], "offTime": t+3}});
-        for(let j=0; j<1; j++) {
+        for(let j=0; j<6; j++) {
             score.push({"note":{"onTime": t+j*0.3, "pitch": scales[Math.floor(Math.random()*scales.length)], "offTime": t+j*0.3+0.3}});
         }
-        t += 3.0;
+        t += 2.5;
     }
     return score;
 }
@@ -32,6 +32,7 @@ export default function InterstellarSymphony({ onStatsUpdate, showJoystick = tru
   const autoTimeRef = useRef(0);
   const isAudioStartedRef = useRef(false);
   const [showPlayOverlay, setShowPlayOverlay] = useState(false);
+  const [camCoords, setCamCoords] = useState({ x: 0, y: 0, z: 0, rotX: 0, rotY: 0 }); // RESTORED STATE VARIABLE
 
   const synthFrequencies = Array.from({length: 128}, (_, i) => 440 * Math.pow(2, (i - 69) / 12));
 
@@ -49,7 +50,7 @@ export default function InterstellarSymphony({ onStatsUpdate, showJoystick = tru
       const limiter = ctx.createDynamicsCompressor();
       limiter.threshold.setValueAtTime(-24, ctx.currentTime);
       const masterGain = ctx.createGain();
-      masterGain.gain.setValueAtTime(0.3, ctx.currentTime);
+      masterGain.gain.setValueAtTime(0.5, ctx.currentTime); // INCREASED FROM 0.3
       masterGainRef.current = masterGain;
       masterGain.connect(limiter);
       limiter.connect(ctx.destination);
@@ -59,21 +60,22 @@ export default function InterstellarSymphony({ onStatsUpdate, showJoystick = tru
     loadSymphony();
   };
 
-  const playSynth = (pitch: number, dur: number) => {
+    const playSynth = (pitch: number, dur: number) => {
     if (!audioContextRef.current || !masterGainRef.current) return;
     const ctx = audioContextRef.current!;
     const freq = synthFrequencies[pitch];
     const time = ctx.currentTime;
     const f = ctx.createOscillator(), h = ctx.createOscillator(), g = ctx.createGain();
-    f.type = "square"; f.frequency.value = freq;
-    h.type = "sine"; h.frequency.value = freq * 0.5;
+    f.type = "triangle"; f.frequency.value = freq;
+    h.type = "sine"; h.frequency.value = freq * 2;
     g.gain.setValueAtTime(0, time);
-    g.gain.linearRampToValueAtTime(0.1, time + 0.05);
-    g.gain.exponentialRampToValueAtTime(0.001, time + dur + 1.5);
+    g.gain.linearRampToValueAtTime(0.5, time + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.3, time + 0.1);
+    g.gain.exponentialRampToValueAtTime(0.001, time + dur + 1.2);
     f.connect(g); h.connect(g); 
     g.connect(masterGainRef.current);
-    f.start(); f.stop(time + dur + 1.5);
-    h.start(); h.stop(time + dur + 1.5);
+    f.start(); f.stop(time + dur + 1.2);
+    h.start(); h.stop(time + dur + 1.2);
   };
 
   const loadSymphony = async () => {
@@ -81,18 +83,34 @@ export default function InterstellarSymphony({ onStatsUpdate, showJoystick = tru
     const scene = rootRef.current.getScene();
     notesRef.current.forEach(n => { if (n.m) n.m.dispose(false, true); });
     notesRef.current = [];
-    const currentScore = generateAI(30);
+    
+    // FETCH MANIFEST TO GET SONG DATA
+    const resManifest = await fetch('/manifest.json');
+    const dataManifest = await resManifest.json();
+    const song = dataManifest.songs[0]; // GENESIS
+    
+    let currentScore;
+    if(song.isAI) {
+        currentScore = generateAI(30);
+    } else {
+        const res = await fetch(`/${song.file}`);
+        currentScore = await res.json();
+    }
+
     const nMat = new BABYLON.StandardMaterial("nm", scene);
     nMat.emissiveColor = new BABYLON.Color3(0.0, 0.8, 1.0); 
     nMat.disableLighting = true;
+    
     const baseMesh = BABYLON.MeshBuilder.CreateLathe(`baseNote`, {
         shape: [new BABYLON.Vector3(0, 0, 0), new BABYLON.Vector3(10, 0.01, 0), new BABYLON.Vector3(0, 100, 0)],
         tessellation: 4
     }, scene);
     baseMesh.material = nMat;
     baseMesh.isVisible = false;
-    const MAX_VISIBLE_NOTES = 1000;
+    
+    const MAX_VISIBLE_NOTES = 10000;
     const limitedScore = currentScore.slice(0, MAX_VISIBLE_NOTES);
+    
     notesRef.current = limitedScore.map((d: any) => {
         const pitch = d.note.pitch;
         const dur = Math.max(d.note.offTime - d.note.onTime, 0.1);
@@ -101,11 +119,12 @@ export default function InterstellarSymphony({ onStatsUpdate, showJoystick = tru
         const n = baseMesh.createInstance(`n_${pitch}_${d.note.onTime}`);
         n.scaling.y = (dur * 50) / 100;
         n.parent = rootRef.current;
-        n.position.set(Math.cos(angle) * radius, Math.sin(angle) * radius, 10000);
-        n.freezeWorldMatrix();
+        n.position.set(Math.cos(angle) * radius, Math.sin(angle) * radius, 1000); // FIXED: SHOULD BE POSITIVE 1000
         return { m: n, p: pitch, hit: false, durSec: dur, onTime: d.note.onTime, radius, angle };
     });
-    baseMesh.dispose();
+    
+    // DO NOT DISPOSE baseMesh here, instances need it!
+    // baseMesh.dispose(); 
   };
 
   useEffect(() => {
@@ -182,6 +201,15 @@ export default function InterstellarSymphony({ onStatsUpdate, showJoystick = tru
     window.addEventListener("wheel", handleInput);
 
     engine.runRenderLoop(() => {
+        if (camera) {
+            setCamCoords({
+                x: Math.round(camera.position.x), y: Math.round(camera.position.y), z: Math.round(camera.position.z),
+                rotX: Number(camera.rotation.x.toFixed(2)), rotY: Number(camera.rotation.y.toFixed(2))
+            });
+        }
+        if (startTimeRef.current === 0) { scene.render(); return; }
+        const time = (performance.now() - startTimeRef.current) / 1000;
+        
         const now = Date.now();
         const deltaTime = engine.getDeltaTime() / 1000;
         if (now - lastInputTimeRef.current > 1000) isAutoFlyoverRef.current = true;
@@ -203,27 +231,25 @@ export default function InterstellarSymphony({ onStatsUpdate, showJoystick = tru
             });
         }
 
-        if (startTimeRef.current !== 0) {
-            const sTime = (now - startTimeRef.current) / 1000;
-            notesRef.current.forEach(note => {
-                const mesh = note.m; if (!mesh) return;
-                const progress = (sTime - note.onTime);
-                const z = 10000 - (progress * 500);
-                if (z < 11000 && z > -20000) {
-                    if (z > -1000) {
-                        const currentR = Math.max(throatRadius + (z - (-1000)) * 0.5, throatRadius);
-                        const h = -1000 * (1 / (1 + (currentR - throatRadius)/100));
-                        mesh.position.set(Math.cos(note.angle) * currentR, Math.sin(note.angle) * currentR, h);
-                        mesh.lookAt(new BABYLON.Vector3(0, 0, -5000));
-                    } else {
-                        const tunnelZ = -1000 + (z + 1000); 
-                        mesh.position.set(Math.cos(note.angle) * throatRadius, Math.sin(note.angle) * throatRadius, tunnelZ);
-                        mesh.lookAt(new BABYLON.Vector3(0, 0, tunnelZ - 100));
-                        if (!note.hit && (z <= -1000)) { note.hit = true; playSynth(note.p, note.durSec); }
-                    }
+        notesRef.current.forEach(note => {
+            const mesh = note.m; if (!mesh) return;
+            const currentR = note.radius - (time - note.onTime) * 450;
+            
+            if (currentR > throatRadius) {
+                const h = -1000 * (1 / (1 + (currentR - throatRadius)/100));
+                mesh.position.set(Math.cos(note.angle) * currentR, Math.sin(note.angle) * currentR, h);
+                mesh.lookAt(new BABYLON.Vector3(0, 0, -1000));
+            } else {
+                const tunnelZ = -1000 + (currentR - throatRadius); 
+                mesh.position.set(Math.cos(note.angle) * throatRadius, Math.sin(note.angle) * throatRadius, tunnelZ);
+                mesh.lookAt(new BABYLON.Vector3(0, 0, tunnelZ - 100));
+                if (!note.hit && (currentR <= throatRadius)) { 
+                    note.hit = true; 
+                    console.log("TRIGGER SOUND: Pitch", note.p); 
+                    playSynth(note.p, note.durSec); 
                 }
-            });
-        }
+            }
+        });
         scene.render();
     });
 
@@ -275,6 +301,13 @@ export default function InterstellarSymphony({ onStatsUpdate, showJoystick = tru
   return (
     <div style={{ position: 'relative', width: '100vw', height: '100vh', overflow: 'hidden' }}>
       <canvas ref={canvasRef} style={{ width: '100vw', height: '100vh', display: 'block', outline: 'none', border: 'none', margin: 0, padding: 0 }} tabIndex={1} />
+      
+      {/* RESTORED TELEMETRY OVERLAY FROM ORIGINAL */}
+      <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 300, display: 'flex', flexDirection: 'column', gap: '4px', pointerEvents: 'none', fontFamily: 'monospace' }}>
+        <div style={{ fontSize: '10px', fontWeight: 'bold', letterSpacing: '2px', color: '#0f0', backgroundColor: 'rgba(0,0,0,0.6)', padding: '4px 8px', border: '1px solid rgba(0,255,0,0.4)' }}>
+            TELEMETRY: [ POS: {camCoords.x}, {camCoords.y}, {camCoords.z} ] [ ROT: {camCoords.rotX}, {camCoords.rotY} ]
+        </div>
+      </div>
     </div>
   );
 }

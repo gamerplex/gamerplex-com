@@ -176,7 +176,17 @@ export default function Home() {
                 <p style={{ color: '#9945FF', fontSize: '18px', letterSpacing: '12px', opacity: 0.6 }}>Synthetic Autonomous Origin</p>
               </div>
               <div style={{ display: 'flex', gap: '40px', width: '100%', maxWidth: '900px', flexWrap: 'wrap', justifyContent: 'center' }}>
-                <button onClick={() => setShowMainUI(false)} style={{ background: 'linear-gradient(90deg, #9945FF, #14F195)', color: 'black', padding: '32px 56px', border: 'none', fontSize: '28px', fontWeight: '900', fontStyle: 'italic', cursor: 'pointer' }}>Enter_The_Origin</button>
+                <button 
+                  onClick={() => {
+                    setShowMainUI(false);
+                    triggerAudioInit();
+                    const canvas = document.querySelector('canvas');
+                    if (canvas) canvas.focus();
+                  }} 
+                  style={{ background: 'linear-gradient(90deg, #9945FF, #14F195)', color: 'black', padding: '32px 56px', border: 'none', fontSize: '28px', fontWeight: '900', fontStyle: 'italic', cursor: 'pointer' }}
+                >
+                  Enter_The_Origin
+                </button>
                 <button onClick={() => setShowWhitepaper(true)} style={{ backgroundColor: 'transparent', color: '#14F195', padding: '32px 56px', border: '4px solid #14F195', fontSize: '28px', fontWeight: '900', fontStyle: 'italic', cursor: 'pointer' }}>Read_Manifesto</button>
               </div>
             </div>
