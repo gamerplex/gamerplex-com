@@ -113,6 +113,7 @@ export default function InterstellarSymphony({ onStatsUpdate, showJoystick = tru
   useEffect(() => {
     if (!canvasRef.current) return;
     if (engineRef.current) { engineRef.current.dispose(); }
+    
     const engine = new BABYLON.Engine(canvasRef.current, true, { antialias: true, adaptToDeviceRatio: true });
     engineRef.current = engine;
     const scene = new BABYLON.Scene(engine);
@@ -123,30 +124,28 @@ export default function InterstellarSymphony({ onStatsUpdate, showJoystick = tru
     rootRef.current = root;
     const throatRadius = 24;
 
-    // Use UniversalCamera for better WASD + Mouse look handling
     const camera = new BABYLON.UniversalCamera("bgCamera", new BABYLON.Vector3(0, 0, -2000), scene);
     camera.setTarget(new BABYLON.Vector3(0, 0, 0));
     camera.attachControl(canvasRef.current, true);
     
-    // Default mapping: W=Forward, S=Backward, A=Left, D=Right
-    camera.keysUp = [87, 38]; 
-    camera.keysDown = [83, 40]; 
-    camera.keysLeft = [65, 37]; 
-    camera.keysRight = [68, 39];
-
-    // OVERRIDE FOR TRUE 3D FLIGHT: 
-    // FreeCamera moves on local Z for Forward. 
-    // To move vertically on Y with W/S, we need to handle inputs or rotate.
-    // However, user specifically said "W should move up".
-    // Let's use camera.keysUpward and keysDownward for Y axis movement.
-    camera.keysUpward = [87, 38];   // W moves camera up (Y+)
-    camera.keysDownward = [83, 40]; // S moves camera down (Y-)
-    // Now Forward/Back will need other keys or we just use Y for W/S.
-    camera.keysUp = []; // Clear forward
-    camera.keysDown = []; // Clear backward
+    // FLY NAVIGATION
+    camera.keysUp = [87, 38];    // W
+    camera.keysDown = [83, 40];  // S
+    camera.keysLeft = [65, 37];  // A
+    camera.keysRight = [68, 39]; // D
+    camera.keysUpward = [32];    // SPACE
+    camera.keysDownward = [16];  // SHIFT
+    
     camera.speed = 100.0;
     camera.angularSensibility = 500;
     camera.inertia = 0.9;
+
+    // INTERACTIVE FOCUS
+    const onPointerDown = () => {
+        engine.enterPointerlock();
+        canvasRef.current?.focus();
+    };
+    scene.onPointerDown = onPointerDown;
 
     const bridgeMat = new BABYLON.StandardMaterial("bm", scene);
     bridgeMat.emissiveColor = new BABYLON.Color3(0.5, 0, 1.0);
@@ -249,7 +248,7 @@ export default function InterstellarSymphony({ onStatsUpdate, showJoystick = tru
             const x = Math.cos(angle) * dist, y = Math.sin(angle) * dist;
             stick.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`;
             camera.cameraDirection.x += (x / 50) * 10;
-            camera.cameraDirection.y -= (y / 50) * 10; // Joystick Vertical moves Y
+            camera.cameraDirection.z -= (y / 50) * 10;
         };
         container.addEventListener("mousedown", (e) => { active = true; const r = container.getBoundingClientRect(); startPos = { x: r.left + 60, y: r.top + 60 }; handleInput(); });
         window.addEventListener("mousemove", onMove);
@@ -272,7 +271,7 @@ export default function InterstellarSymphony({ onStatsUpdate, showJoystick = tru
 
   return (
     <div style={{ position: 'relative', width: '100vw', height: '100vh', overflow: 'hidden' }}>
-      <canvas ref={canvasRef} style={{ width: '100vw', height: '100vh', display: 'block', outline: 'none', border: 'none', margin: 0, padding: 0 }} />
+      <canvas ref={canvasRef} style={{ width: '100vw', height: '100vh', display: 'block', outline: 'none', border: 'none', margin: 0, padding: 0 }} tabIndex={1} />
     </div>
   );
 }
