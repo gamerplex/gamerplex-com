@@ -82,12 +82,12 @@ export default function Home() {
     setLogs(prev => [...prev.slice(-3), "[SISAO] AUDIO_STREAM_STARTED", "[SISAO] RESONANCE_LOCKED"]);
   };
 
-  if (!mounted) return <div style={{ backgroundColor: '#000000', width: '100vw', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }} />;
+  if (!mounted) return <div style={{ backgroundColor: '#0d001a', width: '100vw', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }} />;
 
   return (
     <div style={{ 
       position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', 
-      backgroundColor: 'black', overflow: 'hidden', fontFamily: 'monospace',
+      backgroundColor: '#0d001a', overflow: 'hidden', fontFamily: 'monospace',
       margin: 0, padding: 0, userSelect: 'none', WebkitUserSelect: 'none'
     }}>
       {/* Background Interstellar Symphony */}
