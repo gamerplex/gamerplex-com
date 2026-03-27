@@ -3,9 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as BABYLON from "@babylonjs/core";
 import "@babylonjs/loaders";
-import { UniversalInterface } from "@gamerplex-lib/visual/InterfaceHUD";
-import { StakeFlare } from "@gamerplex-lib/visual/StakeFlare";
-import { SensorySystem } from "@gamerplex-lib/visual/SensorySystem";
+// gamerplex-lib integrations removed — using standalone mode
 
 function generateAI(minutes: number) {
     const score = []; const scales = [36, 48, 52, 55, 60, 64, 67, 72, 76, 79]; let t = 1.0;
