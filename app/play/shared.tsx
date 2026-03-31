@@ -11,7 +11,7 @@ import {
 } from "@solana/spl-token";
 import { useState, useCallback } from "react";
 
-const RESOLVER_URL = process.env.NEXT_PUBLIC_RESOLVER_URL || "http://localhost:8080";
+const RESOLVER_URL = process.env.NEXT_PUBLIC_RESOLVER_URL || "https://gamerplex-resolver-508521387980.us-central1.run.app";
 const MINT = new PublicKey(process.env.NEXT_PUBLIC_MINT || "5cfYRyjyzq5DSHpJPr5ipQQ48RHSn49Y75AWNMxaambt");
 
 export type GamePhase = "connect" | "matchmaking" | "depositing" | "playing" | "resolving" | "result";
