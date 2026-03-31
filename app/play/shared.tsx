@@ -14,7 +14,7 @@ import { useState, useCallback } from "react";
 const RESOLVER_URL = process.env.NEXT_PUBLIC_RESOLVER_URL || "https://gamerplex-resolver-508521387980.us-central1.run.app";
 const MINT = new PublicKey(process.env.NEXT_PUBLIC_MINT || "5cfYRyjyzq5DSHpJPr5ipQQ48RHSn49Y75AWNMxaambt");
 
-export type GamePhase = "connect" | "matchmaking" | "depositing" | "playing" | "resolving" | "result";
+export type GamePhase = "connect" | "challenge-created" | "matchmaking" | "depositing" | "playing" | "resolving" | "result";
 
 export interface MatchState {
   eventId: string;
@@ -29,11 +29,39 @@ export function useGameSession(gameName: string, stake: number = 5) {
   const { connection } = useConnection();
   const { publicKey, sendTransaction } = useWallet();
   const [phase, setPhase] = useState<GamePhase>("connect");
+  const [challengeLink, setChallengeLink] = useState<string | null>(null);
   const [match, setMatch] = useState<MatchState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [winner, setWinner] = useState<number | null>(null);
   const [txSig, setTxSig] = useState<string | null>(null);
 
+  // Create a shareable challenge link (P2 joins later)
+  const createChallenge = useCallback(async () => {
+    if (!publicKey) return;
+    setError(null);
+
+    try {
+      const res = await fetch(`${RESOLVER_URL}/challenge/create`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          creator: publicKey.toBase58(),
+          game: gameName,
+          stake,
+        }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error);
+
+      const link = `${window.location.origin}/challenge/${data.challenge.id}`;
+      setChallengeLink(link);
+      setPhase("challenge-created");
+    } catch (err: any) {
+      setError(err.message);
+    }
+  }, [publicKey, gameName, stake]);
+
+  // Quick match vs AI (devnet demo)
   const createMatch = useCallback(async () => {
     if (!publicKey) return;
     setPhase("matchmaking");
@@ -133,22 +161,26 @@ export function useGameSession(gameName: string, stake: number = 5) {
   }, []);
 
   return {
-    phase, match, error, winner, txSig,
-    publicKey, createMatch, deposit, resolveMatch, reset,
+    phase, match, error, winner, txSig, challengeLink,
+    publicKey, createMatch, createChallenge, deposit, resolveMatch, reset,
   };
 }
 
 // Shared UI components
 export function GameShell({
-  title, children, phase, error, publicKey, onStart,
+  title, children, phase, error, publicKey, challengeLink, onStart, onChallenge,
 }: {
   title: string;
   children: React.ReactNode;
   phase: GamePhase;
   error: string | null;
   publicKey: PublicKey | null;
+  challengeLink?: string | null;
   onStart: () => void;
+  onChallenge?: () => void;
 }) {
+  const [copied, setCopied] = useState(false);
+
   return (
     <div style={{
       minHeight: "100vh", background: "#050508", color: "#e8e8f0",
@@ -160,8 +192,10 @@ export function GameShell({
       </div>
 
       <a href="/" style={{
-        position: "absolute", top: 20, left: 20, color: "#ff6b2c",
-        textDecoration: "none", fontSize: 18, fontWeight: 700,
+        position: "absolute", top: 20, left: 20, textDecoration: "none",
+        fontSize: 18, fontWeight: 700,
+        background: "linear-gradient(135deg, #ff6b2c, #ffd740)",
+        WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
       }}>GAMERPLEX</a>
 
       <h1 style={{
@@ -182,15 +216,61 @@ export function GameShell({
       )}
 
       {phase === "connect" && !publicKey && (
-        <p style={{ color: "#555570", fontSize: 14 }}>Connect your wallet to play</p>
+        <div style={{ textAlign: "center" }}>
+          <p style={{ color: "#555570", fontSize: 14, marginBottom: 8 }}>Connect your Solana wallet to play</p>
+          <p style={{ color: "#333", fontSize: 11 }}>Devnet &bull; No real money</p>
+        </div>
       )}
 
       {phase === "connect" && publicKey && (
-        <button onClick={onStart} style={{
-          background: "linear-gradient(135deg, #ff6b2c, #ff8f35)", color: "white",
-          border: "none", padding: "14px 40px", borderRadius: 8, fontSize: 16,
-          fontWeight: 700, cursor: "pointer", fontFamily: "'Space Grotesk', sans-serif",
-        }}>Find Match — $5 USDC</button>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, alignItems: "center" }}>
+          <button onClick={onStart} style={{
+            background: "linear-gradient(135deg, #ff6b2c, #ff8f35)", color: "white",
+            border: "none", padding: "14px 40px", borderRadius: 8, fontSize: 16,
+            fontWeight: 700, cursor: "pointer", fontFamily: "'Space Grotesk', sans-serif",
+          }}>Play vs Agent — ${5}</button>
+          {onChallenge && (
+            <button onClick={onChallenge} style={{
+              background: "transparent", color: "#ff6b2c",
+              border: "1px solid #ff6b2c", padding: "12px 32px", borderRadius: 8, fontSize: 14,
+              fontWeight: 600, cursor: "pointer", fontFamily: "'Space Grotesk', sans-serif",
+            }}>Challenge a Friend — ${5}</button>
+          )}
+        </div>
+      )}
+
+      {phase === "challenge-created" && challengeLink && (
+        <div style={{
+          background: "#0c0c14", border: "1px solid #252540", borderRadius: 12,
+          padding: 24, textAlign: "center", maxWidth: 440, width: "100%",
+        }}>
+          <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>Challenge Created!</div>
+          <div style={{ fontSize: 12, color: "#555570", marginBottom: 12 }}>Send this link to your opponent:</div>
+          <div style={{
+            background: "#14141f", borderRadius: 8, padding: "12px 16px", marginBottom: 12,
+            fontFamily: "monospace", fontSize: 12, wordBreak: "break-all", color: "#18ffff",
+          }}>{challengeLink}</div>
+          <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+            <button onClick={() => {
+              navigator.clipboard.writeText(challengeLink);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 2000);
+            }} style={{
+              background: copied ? "#00e676" : "#448aff", color: "white", border: "none",
+              padding: "10px 20px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer",
+            }}>{copied ? "Copied!" : "Copy Link"}</button>
+            <button onClick={() => {
+              const text = encodeURIComponent(`I bet you $5 you can't beat me at ${title} on @gamerplex_com\n\n${challengeLink}`);
+              window.open(`https://twitter.com/intent/tweet?text=${text}`, "_blank");
+            }} style={{
+              background: "#14141f", color: "#e8e8f0", border: "1px solid #252540",
+              padding: "10px 20px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer",
+            }}>Share on X</button>
+          </div>
+          <div style={{ fontSize: 11, color: "#333", marginTop: 12 }}>
+            Waiting for opponent to accept...
+          </div>
+        </div>
       )}
 
       {children}
