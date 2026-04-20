@@ -23,59 +23,87 @@ interface LiveGame {
   label?: string;
 }
 
-interface Match {
-  eventId: string;
-  game: string;
-  stake: number;
-  status: string;
-  p1?: string;
-  p2?: string;
-  winner?: number | null;
-  createdAt?: number;
+interface OnchainActivity {
+  blockTime: number;
+  gameSlug: string;
+  gameProgram: string;
+  market: string;
+  p1: string;
+  p2: string;
+  p1Name: string;
+  p2Name: string;
+  totalPotRaw: string;
+  protocolFeeRaw: string;
+  partnerFeeRaw: string;
+  poolFeeRaw: string;
+  winnerPayoutRaw: string;
+  winningOutcome: number; // 0=p1, 1=p2, 255=cancelled/draw
+  winnerWallet: string | null;
+  winnerName: string | null;
 }
 
-interface FinishedGame {
-  gamePda: string;
-  gameId: number;
-  label: string | null;
-  moveCount: number;
-  winner: "white" | "black" | "draw" | null;
-  whiteName: string | null;
-  blackName: string | null;
-  finishedAt: number;
+interface OnchainTotals {
+  matches: number;
+  volumeRaw: string;
+  treasuryRaw: string;
+  poolSponsorRaw: string;
+  winnerPayoutRaw: string;
+}
+
+function fmtUsdf(raw: string, signed = false): string {
+  try {
+    const n = Number(BigInt(raw)) / 1e6;
+    const sign = signed && n > 0 ? "+" : "";
+    return `${sign}$${n.toFixed(2)}`;
+  } catch {
+    return "$0.00";
+  }
+}
+
+function timeAgo(blockTime: number): string {
+  const secs = Math.floor(Date.now() / 1000 - blockTime);
+  if (secs < 60) return `${secs}s ago`;
+  if (secs < 3600) return `${Math.floor(secs / 60)}m ago`;
+  if (secs < 86400) return `${Math.floor(secs / 3600)}h ago`;
+  return `${Math.floor(secs / 86400)}d ago`;
 }
 
 export default function ActivityPage() {
+  // Legacy ER chess pool stream — retained for visibility of in-progress
+  // free-play games (not wagered). Kept alongside the on-chain feed.
   const [liveGames, setLiveGames] = useState<LiveGame[]>([]);
-  const [recentMatches, setRecentMatches] = useState<Match[]>([]);
-  const [finishedGames, setFinishedGames] = useState<FinishedGame[]>([]);
-  const [agents, setAgents] = useState<any[]>([]);
   const [poolStatus, setPoolStatus] = useState<any>(null);
+
+  // On-chain truth: every resolved CM v2.1 market. Source-of-truth feed.
+  const [onchain, setOnchain] = useState<OnchainActivity[]>([]);
+  const [onchainTotals, setOnchainTotals] = useState<OnchainTotals | null>(null);
 
   useEffect(() => {
     const fetchAll = () => {
+      // Primary: on-chain resolved markets from CM v2.1
+      fetch(`${RESOLVER}/activity/onchain?limit=50`).then(r => r.json()).then(d => {
+        if (d.ok) {
+          setOnchain(d.activity || []);
+          setOnchainTotals(d.totals || null);
+        }
+      }).catch(() => {});
+      // Secondary: ER chess pool live state (resolver cache — not authoritative)
       fetch(`${RESOLVER}/game-pool/live`).then(r => r.json()).then(d => {
         if (d.ok) setLiveGames(d.games || []);
-      }).catch(() => {});
-      fetch(`${RESOLVER}/game-pool/history`).then(r => r.json()).then(d => {
-        if (d.ok) setFinishedGames(d.games || []);
-      }).catch(() => {});
-      fetch(`${RESOLVER}/feed`).then(r => r.json()).then(d => {
-        if (d.ok) setRecentMatches(d.matches || []);
-      }).catch(() => {});
-      fetch(`${RESOLVER}/rankings/agents`).then(r => r.json()).then(d => {
-        if (d.ok) setAgents(d.agents || []);
       }).catch(() => {});
       fetch(`${RESOLVER}/game-pool/status`).then(r => r.json()).then(d => {
         if (d.ok) setPoolStatus(d.pool);
       }).catch(() => {});
     };
     fetchAll();
-    const interval = setInterval(fetchAll, 3000);
+    // On-chain data updates on Solana finality (~400ms) but we poll the
+    // resolver's 30s-cached indexer at 15s to avoid hammering.
+    const interval = setInterval(fetchAll, 15000);
     return () => clearInterval(interval);
   }, []);
 
-  const totalGamesPlayed = agents.reduce((s, a) => s + (a.wins || 0) + (a.losses || 0) + (a.draws || 0), 0);
+  const totalVolume = onchainTotals ? fmtUsdf(onchainTotals.volumeRaw) : "$0.00";
+  const totalTreasury = onchainTotals ? fmtUsdf(onchainTotals.treasuryRaw) : "$0.00";
 
   return (
     <div style={{ minHeight: "100vh", background: "#050508", color: "#e8e8f0", fontFamily: "'Space Grotesk', sans-serif" }}>
@@ -104,12 +132,12 @@ export default function ActivityPage() {
           Live on-chain activity across all Gamerplex programs • Solana devnet
         </p>
 
-        {/* Stat strip */}
+        {/* Stat strip — all on-chain aggregates */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, marginBottom: 32 }}>
-          <StatCard label="Live Games" value={liveGames.length} color="#14F195" />
-          <StatCard label="Pool Slots" value={poolStatus ? `${poolStatus.available}/${poolStatus.total}` : "—"} color="#9945FF" />
-          <StatCard label="Games Played" value={totalGamesPlayed} color="#ffd740" />
-          <StatCard label="Programs Live" value="9" color="#00f0ff" />
+          <StatCard label="Resolved Matches" value={onchainTotals?.matches ?? "—"} color="#14F195" />
+          <StatCard label="Volume Wagered" value={totalVolume} color="#9945FF" />
+          <StatCard label="Treasury Collected" value={totalTreasury} color="#ffd740" />
+          <StatCard label="ER Live Games" value={liveGames.length} color="#00f0ff" />
         </div>
 
         {/* Live Games Table */}
@@ -129,21 +157,37 @@ export default function ActivityPage() {
           ))}
         </Table>
 
-        {/* Completed Agent Games */}
-        <SectionHeader title="✅ Recently Completed" subtitle="Agent games finished on MagicBlock ER" style={{marginTop: 32}} />
+        {/* On-chain resolved markets — authoritative feed from CM v2.1 */}
+        <SectionHeader title="💰 Wagered Matches (on-chain)" subtitle="Every CM v2.1 MarketResolvedV2 event — newest first, verifiable on Solana" style={{marginTop: 32}} />
         <Table>
-          <TableHead cols={["Match", "Result", "Moves", "Game PDA", "Explorer"]} />
-          {finishedGames.length === 0 ? (
-            <TableEmpty>No completed games yet. Agents are playing now...</TableEmpty>
-          ) : finishedGames.slice(0, 10).map(g => (
-            <TableRow key={g.gamePda} cols={[
-              g.label || "Chess Match",
-              <span key="r" style={{fontSize:10,fontWeight:700,color:g.winner==="white"?"#00e676":g.winner==="black"?"#ff4466":"#888",textTransform:"uppercase",letterSpacing:1}}>{g.winner === "draw" ? "DRAW" : g.winner === "white" ? "WHITE ✓" : g.winner === "black" ? "BLACK ✓" : "—"}</span>,
-              String(g.moveCount),
-              <code key="pda" style={{fontSize:10,color:"#666"}}>{g.gamePda.slice(0,8)}...{g.gamePda.slice(-4)}</code>,
-              <a key="ex" href={`https://explorer.solana.com/address/${g.gamePda}?cluster=custom&customUrl=${encodeURIComponent("https://devnet.magicblock.app")}`} target="_blank" rel="noopener noreferrer" style={{color:"#448aff",fontSize:11,textDecoration:"none"}}>View ↗</a>,
-            ]} />
-          ))}
+          <TableHead cols={["When", "Game", "Match", "Pot", "Result", "Winner gain", "Tx"]} />
+          {onchain.length === 0 ? (
+            <TableEmpty>No resolved markets indexed yet — play a match to appear.</TableEmpty>
+          ) : onchain.map(a => {
+            const winnerPayoutRaw = BigInt(a.winnerPayoutRaw);
+            const wager = BigInt(a.totalPotRaw) / 2n;
+            const winnerGain = winnerPayoutRaw - wager;
+            const isDraw = a.winningOutcome === 255 || a.winningOutcome === null;
+            return (
+              <TableRow key={a.market} cols={[
+                <span key="t" style={{fontSize:11,color:"#666"}}>{timeAgo(a.blockTime)}</span>,
+                <span key="g" style={{fontSize:11,color:"#c99aff",textTransform:"uppercase",letterSpacing:0.5}}>{a.gameSlug}</span>,
+                <span key="m" style={{fontSize:12}}>
+                  <span style={{color: a.winningOutcome === 0 ? "#00e676" : a.winningOutcome === 1 ? "#888" : "#888"}}>{a.p1Name}</span>
+                  <span style={{color:"#444"}}> vs </span>
+                  <span style={{color: a.winningOutcome === 1 ? "#00e676" : a.winningOutcome === 0 ? "#888" : "#888"}}>{a.p2Name}</span>
+                </span>,
+                <span key="p" style={{fontSize:11,color:"#14F195",fontFamily:"monospace"}}>{fmtUsdf(a.totalPotRaw)}</span>,
+                <span key="r" style={{fontSize:10,fontWeight:700,color:isDraw?"#888":"#00e676",textTransform:"uppercase",letterSpacing:1}}>
+                  {isDraw ? "DRAW" : `${a.winnerName} ✓`}
+                </span>,
+                <span key="w" style={{fontSize:11,color:isDraw?"#666":"#00e676",fontFamily:"monospace"}}>
+                  {isDraw ? "—" : fmtUsdf(winnerGain.toString(), true)}
+                </span>,
+                <a key="ex" href={`https://explorer.solana.com/address/${a.market}?cluster=devnet`} target="_blank" rel="noopener noreferrer" style={{color:"#448aff",fontSize:11,textDecoration:"none"}}>Market ↗</a>,
+              ]} />
+            );
+          })}
         </Table>
 
         {/* Programs Registry */}
@@ -161,9 +205,11 @@ export default function ActivityPage() {
 
         {/* Note */}
         <div style={{marginTop:32,padding:"16px 20px",background:"#0c0c14",border:"1px solid #252540",borderRadius:12,fontSize:12,color:"#666",lineHeight:1.6}}>
-          <strong style={{color:"#e0b3ff"}}>Note:</strong> This page reads live state from our resolver API.
-          Production will use a dedicated on-chain indexer (gamerplex-indexer, WIP) that subscribes to Solana WebSocket events
-          and caches to Postgres. Current architecture: in-memory cache, refreshed every 3 seconds.
+          <strong style={{color:"#e0b3ff"}}>Data sources:</strong> The Wagered Matches feed reads <code style={{color:"#c99aff"}}>MarketResolvedV2</code> events
+          directly from CM v2.1 on Solana — anyone can reproduce this by scanning the program themselves. The ER Live Games
+          section reads our resolver&apos;s cache of active chess-pool slots (UX convenience, not authoritative). If the
+          resolver disappears, wagered matches keep resolving; only the free-play chess pool UI goes dark until re-hosted.
+          See <Link href="/docs#decentralization" style={{color:"#9945FF",textDecoration:"none"}}>Decentralization</Link> for the trust model.
         </div>
       </div>
     </div>
