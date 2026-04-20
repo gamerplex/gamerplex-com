@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 
-const RESOLVER_URL = process.env.NEXT_PUBLIC_RESOLVER_URL || "https://gamerplex-resolver-508521387980.us-central1.run.app";
+const RESOLVER_URL = process.env.NEXT_PUBLIC_RESOLVER_URL || "https://resolver.gamerplex.com";
 
 interface Challenge {
   id: string;
@@ -36,16 +36,23 @@ export default function ChallengePage() {
   }, [id]);
 
   const shortWallet = (w: string) => w.slice(0, 4) + "..." + w.slice(-4);
+  // Launch stack — chess live, blockwords + pla building. Others archived.
   const gameEmoji: Record<string, string> = {
-    "Reaction Duel": "⚡",
-    "Math Race": "🧮",
-    "Trivia Battle": "🧠",
+    chess: "♚",
+    blockwords: "🔤",
+    pla: "🐉",
   };
 
   const gameRoute: Record<string, string> = {
-    "Reaction Duel": "/play/reaction-duel",
-    "Math Race": "/play/math-race",
-    "Trivia Battle": "/play/trivia-battle",
+    chess: "/play/magic-chess",
+    blockwords: "/play/blockwords",
+    pla: "/play/pla",
+  };
+
+  const gameLabel: Record<string, string> = {
+    chess: "Magic Chess",
+    blockwords: "Blockwords",
+    pla: "Pet Legends Arena",
   };
 
   return (
@@ -58,7 +65,7 @@ export default function ChallengePage() {
       <Link href="/" style={{
         position: "absolute", top: 20, left: 20,
         fontSize: 18, fontWeight: 700, textDecoration: "none",
-        background: "linear-gradient(135deg, #ff6b2c, #ffd740)",
+        background: "linear-gradient(135deg, #9945FF, #14F195)",
         WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
       }}>GAMERPLEX</Link>
 
@@ -94,11 +101,11 @@ export default function ChallengePage() {
             </div>
 
             <div style={{ fontSize: 28, fontWeight: 700, marginBottom: 8 }}>
-              {challenge.game}
+              {gameLabel[challenge.game] || challenge.game}
             </div>
 
             <div style={{
-              display: "inline-block", background: "linear-gradient(135deg, #ff6b2c, #ffd740)",
+              display: "inline-block", background: "linear-gradient(135deg, #9945FF, #14F195)",
               borderRadius: 8, padding: "8px 20px", marginBottom: 16,
             }}>
               <span style={{ fontSize: 24, fontWeight: 700, color: "#000" }}>
@@ -125,7 +132,7 @@ export default function ChallengePage() {
 
             {/* Accept Button */}
             <Link
-              href={`${gameRoute[challenge.game] || "/play/reaction-duel"}?challenge=${challenge.id}`}
+              href={`${gameRoute[challenge.game] || "/play/magic-chess"}?challenge=${challenge.id}`}
               style={{
                 display: "block", textAlign: "center",
                 background: "linear-gradient(135deg, #ff6b2c, #ff8f35)",
@@ -138,14 +145,14 @@ export default function ChallengePage() {
             </Link>
 
             <div style={{ fontSize: 10, color: "#333", marginTop: 12 }}>
-              Solana Devnet &bull; 2% protocol fee &bull; Settled by Contention Markets
+              Solana Devnet Beta &bull; Every move on MagicBlock ER &bull; Free to play
             </div>
           </div>
 
           {/* Create your own */}
           <div style={{ color: "#555570", fontSize: 13 }}>
             Want to challenge someone?{" "}
-            <Link href="/play/reaction-duel" style={{ color: "#ff6b2c", textDecoration: "none" }}>
+            <Link href="/play/magic-chess" style={{ color: "#ff6b2c", textDecoration: "none" }}>
               Create your own →
             </Link>
           </div>

@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#9945FF"/>
+      <stop offset="100%" stop-color="#14F195"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="108" fill="#0d001a"/>
+  <!-- Centered geometric G with italic skew -->
+  <g transform="translate(256,256) skewX(-8)">
+    <!-- Outer rounded G -->
+    <path d="
+      M 20,-145
+      A 155,155 0 1 0 20,145
+      L 120,145
+      Q 135,145 135,130
+      L 135,-5
+      Q 135,-20 120,-20
+      L 25,-20
+      Q 10,-20 10,-35
+      L 10,-50
+      Q 10,-65 25,-65
+      L 120,-65
+      Q 135,-65 135,-80
+      L 135,-145
+      Z
+    " fill="url(#g1)"/>
+    <!-- Inner cutout (the hole) -->
+    <path d="
+      M 20,-100
+      L 85,-100
+      L 85,100
+      L 20,100
+      A 110,110 0 1 1 20,-100
+      Z
+    " fill="#0d001a"/>
+  </g>
+</svg>

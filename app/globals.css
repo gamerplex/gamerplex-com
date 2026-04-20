@@ -72,6 +72,8 @@ html, body {
   line-height: 0.85;
   font-style: italic;
   margin-bottom: 20px;
+  padding-right: 0.15em;
+  display: inline-block;
 }
 .hero-sub {
   font-size: clamp(14px, 2vw, 22px);
@@ -211,6 +213,105 @@ html, body {
 @media (max-width: 900px) {
   .arena-layout { grid-template-columns: 1fr; }
   .leaderboard-panel { display: none; }
+}
+
+/* ============================================================
+   MOBILE RESPONSIVE FIXES — applies across entire site
+   ============================================================ */
+@media (max-width: 768px) {
+  /* Nav — shrink logo and links */
+  .top-nav {
+    padding: 12px 14px !important;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .nav-logo { font-size: 18px !important; }
+  .devnet-badge { font-size: 8px !important; padding: 2px 5px !important; }
+  .nav-links {
+    gap: 12px !important;
+    font-size: 11px !important;
+    flex-wrap: wrap;
+  }
+  .nav-links a svg { width: 14px !important; height: 14px !important; }
+
+  /* Hero — smaller text and tighter padding */
+  .hero {
+    padding: 40px 16px 30px !important;
+    min-height: auto;
+  }
+  .hero-title { font-size: 48px !important; line-height: 1 !important; }
+  .hero-sub { font-size: 16px !important; }
+  .hero-desc { font-size: 13px !important; }
+  .stats-bar {
+    gap: 16px !important;
+    flex-wrap: wrap;
+  }
+  .stat-val { font-size: 24px !important; }
+  .stat-label { font-size: 9px !important; }
+  .cta-row {
+    flex-direction: column;
+    gap: 10px !important;
+    width: 100%;
+  }
+  .cta-row a {
+    text-align: center;
+    width: 100%;
+    padding: 12px 20px !important;
+  }
+
+  /* Arena section headers */
+  .arena-header {
+    padding: 0 16px !important;
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 4px;
+  }
+  .arena-header h2 { font-size: 18px !important; }
+  .arena-section { padding: 20px 0 !important; }
+
+  /* Homepage content padding */
+  section { padding-left: 16px !important; padding-right: 16px !important; }
+
+  /* Tables — horizontal scroll */
+  .arena-layout { gap: 0 !important; }
+}
+
+@media (max-width: 480px) {
+  .hero-title { font-size: 36px !important; }
+  .hero-sub { font-size: 14px !important; }
+  .hero-desc { font-size: 12px !important; }
+  .nav-links { font-size: 10px !important; gap: 10px !important; }
+  .nav-logo { font-size: 16px !important; }
+  .stat-val { font-size: 20px !important; }
+  .stat-label { font-size: 8px !important; }
+  .arena-header h2 { font-size: 16px !important; }
+
+  /* Global: smaller heading sizes */
+  main h1, section h1, div > h1 { font-size: 22px !important; }
+
+  /* Featured card info bar stacks on mobile */
+  #featured a > div > div:last-child {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+}
+
+/* Prevent horizontal page scroll on mobile */
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+/* Global: any container with inline gridTemplateColumns collapses on narrow screens */
+@media (max-width: 600px) {
+  /* Games grid */
+  [style*="minmax(280px"] { grid-template-columns: 1fr !important; }
+  [style*="minmax(260px"] { grid-template-columns: 1fr !important; }
+  [style*="minmax(340px"] { grid-template-columns: 1fr !important; }
+  [style*="minmax(250px"] { grid-template-columns: 1fr !important; }
+  [style*="minmax(160px"] { grid-template-columns: 1fr 1fr !important; }
+  [style*="minmax(140px"] { grid-template-columns: 1fr 1fr !important; }
 }
 
 /* ---- LEADERBOARD ---- */
@@ -442,12 +543,27 @@ html, body {
   border-bottom: 1px solid rgba(42, 16, 80, 0.5);
 }
 .nav-logo {
-  font-size: 16px;
+  font-size: 22px;
   font-weight: 900;
   font-style: italic;
   background: linear-gradient(135deg, #9945FF, #14F195);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+  padding-right: 8px;
+  display: inline-block;
+}
+.devnet-badge {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(255, 170, 0, 0.15);
+  border: 1px solid rgba(255, 170, 0, 0.4);
+  color: #ffaa00;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  display: inline-block;
+  vertical-align: middle;
 }
 .nav-links {
   display: flex;
@@ -464,3 +580,52 @@ html, body {
   transition: color 0.2s;
 }
 .nav-links a:hover { color: var(--green); }
+
+/* ============================================================
+   MOBILE FIXES — inline-styled pages (leaderboard, activity, games, docs)
+   These target elements that don't use the arena classes
+   ============================================================ */
+@media (max-width: 768px) {
+  /* Nav on inline-styled pages — reduce gap */
+  header > div[style*="flex"], div[style*="borderBottom"][style*="flex"] {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  /* Tables — enable horizontal scroll wrappers */
+  div[style*="borderRadius: 12"][style*="border: 1px solid #252540"] > div[style*="grid"][style*="gridTemplateColumns"] {
+    min-width: 0;
+  }
+
+  /* Reduce huge paddings on inline-styled pages */
+  div[style*="padding: \"32px 20px\""] { padding: 20px 14px !important; }
+  div[style*="padding: \"24px 16px\""] { padding: 16px 12px !important; }
+  div[style*="padding: \"48px 48px"] { padding: 24px 16px !important; }
+
+  /* Inline h1 in pages — shrink */
+  h1[style*="fontSize: 28"],
+  h1[style*="fontSize: 32"],
+  h1[style*="fontSize: 40"],
+  h1[style*="fontSize: 36"] { font-size: 22px !important; }
+}
+
+@media (max-width: 480px) {
+  /* Hide secondary nav links on ultra-narrow screens */
+  nav[class="top-nav"] a:not([href="/"]):not([href="/games"]):not([href="/docs"]):not([title]) {
+    font-size: 9px !important;
+  }
+
+  /* Leaderboard table — hide non-essential columns on tiny screens */
+  div[style*="gridTemplateColumns"][style*="50px 1fr 80px 80px 80px 80px 90px"] {
+    grid-template-columns: 40px 1fr 60px !important;
+  }
+  div[style*="gridTemplateColumns"][style*="50px 1fr 80px 80px 80px 80px 90px"] > *:nth-child(n+4) {
+    display: none !important;
+  }
+
+  /* Activity page stat cards — 2 cols */
+  div[style*="minmax(160px"] { grid-template-columns: 1fr 1fr !important; }
+
+  /* Games page feature card — smaller aspect */
+  a[href="/play/chess"] div[style*="aspectRatio"] { aspect-ratio: 16/10 !important; }
+}

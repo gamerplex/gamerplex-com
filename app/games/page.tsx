@@ -1,115 +1,43 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 
-// Game registry — any game that uses Contention Markets can be listed here.
-// In production this would be fetched from the resolver API or on-chain registry.
-const GAMES = [
+// Mainnet launches with 3 games on one unified stack: Magic Chess (live),
+// Blockwords (building), Pet Legends Arena (rewriting). Ancillary on-chain
+// experiments (Aim Duel / Sea Battle / Snake) are archived to `_archive/`.
+// Post-mainnet scale: one new game per week from the Forever Games list.
+const LAUNCH_GAMES = [
   {
-    id: "reaction-duel",
-    name: "Reaction Duel",
-    description: "Fastest click wins. Race against an AI agent.",
-    category: "arcade",
-    stake: 5,
-    path: "/play/reaction-duel",
-    hosted: "gamerplex.com",
-    author: "Gamerplex",
-    color: "#ff6b2c",
-    emoji: "⚡",
-    matches: 47,
-    volume: 940,
-    status: "live" as const,
+    id: "blockwords",
+    name: "Blockwords",
+    description: "Hidden-word duel. Host commits a SHA256 word hash; guesser has N lives. PER-encrypted via Intel TDX.",
+    path: "/play/blockwords",
+    color: "#14F195",
+    emoji: "🔤",
+    status: "building",
   },
   {
-    id: "math-race",
-    name: "Math Race",
-    description: "Solve equations faster than the AI. First to 10 wins.",
-    category: "arcade",
-    stake: 5,
-    path: "/play/math-race",
-    hosted: "gamerplex.com",
-    author: "Gamerplex",
-    color: "#448aff",
-    emoji: "🧮",
-    matches: 31,
-    volume: 620,
-    status: "live" as const,
-  },
-  {
-    id: "trivia-battle",
-    name: "Trivia Battle",
-    description: "8 rounds of Solana trivia. Most correct answers wins.",
-    category: "arcade",
-    stake: 5,
-    path: "/play/trivia-battle",
-    hosted: "gamerplex.com",
-    author: "Gamerplex",
-    color: "#b388ff",
-    emoji: "🧠",
-    matches: 22,
-    volume: 440,
-    status: "live" as const,
-  },
-  {
-    id: "pet-legends",
+    id: "pla",
     name: "Pet Legends Arena",
-    description: "NFT trait-based battler. Equip pets, trainers, and memecoins. Fight for SOL.",
-    category: "nft",
-    stake: 10,
-    path: null,
-    hosted: "arena.petlegends.com",
-    author: "Pet Legends",
-    color: "#ff007a",
-    emoji: "🐾",
-    matches: 0,
-    volume: 0,
-    status: "coming-soon" as const,
-  },
-  {
-    id: "molty-arena",
-    name: "Molty Arena",
-    description: "Predict which AI copy-trader performs best. Esports for degens.",
-    category: "esports",
-    stake: 25,
-    path: null,
-    hosted: "molty.games",
-    author: "Gamerplex",
+    description: "NFT auto-battler. Deterministic combat, CM v2.1-bound markets, SOAR ladder.",
+    path: "/play/pla",
     color: "#ff6b2c",
-    emoji: "🦞",
-    matches: 0,
-    volume: 0,
-    status: "coming-soon" as const,
-  },
-  {
-    id: "battleship",
-    name: "Battleship",
-    description: "Hidden board on MagicBlock ER. Fully on-chain. Provably fair.",
-    category: "strategy",
-    stake: 10,
-    path: null,
-    hosted: "gamerplex.com",
-    author: "Gamerplex",
-    color: "#00e676",
-    emoji: "🚢",
-    matches: 0,
-    volume: 0,
-    status: "coming-soon" as const,
+    emoji: "🐉",
+    status: "rewriting",
   },
 ];
 
-const CATEGORIES = [
-  { id: "all", label: "All Games" },
-  { id: "arcade", label: "Arcade" },
-  { id: "strategy", label: "Strategy" },
-  { id: "nft", label: "NFT" },
-  { id: "esports", label: "eSports" },
-  { id: "community", label: "Community" },
+const COMING_SOON = [
+  { name: "Checkers", emoji: "🔴" },
+  { name: "Go", emoji: "⚫" },
+  { name: "Poker", emoji: "🃏" },
+  { name: "Backgammon", emoji: "🎲" },
+  { name: "Snake Duel", emoji: "🐍" },
+  { name: "Galaxy Shooter", emoji: "👾" },
 ];
 
 export default function GamesPortal() {
-  const [category, setCategory] = useState("all");
-  const filtered = category === "all" ? GAMES : GAMES.filter((g) => g.category === category);
 
   return (
     <div style={{
@@ -121,131 +49,223 @@ export default function GamesPortal() {
         padding: "20px 24px", borderBottom: "1px solid #252540",
         display: "flex", justifyContent: "space-between", alignItems: "center",
       }}>
-        <Link href="/" style={{ textDecoration: "none" }}>
-          <span style={{
-            fontSize: 22, fontWeight: 700,
-            background: "linear-gradient(135deg, #ff6b2c, #ffd740)",
-            WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-          }}>GAMERPLEX</span>
-        </Link>
-        <div style={{ display: "flex", gap: 16, fontSize: 13 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <Link href="/" style={{ textDecoration: "none" }}>
+            <span style={{
+              fontSize: 22, fontWeight: 700, fontStyle: "italic",
+              background: "linear-gradient(135deg, #9945FF, #14F195)",
+              WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+              paddingRight: 8, display: "inline-block",
+            }}>GAMERPLEX</span>
+          </Link>
+          <span style={{fontSize:9,fontWeight:700,padding:"2px 6px",borderRadius:4,background:"rgba(255,170,0,0.15)",border:"1px solid rgba(255,170,0,0.4)",color:"#ffaa00",letterSpacing:1,textTransform:"uppercase"}}>Devnet</span>
+        </div>
+        <div style={{ display: "flex", gap: 14, fontSize: 13, alignItems: "center" }}>
           <Link href="/" style={{ color: "#555570", textDecoration: "none" }}>Arena</Link>
-          <Link href="/games" style={{ color: "#ff6b2c", textDecoration: "none", fontWeight: 600 }}>Games</Link>
-          <a href="https://github.com/gamerplex" target="_blank" style={{ color: "#555570", textDecoration: "none" }}>SDK</a>
+          <Link href="/games" style={{ color: "#9945FF", textDecoration: "none", fontWeight: 600 }}>Arcade</Link>
+          <Link href="/leaderboard" style={{ color: "#555570", textDecoration: "none" }}>Leaderboard</Link>
+          <Link href="/activity" style={{ color: "#555570", textDecoration: "none" }}>Activity</Link>
+          <Link href="/docs" style={{ color: "#555570", textDecoration: "none" }}>Docs</Link>
+          <a href="https://x.com/gamerplex_com" target="_blank" rel="noopener noreferrer" style={{ color: "#555570", display: "flex", alignItems: "center" }} title="@gamerplex_com">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+          </a>
         </div>
       </div>
 
-      <div style={{ maxWidth: 900, margin: "0 auto", padding: "32px 20px" }}>
-        {/* Hero */}
-        <h1 style={{ fontSize: 36, fontWeight: 700, marginBottom: 8 }}>Games</h1>
-        <p style={{ color: "#555570", fontSize: 14, marginBottom: 8 }}>
-          Every game settles on <a href="https://contention.markets" style={{ color: "#18ffff", textDecoration: "none" }}>Contention Markets</a> (Solana). 2% protocol fee.
-        </p>
-        <p style={{ color: "#555570", fontSize: 13, marginBottom: 24 }}>
-          Build your own →{" "}
-          <code style={{ background: "#14141f", padding: "2px 6px", borderRadius: 4, fontSize: 12 }}>
-            npx add-skill gamerplex-dev
-          </code>
+      <div style={{ maxWidth: 960, margin: "0 auto", padding: "32px 20px" }}>
+        {/* Page title */}
+        <h1 style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>Arcade</h1>
+        <p style={{ color: "#555570", fontSize: 13, marginBottom: 28 }}>
+          Every game runs on-chain via <span style={{ color: "#9945FF" }}>MagicBlock Ephemeral Rollup</span>. Every move is a real Solana transaction.
         </p>
 
-        {/* Categories */}
-        <div style={{ display: "flex", gap: 8, marginBottom: 24, flexWrap: "wrap" }}>
-          {CATEGORIES.map((c) => (
-            <button
-              key={c.id}
-              onClick={() => setCategory(c.id)}
-              style={{
-                background: category === c.id ? "#ff6b2c" : "#14141f",
-                color: category === c.id ? "white" : "#555570",
-                border: "1px solid #252540", borderRadius: 6,
-                padding: "6px 14px", fontSize: 12, fontWeight: 600,
-                cursor: "pointer", fontFamily: "'Space Grotesk', sans-serif",
-              }}
-            >{c.label}</button>
-          ))}
-        </div>
+        {/* FEATURED: Magic Chess */}
+        <Link href="/play/magic-chess" style={{ textDecoration: "none", display: "block" }}>
+          <div style={{
+            position: "relative", borderRadius: 16, overflow: "hidden",
+            border: "1px solid rgba(153,69,255,0.3)",
+            boxShadow: "0 0 40px rgba(153,69,255,0.15), 0 8px 32px rgba(0,0,0,0.4)",
+            marginBottom: 32, cursor: "pointer",
+            transition: "transform 0.2s, box-shadow 0.2s",
+          }}
+          onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 0 60px rgba(153,69,255,0.25), 0 12px 40px rgba(0,0,0,0.5)"; }}
+          onMouseLeave={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = "0 0 40px rgba(153,69,255,0.15), 0 8px 32px rgba(0,0,0,0.4)"; }}
+          >
+            {/* Banner image */}
+            <div style={{ position: "relative", width: "100%", aspectRatio: "21/9" }}>
+              <Image
+                src="/magic-chess-banner.jpg"
+                alt="Magic Chess"
+                fill
+                style={{ objectFit: "cover" }}
+                priority
+              />
+              {/* Gradient overlay */}
+              <div style={{
+                position: "absolute", inset: 0,
+                background: "linear-gradient(to right, rgba(5,5,8,0.9) 0%, rgba(5,5,8,0.3) 40%, transparent 60%)",
+              }} />
+              {/* LIVE badge */}
+              <div style={{
+                position: "absolute", top: 16, right: 16,
+                background: "#14F195", color: "#050508",
+                padding: "4px 12px", borderRadius: 20,
+                fontSize: 10, fontWeight: 800, letterSpacing: 1.5,
+                textTransform: "uppercase",
+              }}>LIVE</div>
+              {/* Featured badge */}
+              <div style={{
+                position: "absolute", top: 16, left: 16,
+                background: "rgba(153,69,255,0.8)", color: "#fff",
+                padding: "4px 12px", borderRadius: 20,
+                fontSize: 10, fontWeight: 700, letterSpacing: 1,
+                backdropFilter: "blur(8px)",
+              }}>FEATURED</div>
+            </div>
 
-        {/* Game Grid */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 12 }}>
-          {filtered.map((game) => (
-            <div key={game.id} style={{
-              background: "#0c0c14", border: "1px solid #252540", borderRadius: 12,
-              padding: 20, transition: "border-color 0.2s", cursor: game.status === "live" ? "pointer" : "default",
-              opacity: game.status === "live" ? 1 : 0.6,
-              position: "relative",
+            {/* Info bar */}
+            <div style={{
+              padding: "16px 20px",
+              background: "linear-gradient(135deg, rgba(26,10,48,0.95), rgba(12,12,20,0.95))",
+              display: "flex", justifyContent: "space-between", alignItems: "center",
+              flexWrap: "wrap", gap: 12,
             }}>
-              {game.status === "coming-soon" && (
-                <div style={{
-                  position: "absolute", top: 12, right: 12,
-                  background: "#252540", color: "#555570", fontSize: 9,
-                  padding: "2px 8px", borderRadius: 4, textTransform: "uppercase",
-                  letterSpacing: 1, fontWeight: 600,
-                }}>Coming Soon</div>
-              )}
-
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-                <div style={{
-                  width: 40, height: 40, borderRadius: 10, background: game.color,
-                  display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20,
-                }}>{game.emoji}</div>
-                <div>
-                  <div style={{ fontSize: 16, fontWeight: 700 }}>{game.name}</div>
-                  <div style={{ fontSize: 10, color: "#555570" }}>by {game.author}</div>
+              <div>
+                <div style={{ fontSize: 10, color: "#9945FF", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginBottom: 2 }}>
+                  Fully On-Chain Chess
+                </div>
+                <div style={{ fontSize: 12, color: "#888" }}>
+                  3D board &bull; AI opponent &bull; Every move on MagicBlock ER &bull; SOAR leaderboard
                 </div>
               </div>
-
-              <p style={{ fontSize: 13, color: "#888", marginBottom: 12, lineHeight: 1.4 }}>
-                {game.description}
-              </p>
-
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#555570", marginBottom: 12 }}>
-                <span>${game.stake} stake</span>
-                <span>{game.matches} matches</span>
-                <span>${game.volume} vol</span>
-              </div>
-
-              {game.status === "live" && game.path && (
-                <Link href={game.path} style={{
-                  display: "block", textAlign: "center",
-                  background: "linear-gradient(135deg, #ff6b2c, #ff8f35)",
-                  color: "white", padding: "10px", borderRadius: 8,
-                  fontSize: 13, fontWeight: 700, textDecoration: "none",
-                }}>Play Now</Link>
-              )}
-
-              {game.status === "live" && !game.path && game.hosted && (
-                <a href={`https://${game.hosted}`} target="_blank" style={{
-                  display: "block", textAlign: "center",
-                  background: "#14141f", border: "1px solid #252540",
-                  color: "#e8e8f0", padding: "10px", borderRadius: 8,
-                  fontSize: 13, fontWeight: 700, textDecoration: "none",
-                }}>Play on {game.hosted}</a>
-              )}
-
-              <div style={{ fontSize: 10, color: "#333", marginTop: 8, textAlign: "center" }}>
-                Hosted: {game.hosted}
+              <div style={{
+                background: "linear-gradient(90deg, #9945ff, #00f0ff)",
+                color: "#050508", padding: "8px 24px", borderRadius: 8,
+                fontSize: 13, fontWeight: 700,
+              }}>
+                Play Now
               </div>
             </div>
+          </div>
+        </Link>
+
+        {/* Launch lineup — the 3 games shipping to mainnet on one unified stack */}
+        <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>Launch lineup</h2>
+        <p style={{ fontSize: 11, color: "#555570", marginBottom: 16 }}>
+          Three games, one stack: Orchestrator + Contention Markets v2.1 + MagicBlock ER + SOAR. Magic Chess is live; the others are in build.
+        </p>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 12, marginBottom: 32 }}>
+          {LAUNCH_GAMES.map(game => (
+            <Link key={game.id} href={game.path} style={{ textDecoration: "none" }}>
+              <div style={{
+                background: "#0c0c14", border: "1px solid #252540", borderRadius: 12,
+                padding: 20, transition: "border-color 0.2s, transform 0.2s", cursor: "pointer",
+                height: "100%", position: "relative",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = game.color; e.currentTarget.style.transform = "translateY(-2px)"; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = "#252540"; e.currentTarget.style.transform = ""; }}
+              >
+                <div style={{ position: "absolute", top: 10, right: 10, fontSize: 9, fontWeight: 700, padding: "2px 8px", borderRadius: 10, background: "rgba(255,170,0,0.15)", color: "#ffaa00", letterSpacing: 1, textTransform: "uppercase" }}>{game.status}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                  <div style={{
+                    width: 40, height: 40, borderRadius: 10, background: game.color + "20",
+                    border: `1px solid ${game.color}40`,
+                    display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20,
+                  }}>{game.emoji}</div>
+                  <div>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: "#e8e8f0" }}>{game.name}</div>
+                    <div style={{ fontSize: 10, color: game.color }}>CM v2.1 + Orchestrator</div>
+                  </div>
+                </div>
+                <p style={{ fontSize: 13, color: "#888", marginBottom: 12, lineHeight: 1.4 }}>
+                  {game.description}
+                </p>
+              </div>
+            </Link>
           ))}
 
-          {/* Create Your Own Card */}
+          {/* Build Your Own */}
           <div style={{
             background: "linear-gradient(135deg, #1a1028, #0f1a2e)",
             border: "1px dashed #2a2050", borderRadius: 12, padding: 20,
             display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-            textAlign: "center", minHeight: 200,
+            textAlign: "center",
           }}>
             <div style={{ fontSize: 32, marginBottom: 8 }}>🎮</div>
             <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>Build Your Game</div>
             <div style={{ fontSize: 12, color: "#555570", marginBottom: 16 }}>
-              Use Claude Code + Gamerplex Skill to create a wagered game in minutes.
+              Deploy on-chain games with built-in wagering, leaderboards, and token economics.
             </div>
-            <a href="https://github.com/gamerplex/gamerplex-sdk" target="_blank" style={{
+            <a href="https://github.com/gamerplex" target="_blank" style={{
               background: "#14141f", border: "1px solid #252540",
               color: "#e8e8f0", padding: "8px 20px", borderRadius: 8,
               fontSize: 12, fontWeight: 600, textDecoration: "none",
-            }}>View SDK →</a>
+            }}>View SDK</a>
           </div>
+        </div>
+
+        {/* Coming Soon */}
+        <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>Coming Soon</h2>
+        <p style={{ fontSize: 11, color: "#555570", marginBottom: 16 }}>
+          Public domain games — free forever, on-chain forever.
+        </p>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 40 }}>
+          {COMING_SOON.map(g => (
+            <div key={g.name} style={{
+              background: "#0c0c14", border: "1px solid #1a1a28", borderRadius: 10,
+              padding: "12px 20px", display: "flex", alignItems: "center", gap: 8,
+              opacity: 0.5,
+            }}>
+              <span style={{ fontSize: 18 }}>{g.emoji}</span>
+              <span style={{ fontSize: 13, color: "#555570", fontWeight: 600 }}>{g.name}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Two clean CTAs */}
+        <div style={{
+          marginTop: 60, marginBottom: 40,
+          display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16,
+        }}>
+          <div style={{
+            background: "#0c0c14", border: "1px solid #252540", borderRadius: 12,
+            padding: "24px 28px",
+          }}>
+            <div style={{ fontSize: 10, fontWeight: 800, color: "#9945FF", letterSpacing: 2, textTransform: "uppercase", marginBottom: 8 }}>
+              Play
+            </div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: "#fff", marginBottom: 4 }}>More games coming soon</div>
+            <div style={{ fontSize: 12, color: "#888" }}>Public-domain classics — free forever, on-chain forever.</div>
+          </div>
+
+          <a href="https://github.com/gamerplex" target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", color: "inherit" }}>
+            <div style={{
+              background: "#0c0c14", border: "1px solid #252540", borderRadius: 12,
+              padding: "24px 28px", cursor: "pointer", transition: "border-color 0.2s",
+              height: "100%",
+            }}
+            onMouseEnter={e => e.currentTarget.style.borderColor = "#14F195"}
+            onMouseLeave={e => e.currentTarget.style.borderColor = "#252540"}
+            >
+              <div style={{ fontSize: 10, fontWeight: 800, color: "#14F195", letterSpacing: 2, textTransform: "uppercase", marginBottom: 8 }}>
+                Buidl
+              </div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: "#fff", marginBottom: 4 }}>Gamerplex SKILLS.md coming soon</div>
+              <div style={{ fontSize: 12, color: "#888" }}>Ship on-chain games in minutes with Claude Code + our skill pack.</div>
+            </div>
+          </a>
+        </div>
+
+        {/* Footer stats */}
+        <div style={{
+          borderTop: "1px solid #1a1a28", paddingTop: 20,
+          display: "flex", justifyContent: "center", gap: 32,
+          fontSize: 11, color: "#333",
+        }}>
+          <span>CM v2.1 + Orchestrator live on devnet</span>
+          <span>21+ unit tests passing</span>
+          <span>Built on <span style={{ color: "#9945FF" }}>Solana</span> + <span style={{ color: "#14F195" }}>MagicBlock</span></span>
         </div>
       </div>
     </div>

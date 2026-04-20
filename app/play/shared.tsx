@@ -11,7 +11,7 @@ import {
 } from "@solana/spl-token";
 import { useState, useCallback } from "react";
 
-const RESOLVER_URL = process.env.NEXT_PUBLIC_RESOLVER_URL || "https://gamerplex-resolver-508521387980.us-central1.run.app";
+const RESOLVER_URL = process.env.NEXT_PUBLIC_RESOLVER_URL || "https://resolver.gamerplex.com";
 const MINT = new PublicKey(process.env.NEXT_PUBLIC_MINT || "5cfYRyjyzq5DSHpJPr5ipQQ48RHSn49Y75AWNMxaambt");
 
 export type GamePhase = "connect" | "challenge-created" | "matchmaking" | "depositing" | "playing" | "resolving" | "result";
@@ -194,13 +194,13 @@ export function GameShell({
       <a href="/" style={{
         position: "absolute", top: 20, left: 20, textDecoration: "none",
         fontSize: 18, fontWeight: 700,
-        background: "linear-gradient(135deg, #ff6b2c, #ffd740)",
+        background: "linear-gradient(135deg, #9945FF, #14F195)",
         WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
       }}>GAMERPLEX</a>
 
       <h1 style={{
         fontSize: 32, fontWeight: 700, marginBottom: 8,
-        background: "linear-gradient(135deg, #ff6b2c, #ffd740)",
+        background: "linear-gradient(135deg, #9945FF, #14F195)",
         WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
       }}>{title}</h1>
 

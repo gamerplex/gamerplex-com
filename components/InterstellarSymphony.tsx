@@ -17,7 +17,7 @@ function generateAI(minutes: number) {
     return score;
 }
 
-export default function InterstellarSymphony({ onStatsUpdate, showJoystick = true }: { onStatsUpdate?: (stats: any) => void, showJoystick?: boolean }) {
+export default function InterstellarSymphony({ onStatsUpdate, showJoystick = true, muted = false }: { onStatsUpdate?: (stats: any) => void, showJoystick?: boolean, muted?: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<BABYLON.Engine | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -31,6 +31,13 @@ export default function InterstellarSymphony({ onStatsUpdate, showJoystick = tru
   const isAudioStartedRef = useRef(false);
   const [showPlayOverlay, setShowPlayOverlay] = useState(false);
   const [camCoords, setCamCoords] = useState({ x: 0, y: 0, z: 0, rotX: 0, rotY: 0 }); // RESTORED STATE VARIABLE
+
+  // Mute/unmute audio via master gain
+  useEffect(() => {
+    if (masterGainRef.current) {
+      masterGainRef.current.gain.setValueAtTime(muted ? 0 : 0.5, audioContextRef.current?.currentTime ?? 0);
+    }
+  }, [muted]);
 
   const synthFrequencies = Array.from({length: 128}, (_, i) => 440 * Math.pow(2, (i - 69) / 12));
 
@@ -82,8 +89,8 @@ export default function InterstellarSymphony({ onStatsUpdate, showJoystick = tru
     notesRef.current.forEach(n => { if (n.m) n.m.dispose(false, true); });
     notesRef.current = [];
     
-    // FETCH MANIFEST TO GET SONG DATA
-    const resManifest = await fetch('/manifest.json');
+    // FETCH SYMPHONY DATA (separated from PWA manifest)
+    const resManifest = await fetch('/symphony.json');
     const dataManifest = await resManifest.json();
     const song = dataManifest.songs[0]; // GENESIS
     
@@ -146,26 +153,30 @@ export default function InterstellarSymphony({ onStatsUpdate, showJoystick = tru
 
     const camera = new BABYLON.UniversalCamera("bgCamera", new BABYLON.Vector3(0, 0, -2000), scene);
     camera.setTarget(new BABYLON.Vector3(0, 0, 0));
-    camera.attachControl(canvasRef.current, true);
-    
-    // FLY NAVIGATION
-    camera.keysUp = [87, 38];    // W
-    camera.keysDown = [83, 40];  // S
-    camera.keysLeft = [65, 37];  // A
-    camera.keysRight = [68, 39]; // D
-    camera.keysUpward = [32];    // SPACE
-    camera.keysDownward = [16];  // SHIFT
-    
-    camera.speed = 100.0;
-    camera.angularSensibility = 500;
-    camera.inertia = 0.9;
 
-    // INTERACTIVE FOCUS
-    const onPointerDown = () => {
-        engine.enterPointerlock();
-        canvasRef.current?.focus();
-    };
-    scene.onPointerDown = onPointerDown;
+    if (showJoystick) {
+      // Full interactive mode — fly navigation + pointer lock
+      camera.attachControl(canvasRef.current, true);
+      camera.keysUp = [87, 38];    // W
+      camera.keysDown = [83, 40];  // S
+      camera.keysLeft = [65, 37];  // A
+      camera.keysRight = [68, 39]; // D
+      camera.keysUpward = [32];    // SPACE
+      camera.keysDownward = [16];  // SHIFT
+      camera.speed = 100.0;
+      camera.angularSensibility = 500;
+      camera.inertia = 0.9;
+
+      const onPointerDown = () => {
+          engine.enterPointerlock();
+          canvasRef.current?.focus();
+      };
+      scene.onPointerDown = onPointerDown;
+    } else {
+      // Background mode — no camera interaction, just auto flyover
+      camera.detachControl();
+      camera.inputs.clear();
+    }
 
     const bridgeMat = new BABYLON.StandardMaterial("bm", scene);
     bridgeMat.emissiveColor = new BABYLON.Color3(0.5, 0, 1.0);

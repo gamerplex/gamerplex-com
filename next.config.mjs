@@ -4,12 +4,21 @@ const nextConfig = {
   transpilePackages: ["@babylonjs/core", "@babylonjs/loaders"],
   productionBrowserSourceMaps: false,
   serverExternalPackages: [
-    "@solana/web3.js",
-    "@solana/spl-token",
     "bigint-buffer",
   ],
-  webpack: (config) => {
-    config.resolve.fallback = { fs: false, path: false, crypto: false };
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.fallback = {
+        fs: false,
+        path: false,
+        crypto: false,
+        stream: false,
+        http: false,
+        https: false,
+        zlib: false,
+        url: false,
+      };
+    }
     return config;
   },
   async rewrites() {
@@ -18,7 +27,15 @@ const nextConfig = {
         source: '/.well-known/appspecific/:path*',
         destination: '/404',
       },
-    ]
+    ];
+  },
+  async headers() {
+    return [
+      {
+        source: '/.well-known/:path*',
+        headers: [{ key: 'Content-Type', value: 'application/json' }],
+      },
+    ];
   },
 };
 

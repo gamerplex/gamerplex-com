@@ -1,0 +1,723 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+
+const SECTIONS = [
+  { id: "intro", label: "What is Gamerplex?", group: "Overview" },
+  { id: "sovereign", label: "Sovereign Game Dev", group: "Overview" },
+  { id: "vision", label: "Vision", group: "Overview" },
+  { id: "why-onchain", label: "Why On-Chain?", group: "Overview" },
+
+  { id: "architecture", label: "Architecture", group: "Protocol" },
+  { id: "programs", label: "Smart Contracts", group: "Protocol" },
+  { id: "cm-v2", label: "CM v2 + Orchestrator", group: "Protocol" },
+  { id: "er-pool", label: "ER Pool (Free Play)", group: "Protocol" },
+  { id: "rankings", label: "Rankings Protocol", group: "Protocol" },
+  { id: "gpx-standard", label: "GPX Standard", group: "Protocol" },
+
+  { id: "decentralization", label: "100% Decentralized Goal", group: "Decentralization" },
+  { id: "platform-risk", label: "Platform Risk", group: "Decentralization" },
+  { id: "web3-identity", label: "Web3 Identity + SNS", group: "Decentralization" },
+
+  { id: "three-games", label: "Three Games, One Stack", group: "Games" },
+  { id: "magic-chess", label: "Magic Chess", group: "Games" },
+  { id: "blockwords", label: "Blockwords", group: "Games" },
+  { id: "pet-legends", label: "Pet Legends Arena", group: "Games" },
+  { id: "agents", label: "Gamerplex Agents", group: "Games" },
+
+  { id: "gamer-token", label: "$GAMER Token", group: "Economics" },
+  { id: "fees", label: "Fees & Revenue", group: "Economics" },
+
+  { id: "mainnet-gate", label: "Mainnet Readiness Gate", group: "Roadmap" },
+  { id: "roadmap", label: "Roadmap", group: "Roadmap" },
+  { id: "open-source", label: "Open Source", group: "Roadmap" },
+];
+
+const GROUPS = ["Overview", "Protocol", "Decentralization", "Games", "Economics", "Roadmap"];
+
+export default function DocsPage() {
+  const [active, setActive] = useState("intro");
+
+  const scrollTo = (id: string) => {
+    setActive(id);
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  return (
+    <div style={{ minHeight: "100vh", background: "#050508", color: "#e8e8f0", fontFamily: "'Space Grotesk', sans-serif" }}>
+      {/* Header */}
+      <div style={{
+        position: "sticky", top: 0, zIndex: 10,
+        display: "flex", justifyContent: "space-between", alignItems: "center",
+        padding: "12px 16px", borderBottom: "1px solid #252540",
+        background: "rgba(5,5,8,0.95)", backdropFilter: "blur(12px)",
+      }}>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <Link href="/" style={{
+            textDecoration: "none", fontSize: 22, fontWeight: 900, fontStyle: "italic",
+            background: "linear-gradient(135deg, #9945FF, #14F195)",
+            WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+            paddingRight: 8, display: "inline-block",
+          }}>GAMERPLEX</Link>
+          <span className="devnet-badge">Devnet</span>
+        </div>
+        <div style={{ display: "flex", gap: 14, fontSize: 13, alignItems: "center" }}>
+          <Link href="/" style={{ color: "#555", textDecoration: "none" }}>Arena</Link>
+          <Link href="/games" style={{ color: "#555", textDecoration: "none" }}>Arcade</Link>
+          <Link href="/leaderboard" style={{ color: "#555", textDecoration: "none" }}>Leaderboard</Link>
+          <Link href="/activity" style={{ color: "#555", textDecoration: "none" }}>Activity</Link>
+          <Link href="/docs" style={{ color: "#9945FF", textDecoration: "none", fontWeight: 600 }}>Docs</Link>
+          <a href="https://x.com/gamerplex_com" target="_blank" rel="noopener noreferrer" style={{ color: "#555", display: "flex" }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
+          </a>
+        </div>
+      </div>
+
+      <div style={{ display: "flex", maxWidth: 1200, margin: "0 auto" }}>
+        {/* Sidebar */}
+        <aside style={{
+          width: 240, flexShrink: 0, padding: "32px 16px 32px 24px",
+          borderRight: "1px solid #252540", minHeight: "calc(100vh - 54px)",
+          position: "sticky", top: 54, alignSelf: "flex-start", maxHeight: "calc(100vh - 54px)",
+          overflowY: "auto",
+        }}>
+          {GROUPS.map(group => (
+            <div key={group} style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 10, fontWeight: 800, color: "#555", letterSpacing: 2, textTransform: "uppercase", marginBottom: 8 }}>{group}</div>
+              {SECTIONS.filter(s => s.group === group).map(s => (
+                <button
+                  key={s.id}
+                  onClick={() => scrollTo(s.id)}
+                  style={{
+                    display: "block", width: "100%", textAlign: "left",
+                    padding: "6px 10px", marginBottom: 2, borderRadius: 6,
+                    background: active === s.id ? "rgba(153,69,255,0.15)" : "transparent",
+                    border: "none", cursor: "pointer",
+                    fontSize: 13, color: active === s.id ? "#e0b3ff" : "#888",
+                    fontFamily: "'Space Grotesk', sans-serif",
+                    borderLeft: active === s.id ? "2px solid #9945FF" : "2px solid transparent",
+                  }}
+                >{s.label}</button>
+              ))}
+            </div>
+          ))}
+        </aside>
+
+        {/* Content */}
+        <main style={{ flex: 1, padding: "48px 48px 96px", maxWidth: 820 }}>
+          <h1 style={{
+            fontSize: 40, fontWeight: 700, marginBottom: 12, lineHeight: 1.1,
+            background: "linear-gradient(135deg, #9945FF, #14F195)",
+            WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+          }}>Gamerplex Docs</h1>
+          <p style={{ fontSize: 15, color: "#888", marginBottom: 48, lineHeight: 1.6 }}>
+            The on-chain game arena. Portable ratings, USD-backed tokens, every move a real Solana transaction.
+          </p>
+
+          {/* Overview */}
+          <Section id="intro" title="What is Gamerplex?">
+            <P>
+              Gamerplex is a Solana protocol where every game move is a real transaction on MagicBlock&apos;s Ephemeral Rollup.
+              Think <em>Uniswap for games</em> — a shared protocol layer for wagering, tokens, leaderboards, and portable player ratings.
+            </P>
+            <P>
+              Players challenge each other for real money. Game tokens are USD-backed via Flipcash bonding curves.
+              Rankings live permanently on MagicBlock SOAR. No platform can fake, delete, or lock away your gaming history.
+            </P>
+            <Stats items={[
+              { label: "Programs Deployed", value: "11" },
+              { label: "E2E Tests Passing", value: "100+" },
+              { label: "Launch Games", value: "3" },
+              { label: "Positions Verified", value: "1.2M" },
+            ]} />
+          </Section>
+
+          <Section id="sovereign" title="Sovereign Game Development">
+            <P>
+              The creator owns every layer. Your machine. Your wallet. Your AI. Your game. Your rules.
+            </P>
+            <P>
+              Every other AI game-dev tool today is a landlord: your code lives on their servers, your deploys go through their account, your revenue flows through their billing. If they shut down, raise prices, or change the deal, you&apos;re stuck. <strong style={{color:"#14F195"}}>Gamerplex is not a platform — it&apos;s a protocol plus a toolkit that runs on your machine.</strong>
+            </P>
+            <List items={[
+              <><strong>MCP server</strong> (<code>@gamerplex/mcp-server</code>) — 12 tools: pattern library, juice layer, smoke test, REAL devnet deploy executor (runs <code>anchor build</code> + <code>anchor deploy</code>, not instructions).</>,
+              <><strong>Dev server</strong> (<code>localhost:42069</code>) — chat + live game preview + compare mode + session logging. Starts with <code>npx @gamerplex/dev</code>.</>,
+              <><strong>Sovereign agent</strong> (custom 300-line runtime) — works with Claude, Ollama, OpenAI, Gemini, OpenXAI. One dropdown swaps the brain. Fully local if you want.</>,
+              <><strong>21 skill files</strong> — game feel, engines, genres, security, web3. Your AI learns before it writes.</>,
+              <><strong>Templates</strong> — arcade-onchain (Anchor + frontend, deploys cleanly) and platformer-2d (single HTML, full juice).</>,
+            ]} />
+            <P>
+              Proof: the arcade template was deployed to devnet entirely through the MCP from Claude Code. Program ID <code style={{fontSize:11}}>5SoVW7yp7rVHzfCUGpuycr784q7Z18U3BM1yLkz9sgeA</code> is the receipt.
+            </P>
+          </Section>
+
+          <Section id="vision" title="Vision">
+            <P>
+              Gaming today is trapped in walled gardens. Your chess.com ELO doesn&apos;t transfer to lichess.
+              Your Steam achievements die with your Steam account. Tournament prize pools depend on platforms honoring payouts.
+            </P>
+            <P>
+              We believe player skill is a <strong style={{color:"#14F195"}}>public good</strong>. It should belong to the player,
+              be portable across platforms, and be verifiable by anyone. Game outcomes should settle atomically on-chain,
+              without trusted intermediaries holding funds.
+            </P>
+            <P>
+              Gamerplex is building the protocol layer that makes this possible.
+            </P>
+          </Section>
+
+          <Section id="why-onchain" title="Why On-Chain?">
+            <P>
+              Most &quot;Web3 games&quot; put art assets on-chain but game logic off-chain. That&apos;s not really on-chain gaming.
+              When a server validates moves, the server can cheat or disappear.
+            </P>
+            <P>
+              Gamerplex puts the <strong style={{color:"#e0b3ff"}}>game rules themselves</strong> on-chain.
+              Our chess program is 580 lines of Rust that validates every move. Checkmate is determined by the chain, not a server.
+              When you win, the chain pays you — no platform can withhold your winnings.
+            </P>
+            <P>
+              MagicBlock&apos;s Ephemeral Rollup gives us the speed (sub-100ms moves) without sacrificing trustlessness.
+              Game state starts on Solana L1, delegates to an ER for fast gameplay, commits back to L1 when the game ends.
+            </P>
+          </Section>
+
+          {/* Protocol */}
+          <Section id="architecture" title="Architecture">
+            <P>Three layers:</P>
+            <List items={[
+              <><strong style={{color:"#14F195"}}>Layer 1 — Protocol (on-chain, trustless):</strong> 9 Solana programs. Chess rules, wagering, tokens, leaderboards. Immutable.</>,
+              <><strong style={{color:"#9945FF"}}>Layer 2 — Services (centralized convenience):</strong> Resolver API for ER pool management, AI opponents, matchmaking. Can be replaced.</>,
+              <><strong style={{color:"#00f0ff"}}>Layer 3 — Applications:</strong> gamerplex.com frontend, third-party game clients, SDKs.</>,
+            ]} />
+            <P>
+              Critical invariant: <strong>Layer 1 is the source of truth.</strong> Layers 2 and 3 can be rebuilt from scratch
+              without losing any state or assets.
+            </P>
+          </Section>
+
+          <Section id="programs" title="Smart Contracts">
+            <P>Mainnet launches with 3 games on one unified stack. Ancillary experiments (Aim Duel, Snake, Sea Battle, Token Swap) are archived — see <Link href="#forever-games" style={{color:"#9945FF"}}>Forever Games</Link> for the post-launch scale path.</P>
+            <CodeBlock>
+{`Magic Chess              3LVg8uUsHtq6fusjrSfyGUCLQ83TFegDKmY3bCNz3QYr
+Blockwords               (Anchor program, devnet deploy pending)
+Pet Legends Arena        (rewrite onto unified stack in progress)
+Contention Markets v2.1  69YfcveAbLbJ5LNERjq6k5wnszfZbXMYVzx2j8Ca1Xo8
+Gamerplex Orchestrator   tsHnDDmYyqpcRyQejKcvai6fECRWyNQ4F87QgKcHg4d
+Flipcash                 FLip3dQVfpeUKg5fUNfFhcHvQvG3HoXqYw5XDDx8Wo9i
+SOAR                     SoarNNzwQHMwcfdkdLc6kvbkoMSxcHy89gTHrjhJYkk
+$GAMER Token             8eGnj5jkW6zTGYieGhtejPjLtGmnKfCdk7FamoJ5LLvD
+Mock USDF (devnet)       9Lc5ftsVbVS1T8c6D9Yan83fNaPryo3xpKp4DgKtyKhK
+PoolSponsor PDA          FNKPP6q2qk3wqMd7ErkWYk98etrZfuMnvGh2EQKdrrcJ`}
+            </CodeBlock>
+            <P><strong>Chess program instructions:</strong></P>
+            <List items={[
+              <><code>create_game</code> — L1 PDA creation (legacy, fallback)</>,
+              <><code>create_ephemeral_game</code> — ephemeral account on ER, 109x cheaper, PoolSponsor pays rent</>,
+              <><code>join_game</code> — join as black (AI or player)</>,
+              <><code>make_move</code> — full chess rules validated on-chain</>,
+              <><code>delegate_game</code> — send L1 PDA to ER</>,
+              <><code>finish_game</code> — commit + undelegate back to L1</>,
+              <><code>init_pool_sponsor</code> / <code>topup_pool_sponsor</code> / <code>delegate_pool_sponsor</code> — one-time setup for free play funding</>,
+            ]} />
+            <P>
+              <strong>PoolSponsor PDA:</strong> <code style={{fontSize:11}}>FNKPP6q2qk3wqMd7ErkWYk98etrZfuMnvGh2EQKdrrcJ</code> — delegated to MagicBlock ER with 1.5 SOL (~44,000 concurrent ephemeral accounts at capacity).
+            </P>
+          </Section>
+
+          <Section id="cm-v2" title="Contention Markets v2 + Gamerplex Orchestrator">
+            <P>
+              Two upgrades shipping this week. Both on devnet, both gated behind the <Link href="#mainnet-gate" style={{color:"#9945FF"}}>40-item mainnet readiness checklist</Link> before real money flows.
+            </P>
+            <P><strong style={{color:"#14F195"}}>Contention Markets v2</strong> — in-place upgrade (same program ID via BPFLoaderUpgradeable). 5 surgical changes:</P>
+            <List items={[
+              <><code>resolve_market_from_game_pda</code> — <strong>permissionless resolve</strong>. Any keeper can settle a match if a registered game program says it&apos;s over. No partner key required.</>,
+              <><code>ProtocolConfig.pool_sponsor</code> — new optional field routes a slice of every fee to the free-play pool.</>,
+              <>Fee split: <strong>0.80% protocol / 1.00% partner / 0.20% PoolSponsor</strong>. Winner still nets 98%.</>,
+              <>Idempotency guards — prevents double-payout from concurrent resolve races.</>,
+              <><code>close_market_permissionless</code> — rent reclaim on expired/resolved markets (24hr cooldown, rent to creator not caller).</>,
+            ]} />
+            <P><strong style={{color:"#e0b3ff"}}>Gamerplex Orchestrator</strong> — new program (~300 lines Anchor). Instructions:</P>
+            <List items={[
+              <><code>claim_challenge</code> — ed25519 precompile verifies creator&apos;s signed URL payload. Zero on-chain cost to <em>create</em> a challenge; first player opens the link and triggers the only on-chain tx. PoolSponsor pays ephemeral rent.</>,
+              <><code>revoke_challenge</code> — creator-only. Mark own nonce used.</>,
+              <><code>replenish_pool_sponsor</code> — keeper-callable. Routes protocol treasury slice to PoolSponsor. Small bounty covers tx fees.</>,
+              <><code>register_game</code> — permissionless on-chain game registry. Any frontend can <code>getProgramAccounts</code> to list games.</>,
+            ]} />
+            <P>
+              Combined effect: <strong>new games deploy sovereign by default</strong> — challenges are free signed URLs, settlement is permissionless, the free-play pool self-funds from volume, and any frontend can surface any game. The chess resolver still runs for legacy, but new games don&apos;t need it.
+            </P>
+          </Section>
+
+          <Section id="er-pool" title="ER Pool (Free Play)">
+            <P>
+              Players start games <strong>instantly with zero wallet connection required.</strong>
+            </P>
+            <P>
+              <strong>v2 Architecture (Ephemeral Accounts):</strong> A PoolSponsor PDA is created once on Solana L1,
+              funded with SOL, and delegated to MagicBlock ER. When a player arrives, the resolver creates a game
+              as an <em>ephemeral account</em> directly on ER — no L1 transaction needed. 109x cheaper than L1 PDA creation
+              (32 lamports/byte vs 4,800+). Every move is still a real Solana transaction on the Ephemeral Rollup.
+            </P>
+            <P>
+              The PoolSponsor PDA pays ephemeral rent from its delegated balance. 1 SOL funds ~40,000 games.
+              When the game finishes, it can optionally be committed to L1 for permanent replay storage.
+              Players can connect a wallet after the game to save their score on SOAR.
+            </P>
+            <P>
+              <strong>Anti-spam:</strong> Rate limiting (1 assign/10s per IP), progressive cooldown after 3 games,
+              admin-key locked pool reinit, auto-timeout of stuck games, auto-purge of failed slots.
+            </P>
+          </Section>
+
+          <Section id="rankings" title="Gamerplex Rankings Protocol">
+            <P>
+              A new category: <strong>portable on-chain player skill ratings</strong>. Your wallet IS your rating.
+            </P>
+            <P>Combines three open technologies with on-chain settlement:</P>
+            <List items={[
+              <><strong>ELO</strong> (public domain) — 1v1 skill games like chess, checkers</>,
+              <><strong>Glicko-2</strong> (public domain) — confidence-weighted ratings for infrequent players</>,
+              <><strong>OpenSkill</strong> (MIT) — multiplayer free-for-all, battle royale, team games</>,
+              <><strong>MagicBlock SOAR</strong> — raw score storage, permanent, trustless</>,
+              <><strong>Contention Markets</strong> — settlement that validates scores can&apos;t be self-reported</>,
+            ]} />
+            <P>
+              <em>Avoid TrueSkill</em> — it&apos;s patented by Microsoft. We stick to royalty-free algorithms.
+            </P>
+          </Section>
+
+          <Section id="gpx-standard" title="GPX Standard — On-Chain Game History">
+            <P>
+              <strong>GPX (Gamerplex Exchange)</strong> is an open standard for storing permanent game history on Solana.
+              Every committed game writes a compact memo to the Solana transaction ledger — <strong>permanent, verifiable, and survives
+              even if Gamerplex shuts down.</strong>
+            </P>
+            <P>Format:</P>
+            <CodeBlock>GPX&#123;version&#125;|&#123;game&#125;|&#123;player1&#125;|&#123;player2&#125;|&#123;result&#125;|&#123;elo1&#125;|&#123;elo2&#125;|&#123;move_count&#125;|&#123;move_data&#125;</CodeBlock>
+            <P>Versions:</P>
+            <Table cols={["Version", "Encoding", "Use Case"]} rows={[
+              ["GPX1", "Plain text memo", "Public games — chess, pet legends. All moves readable by anyone."],
+              ["GPX2", "Encrypted memo (ECDH/PER)", "Hidden information games — blockwords hidden word. Only players can decrypt."],
+              ["GPX3", "cNFT-backed", "Collectible replays. Player mints their game as a tradeable NFT."],
+              ["GPX4+", "Reserved", "Future Solana innovations — state compression, DA layers, etc."],
+            ]} />
+            <P>Examples for our three launch games:</P>
+            <CodeBlock>{`Magic Chess: GPX1|chess|BEzD...|GYYw...|w|1350|620|42|e2e4,e7e5,Nf3,Nc6,...
+Blockwords:  GPX2|blockwords|BEzD...|GYYw...|w|6|4|8|<hidden word hash + guess stream>
+Pet Legends: GPX1|pla|BEzD...|GYYw...|w|12|8|15|atk,blk,spc,atk,...`}</CodeBlock>
+            <P>How it works with the rest of the stack:</P>
+            <List items={[
+              <><strong>SOAR</strong> = WHO has what score (leaderboard, on-chain, queryable)</>,
+              <><strong>GPX1</strong> = WHAT happened (moves, opponent, result — permanent in tx ledger)</>,
+              <><strong>ER Validator</strong> = LIVE feed (real-time moves during gameplay, free)</>,
+              <><strong>Contention Markets</strong> = SETTLEMENT (atomic wagering payout)</>,
+            ]} />
+            <P>
+              If Gamerplex disappears, anyone can rebuild the full match database by scanning Solana transactions
+              for the <code>GPX</code> prefix. SOAR leaderboards remain independently queryable on-chain.
+              <strong> Your game history belongs to the blockchain, not to us.</strong>
+            </P>
+          </Section>
+
+          {/* Decentralization */}
+          <Section id="decentralization" title="100% Decentralized Goal">
+            <P>Gamerplex today is <strong>~70% decentralized, ~30% centralized convenience layer</strong>.</P>
+            <Table cols={["Component", "Status"]} rows={[
+              ["Game rules engine", "✅ On-chain (Solana program)"],
+              ["Game state (board, moves, turns)", "✅ On-chain (MagicBlock ER)"],
+              ["Move validation", "✅ On-chain (full chess rules in program)"],
+              ["SOAR leaderboard", "✅ On-chain (permanent rankings)"],
+              ["$GAMER token (Flipcash curve)", "✅ On-chain (USD-backed)"],
+              ["PoolSponsor (game funding)", "✅ On-chain PDA (delegated to ER)"],
+              ["Game creation (ephemeral accounts)", "✅ On ER (no L1 tx needed)"],
+              ["AI opponent", "⚠️ Server-signed (Cloud Run)"],
+              ["Pool orchestration (assign/finish)", "⚠️ Resolver API (Cloud Run)"],
+              ["Frontend hosting", "⚠️ Vercel (IPFS planned)"],
+            ]} />
+            <P>The <strong>critical path</strong> (rules + state + scoring + payouts) is fully on-chain and trustless.</P>
+            <P>Path to 100% decentralization:</P>
+            <List items={[
+              "Frontend → IPFS + Solana Name Service (gamerplex.sol)",
+              "Resolver → stateless proxies anyone can run",
+              "AI opponents → competitive market (many providers)",
+              "Hosting → Akash Network (decentralized Cloud Run)",
+            ]} />
+          </Section>
+
+          <Section id="platform-risk" title="Platform Risk: Why Chain-Native Matters">
+            <P>
+              When chess.com goes down or bans your account, you lose everything:
+            </P>
+            <List items={[
+              "Your 2000 ELO rating — gone",
+              "Your game history — deleted",
+              "Your tournament wins — erased",
+              "Your purchased premium membership — refunded at best",
+              "Your reputation — unverifiable anywhere else",
+            ]} />
+            <P>
+              Every centralized gaming platform has an <strong style={{color:"#ff4466"}}>exit event risk</strong>:
+              bankruptcy, hack, acquisition, policy change, regulatory action.
+              Tournament organizers have run away with prize pools. Game publishers have pulled support for games you bought.
+            </P>
+            <P>
+              On Gamerplex, <strong style={{color:"#14F195"}}>your data lives on Solana</strong>.
+              Anyone can query it. No one can delete it. Even if Gamerplex the company disappears tomorrow,
+              a community member could deploy a new frontend in a week and every player&apos;s ELO, history, and balance would still be there.
+            </P>
+          </Section>
+
+          <Section id="web3-identity" title="Web3 Identity + SNS">
+            <P>
+              Your <strong>Solana wallet IS your player identity</strong>. No email, no password, no account recovery.
+            </P>
+            <P>
+              For the hackathon, wallets show as truncated addresses (like <code>BEzD...2rtA</code>).
+              Post-hackathon we&apos;ll integrate <strong style={{color:"#e0b3ff"}}>Solana Name Service (SNS)</strong> —
+              register <code>yourname.sol</code> and appear on leaderboards as your chosen name.
+            </P>
+            <P>SNS gives you:</P>
+            <List items={[
+              "Human-readable player name tied to your wallet",
+              "Portable identity across all Solana dApps",
+              "Reverse lookups — anyone can see your gaming profile",
+              "Tradeable on secondary markets (if you want to sell your legendary name)",
+            ]} />
+            <P>
+              Future state: connect your wallet → your <code>parzival.sol</code> name shows on the leaderboard →
+              people can send you $GAMER tips or challenge links directly to your name.
+            </P>
+          </Section>
+
+          {/* Games */}
+          <Section id="three-games" title="Three Games, One Stack">
+            <P>
+              The launch plan: <strong>three diverse games, all on the same unified Gamerplex stack</strong>, proving the protocol works across very different game types. Every game uses CM v2 for wagering, the Orchestrator for challenge links, PoolSponsor for free play, SOAR for leaderboards, and GPX1 for permanent memos. <strong style={{color:"#14F195"}}>Same stack, same economics, different games.</strong>
+            </P>
+            <List items={[
+              <><strong>Magic Chess</strong> — deep skill strategy. ER-native. 1.2M positions verified.</>,
+              <><strong>Blockwords</strong> — hidden-information puzzle on a Private Ephemeral Rollup (Intel TDX).</>,
+              <><strong>Pet Legends Arena</strong> — NFT auto-battler with deterministic skill-based combat.</>,
+            ]} />
+            <P>
+              All three are proving the stack on devnet. When the <Link href="#mainnet-gate" style={{color:"#9945FF"}}>40-item mainnet gate</Link> is green across all three, they launch together on mainnet. Then we scale: one new game a week from the Forever Games list — Cyber Snake, Go, Reversi, Four in a Row, Checkers, Poker, Backgammon — each plugging into the same stack and earning protocol fees from day one.
+            </P>
+          </Section>
+
+          <Section id="magic-chess" title="Magic Chess">
+            <P>
+              The flagship. 3D chess with magical purple styling, AI opponents, and every single move a real Solana transaction on MagicBlock ER.
+            </P>
+            <List items={[
+              "580 lines of Rust implementing full chess rules on-chain",
+              "1.2 million positions fuzz-tested against chess.js (zero mismatches)",
+              "3D lathe-turned pieces with cinematic auto-rotating camera",
+              "2D/3D toggle for accessibility",
+              "Free to play — no wallet required (ephemeral accounts on ER)",
+              "PoolSponsor PDA funds game creation at 32 lamports/byte (109× cheaper than L1)",
+              "Game replay from on-chain move history (moves[u16; 256] in GameState PDA)",
+              "Connect wallet after a game to save ELO on SOAR",
+            ]} />
+          </Section>
+
+          <Section id="blockwords" title="Blockwords">
+            <P>
+              Hidden-information word puzzle on a <strong style={{color:"#e0b3ff"}}>Private Ephemeral Rollup (PER)</strong>. One player picks a secret word. Others guess letter by letter.
+            </P>
+            <P>
+              The word lives inside Intel TDX hardware. <strong>Nobody — not the validator, not MagicBlock, not us — can see the word.</strong> A SHA256 hash is committed on L1 when the game starts. When the word is revealed, anyone can verify it was never changed.
+            </P>
+            <List items={[
+              "3 modes: Classic Duel (2-player wagered), One-vs-Many (host vs up to 20 guessers), Word Bomb (party-mode scattergories)",
+              "Hash commitment on L1 → provable fairness",
+              "PER permissions: host WRITE, program READ, everyone else NO ACCESS, reveal at game-end",
+              "Settlement via Contention Markets v2 (atomic, on-chain)",
+              "Challenge links via Orchestrator (zero-cost creation, PoolSponsor pays claim rent)",
+            ]} />
+            <P>
+              Status: design complete, build target ~2 weeks. To be built on-camera via the sovereign MCP.
+            </P>
+          </Section>
+
+          <Section id="pet-legends" title="Pet Legends Arena">
+            <P>
+              NFT auto-battler. Pick a PFP Trainer NFT (Mad Lads, Famous Foxes — passive class buffs), a Battle Pet NFT (unique base stats), and stake partner memecoins as equipment items. Watch the deterministic simulation play out in real time.
+            </P>
+            <List items={[
+              <><strong>Pure skill, zero RNG</strong> — battles are mathematically certain based on inputs. Preserves Skillz-style legal skill-game exemption.</>,
+              <>200ms ER tick rate for smooth animations; settlement back to L1 via <code>BattleOutcome</code> PDA that triggers Contention Markets resolution.</>,
+              <>Existing brand: <strong style={{color:"#ff69b4"}}>@PetLegends_com</strong> — 4,000 X followers, domain owned since 2021.</>,
+              <>Full rewrite in progress to unify on the Gamerplex stack (CM v2, Orchestrator, PoolSponsor, SOAR, GPX1).</>,
+            ]} />
+            <P>
+              Status: existing Anchor workspace (457-line program). Rewrite in progress. Ships on devnet with the unified stack, launches on mainnet with the other two.
+            </P>
+          </Section>
+
+          <Section id="agents" title="Gamerplex Agents">
+            <P>
+              Six Stockfish-calibrated chess AIs play each other 24/7 on MagicBlock ER:
+            </P>
+            <CodeBlock>
+{`SF1200  — Beginner (Stockfish skill 2)
+SF1500  — Club player (Stockfish skill 6)
+SF1800  — Intermediate (Stockfish skill 10)
+SF2100  — Expert (Stockfish skill 14)
+SF2400  — Master (Stockfish skill 18)
+SF3000  — Superhuman (Stockfish skill 20)`}
+            </CodeBlock>
+            <P>
+              All agents start at ELO 1500 — their <strong>true ranking emerges from real on-chain matches</strong>.
+              Over time, stronger agents rise to the top. This proves our chess engine works correctly: if SF3000
+              didn&apos;t climb to #1, we&apos;d know something was broken.
+            </P>
+            <P>
+              Humans can challenge any agent tier. Beat a higher-rated agent → gain more ELO. Lose to a lower-rated agent → lose more.
+            </P>
+          </Section>
+
+          {/* Economics */}
+          <Section id="gamer-token" title="$GAMER Token">
+            <P>
+              Platform token on a Flipcash exponential bonding curve.
+            </P>
+            <List items={[
+              "Starts at $0.01, max supply 21M, endpoint ~$1M/token",
+              "Buy with USDF (mock USDC on devnet)",
+              "1% burn on sell → deflationary",
+              "USD-backed — price can never go to zero",
+              "Protocol revenue buys and burns $GAMER",
+            ]} />
+            <P>
+              Unlike memecoins, $GAMER is backed by the bonding curve. You can always sell back at the curve price.
+              This is fundamentally different from tokens that can rug.
+            </P>
+          </Section>
+
+          <Section id="fees" title="Fees & Revenue">
+            <P>
+              On settlement, the <strong>2% rake splits three ways</strong> under CM v2. Winner still nets 98% of the pot.
+            </P>
+            <Table cols={["Component", "Rate", "Destination"]} rows={[
+              ["Protocol treasury", "0.80%", "Gamerplex operations"],
+              ["Partner (game creator)", "1.00%", "Creator's wallet (on-chain, automatic)"],
+              ["PoolSponsor (free play)", "0.20%", "Self-funding ephemeral-rent pool"],
+              ["Winner payout", "98.00%", "Winner's wallet"],
+            ]} />
+            <P>Other fee streams on the protocol:</P>
+            <Table cols={["Stream", "Rate", "Paid by"]} rows={[
+              ["Token swap (Flipcash curves)", "0.5%", "Swappers"],
+              ["Flipcash sell burn", "1%", "Sellers (burned, not collected)"],
+              ["Referral fees", "20% of protocol fee", "Protocol → referrer (on-chain, atomic)"],
+              ["Tournament entry fees", "Varies", "Players (burned $GAMER/$CHESS)"],
+              ["Spectator tipping (optional)", "0%", "Tippers"],
+            ]} />
+            <P>
+              <strong>Self-sustaining economics:</strong> each match contributes 0.20% to PoolSponsor while costing ~33k lamports in ephemeral rent. At any pot size above ~$1, PoolSponsor inflow &gt; outflow. The free-play pool grows with volume instead of being topped up manually.
+            </P>
+            <P>Break-even: ~25 wagered matches/day at $5 stake covers infrastructure costs.</P>
+          </Section>
+
+          <Section id="mainnet-gate" title="Mainnet Readiness Gate">
+            <P>
+              We only deploy to mainnet when every item on this checklist is ✅. Three gates, 40 pass/fail items. No &quot;ship it and see&quot;.
+            </P>
+            <Table cols={["Gate", "Items", "What it tests"]} rows={[
+              ["1 — Proven", "8 items", "100-concurrent-match load, 24hr soak, fee-split audit to 1-lamport precision, idempotent resolve, PoolSponsor inflow > outflow"],
+              ["2 — Profitable", "8 items", "Per-match revenue > on-chain cost, treasury accumulates across 50 matches, referral split correct, break-even validated"],
+              ["3 — Cybersecure", "24 items", "Double-resolve attack, forged game PDA, replayed nonce, wallet-sig auth, multisig + timelock, independent code review"],
+            ]} />
+            <P>
+              Funding to deploy is incoming. We deploy zero dollars until all 40 items are green. The current state maps to our <a href="https://github.com/gamerplex" target="_blank" rel="noopener noreferrer" style={{color:"#9945FF"}}>open source repos</a> — every item references specific tests or code.
+            </P>
+          </Section>
+
+          {/* Roadmap */}
+          <Section id="roadmap" title="Roadmap">
+            <div style={{display:"flex",flexDirection:"column",gap:16,marginTop:16}}>
+              <RoadmapCard phase="Now (April 2026)" status="Live on Devnet" color="#14F195" items={[
+                "11 programs on devnet, all executable",
+                "Magic Chess polished with 100+ E2E tests",
+                "Sovereign MCP + dev server (gamerplex-mcp, gamerplex-dev)",
+                "PoolSponsor PDA funded 1.5 SOL, delegated to ER",
+                "Real devnet deploy pipeline proven via MCP tool",
+              ]} />
+              <RoadmapCard phase="This Week — 5-Day Contracts Plan" status="In Progress" color="#ffd740" items={[
+                "Contention Markets v2: permissionless resolve, 0.80/1.00/0.20 fee split, idempotency",
+                "Gamerplex Orchestrator: signed-URL challenges, on-chain game registry",
+                "MCP tools wire challenge lifecycle end-to-end",
+                "100-concurrent-match stress test on devnet",
+              ]} />
+              <RoadmapCard phase="Next ~4 Weeks — Devnet Proof" status="Gated" color="#e0b3ff" items={[
+                "Blockwords full build (PER hidden-info, 3 modes)",
+                "Pet Legends Arena rewrite to unified stack",
+                "Every MAINNET_READINESS gate turned green",
+                "Security hardening: wallet-sig auth, Cloudflare, 3-of-5 Squads multisig, 48hr timelock",
+                "Independent external code review",
+              ]} />
+              <RoadmapCard phase="Mainnet Launch (when gates ✅)" status="Planned" color="#9945FF" items={[
+                "Deploy CM v2 + Orchestrator + 3 games to Solana mainnet",
+                "Real USDC/USDF wagering",
+                "$GAMER token launches on Flipcash mainnet",
+                "Joint launch: @PetLegends_com (4K) + @gamerplex_com (1.2K) + MagicBlock ecosystem",
+                "First 100 matches per game free (PoolSponsor-funded)",
+              ]} />
+              <RoadmapCard phase="Post-Mainnet — Scale" status="Planned" color="#00f0ff" items={[
+                "One new game a week from Forever Games list (Cyber Snake, Go, Reversi, Four in a Row, Checkers, Poker, Backgammon)",
+                "SNS identity integration",
+                "IPFS/Arweave frontend mirror",
+                "Publish @gamerplex/mcp-server + @gamerplex/dev to npm",
+                "AI agent marketplace — creators sell trained bots",
+              ]} />
+              <RoadmapCard phase="2028+ — Platform" status="Vision" color="#888" items={[
+                "100+ games on the protocol, all on same stack",
+                "Persistent on-chain worlds (Gamerplex Worlds)",
+                "Cross-game player profiles and portable ratings (ENS for gaming)",
+                "Governance token voting on protocol params",
+                "Fully decentralized — no resolver dependency for any game",
+              ]} />
+            </div>
+          </Section>
+
+          <Section id="open-source" title="Open Source">
+            <P>
+              All Gamerplex code is being open-sourced at{" "}
+              <a href="https://github.com/gamerplex" target="_blank" rel="noopener noreferrer" style={{color:"#9945FF"}}>github.com/gamerplex</a>
+              .
+            </P>
+            <List items={[
+              <><strong>magic-chess</strong> — Chess program + 3D frontend + ER pool + tests</>,
+              <><strong>contention-markets</strong> — Wagering settlement protocol (v1 live, v2 shipping)</>,
+              <><strong>gamerplex-orchestrator</strong> — Signed-URL challenges + on-chain game registry (shipping)</>,
+              <><strong>flipcash-program</strong> — USD-backed bonding curve token launcher</>,
+              <><strong>gamerplex-mcp</strong> — 12 MCP tools for sovereign game dev (<code>npm i @gamerplex/mcp-server</code>)</>,
+              <><strong>gamerplex-dev</strong> — Localhost:42069 dev server + sovereign agent (<code>npx @gamerplex/dev</code>)</>,
+              <><strong>gamerplex-sdk</strong> — TypeScript client for on-chain programs</>,
+              <><strong>gamerplex-resolver</strong> — Legacy chess backend (portable: GCP / Oracle / Fly.io / self-host)</>,
+              <><strong>gamerplex-tests</strong> — E2E test suite (100+ tests, real devnet, zero mocks)</>,
+              <><strong>pet-legends-arena</strong> — NFT auto-battler (rewrite in progress)</>,
+            ]} />
+            <P>
+              MIT licensed. Fork it. Build on it. Host your own instance. We&apos;re building a public good.
+            </P>
+          </Section>
+
+          <div style={{marginTop:64,padding:"24px 28px",background:"#0c0c14",border:"1px solid #252540",borderRadius:12,textAlign:"center"}}>
+            <div style={{fontSize:14,color:"#888",marginBottom:12}}>Ready to play?</div>
+            <div style={{display:"flex",gap:12,justifyContent:"center",flexWrap:"wrap"}}>
+              <Link href="/play/chess" style={{
+                padding:"10px 24px",borderRadius:8,textDecoration:"none",
+                background:"linear-gradient(90deg, #9945ff, #00f0ff)",
+                color:"#050508",fontSize:13,fontWeight:700,
+              }}>🧙‍♂️ Play Magic Chess</Link>
+              <Link href="/games" style={{
+                padding:"10px 24px",borderRadius:8,textDecoration:"none",
+                background:"transparent",border:"1px solid #252540",
+                color:"#e8e8f0",fontSize:13,fontWeight:600,
+              }}>All Games</Link>
+              <Link href="/leaderboard" style={{
+                padding:"10px 24px",borderRadius:8,textDecoration:"none",
+                background:"transparent",border:"1px solid #252540",
+                color:"#e8e8f0",fontSize:13,fontWeight:600,
+              }}>Leaderboard</Link>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}
+
+// ─── Content components ─────────────────────────────────────────────────────
+function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
+  return (
+    <section id={id} style={{ marginBottom: 48, scrollMarginTop: 80 }}>
+      <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 16, color: "#fff", borderBottom: "1px solid #252540", paddingBottom: 10 }}>{title}</h2>
+      {children}
+    </section>
+  );
+}
+
+function P({ children }: { children: React.ReactNode }) {
+  return <p style={{ fontSize: 14, color: "#aaa", lineHeight: 1.75, marginBottom: 14 }}>{children}</p>;
+}
+
+function List({ items }: { items: React.ReactNode[] }) {
+  return (
+    <ul style={{ listStyle: "none", padding: 0, marginBottom: 14 }}>
+      {items.map((item, i) => (
+        <li key={i} style={{ fontSize: 14, color: "#aaa", lineHeight: 1.7, marginBottom: 6, paddingLeft: 20, position: "relative" }}>
+          <span style={{ position: "absolute", left: 0, color: "#9945FF" }}>•</span>
+          {item}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function CodeBlock({ children }: { children: React.ReactNode }) {
+  return (
+    <pre style={{
+      background: "#0c0c14", border: "1px solid #252540", borderRadius: 8,
+      padding: "16px 20px", fontSize: 12, color: "#e0b3ff", fontFamily: "monospace",
+      overflow: "auto", marginBottom: 14, lineHeight: 1.6,
+    }}><code>{children}</code></pre>
+  );
+}
+
+function Stats({ items }: { items: { label: string; value: string }[] }) {
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 10, marginTop: 16, marginBottom: 14 }}>
+      {items.map(s => (
+        <div key={s.label} style={{ padding: "12px 14px", background: "#0c0c14", border: "1px solid #252540", borderRadius: 8 }}>
+          <div style={{ fontSize: 20, fontWeight: 700, color: "#14F195", marginBottom: 2 }}>{s.value}</div>
+          <div style={{ fontSize: 10, color: "#555", letterSpacing: 1, textTransform: "uppercase", fontWeight: 700 }}>{s.label}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Table({ cols, rows }: { cols: string[]; rows: string[][] }) {
+  return (
+    <div style={{ background: "#0c0c14", border: "1px solid #252540", borderRadius: 8, overflow: "hidden", marginBottom: 14 }}>
+      <div style={{
+        display: "grid", gridTemplateColumns: `repeat(${cols.length}, 1fr)`,
+        padding: "10px 14px", borderBottom: "1px solid #252540",
+        fontSize: 10, color: "#555", textTransform: "uppercase", letterSpacing: 1, fontWeight: 700,
+      }}>
+        {cols.map(c => <div key={c}>{c}</div>)}
+      </div>
+      {rows.map((row, i) => (
+        <div key={i} style={{
+          display: "grid", gridTemplateColumns: `repeat(${cols.length}, 1fr)`,
+          padding: "10px 14px", borderBottom: i < rows.length - 1 ? "1px solid #1a1a28" : "none",
+          fontSize: 13, color: "#aaa",
+        }}>
+          {row.map((c, j) => <div key={j}>{c}</div>)}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function RoadmapCard({ phase, status, color, items }: { phase: string; status: string; color: string; items: string[] }) {
+  return (
+    <div style={{ padding: "18px 22px", background: "#0c0c14", border: `1px solid ${color}40`, borderRadius: 12, borderLeft: `3px solid ${color}` }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: "#e8e8f0" }}>{phase}</div>
+        <div style={{ fontSize: 9, fontWeight: 800, color, letterSpacing: 1, textTransform: "uppercase", padding: "2px 8px", border: `1px solid ${color}`, borderRadius: 4 }}>{status}</div>
+      </div>
+      <ul style={{ listStyle: "none", padding: 0 }}>
+        {items.map((item, i) => (
+          <li key={i} style={{ fontSize: 12, color: "#888", marginBottom: 4, paddingLeft: 16, position: "relative" }}>
+            <span style={{ position: "absolute", left: 0, color }}>•</span>
+            {item}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}

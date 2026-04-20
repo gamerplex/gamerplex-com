@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 130">
+  <defs>
+    <linearGradient id="gp" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#9945FF"/>
+      <stop offset="100%" stop-color="#14F195"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="130" fill="#0d001a"/>
+  <text x="300" y="68" font-family="'Arial Black', 'Helvetica Neue', sans-serif" font-size="60" font-weight="900" font-style="italic" fill="url(#gp)" text-anchor="middle" letter-spacing="4">GAMERPLEX</text>
+  <text x="300" y="105" font-family="'JetBrains Mono', 'Courier New', monospace" font-size="14" font-weight="400" fill="#6a5a80" text-anchor="middle" letter-spacing="8">EVERY MOVE ON-CHAIN</text>
+</svg>
