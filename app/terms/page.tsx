@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useWallet } from "@solana/wallet-adapter-react";
@@ -24,6 +24,14 @@ function safeReturn(raw: string | null): string {
 }
 
 export default function TermsPage() {
+  return (
+    <Suspense>
+      <TermsPageInner />
+    </Suspense>
+  );
+}
+
+function TermsPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnTo = useMemo(
