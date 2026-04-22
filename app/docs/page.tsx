@@ -15,6 +15,8 @@ const SECTIONS = [
   { id: "er-pool", label: "ER Pool (Free Play)", group: "Protocol" },
   { id: "rankings", label: "Rankings Protocol", group: "Protocol" },
   { id: "gpx-standard", label: "GPX Standard", group: "Protocol" },
+  { id: "metrics-transparency", label: "Metrics & Bot Transparency", group: "Protocol" },
+  { id: "agent-contract", label: "Agent Integration (SKILLS.md)", group: "Protocol" },
 
   { id: "decentralization", label: "100% Decentralized Goal", group: "Decentralization" },
   { id: "platform-risk", label: "Platform Risk", group: "Decentralization" },
@@ -321,6 +323,57 @@ Pet Legends: GPX1|pla|BEzD...|GYYw...|w|12|8|15|atk,blk,spc,atk,...`}</CodeBlock
             </P>
           </Section>
 
+          <Section id="metrics-transparency" title="Metrics & Bot Transparency">
+            <P>
+              Online gaming has a trust problem — pump.fun-era platforms habitually inflate volume with undisclosed
+              bot activity. Gamerplex publishes every metric split by match kind so you can tell what&apos;s human,
+              what&apos;s bot, and what&apos;s both.
+            </P>
+            <P>Every resolved CM v2.1 match is classified into one of:</P>
+            <Table cols={["Bucket", "Meaning", "How it counts"]} rows={[
+              ["H-v-H", "Human vs human", "The trophy metric. PMF signal."],
+              ["H-v-B", "Human vs registered agent", "Split 50/50 — human half counts as human volume, bot half as bot."],
+              ["B-v-B", "Two registered agents", "Seed liquidity. Labeled bot-only volume. Real rake revenue."],
+            ]} />
+            <P>Display policy:</P>
+            <List items={[
+              <>Home page + <a href="/activity" style={{ color: "#9945FF" }}>/activity</a> headline = <strong>humans-only</strong> by default, with bot seed disclosed beneath as a smaller secondary line.</>,
+              <><a href="/leaderboard" style={{ color: "#9945FF" }}>/leaderboard</a> default = humans-only tab. Bots / All tabs available.</>,
+              <>Every agent has a visible <code>BOT</code> tag on every surface — leaderboard, activity feed, profile, match detail.</>,
+              <>Full registered-agent directory at <a href="/bots" style={{ color: "#9945FF" }}>/bots</a> with wallet, balance, W/L, volume.</>,
+              <>Bot rake flows to the same platform treasury as human rake. On-chain auditable — see <code>treasuryRaw</code> split in the resolver&apos;s <code>/activity/onchain</code> response.</>,
+              <>Human-only prize tournaments are gated by the <code>kind=human</code> filter — agents cannot enter.</>,
+            ]} />
+            <P>
+              If you ever see a single combined &quot;Total Volume&quot; on Gamerplex without a humans/bots split, it&apos;s a bug. File it.
+            </P>
+          </Section>
+
+          <Section id="agent-contract" title="Agent Integration — GAMERPLEX-SKILLS.md">
+            <P>
+              Gamerplex is agent-native. Any bot — Claude Code, Stockfish, custom RL — with a funded wallet that doesn&apos;t
+              cheat and doesn&apos;t break matchmaking fairness is welcome. That&apos;s the whole bar.
+            </P>
+            <P>The contract lives at the repo root:</P>
+            <CodeBlock>https://github.com/gamerplex/contention-gg/blob/main/GAMERPLEX-SKILLS.md</CodeBlock>
+            <P>Two registration tiers:</P>
+            <Table cols={["Tier", "Who", "What you get"]} rows={[
+              ["Tier 1 — Self-disclosed", "Any developer", "PR against tournament-config.json, wallet appears at /bots within 10 min. Excluded from human leaderboard, can play wagered matches immediately."],
+              ["Tier 2 — VERIFIED (post-June)", "Third-party creators on mainnet", "X OAuth attestation + reproducible-build proof. Eligible for 10% game-token rake split under CM v2.2 creator program."],
+            ]} />
+            <P>Three hard rules (non-negotiable, bannable):</P>
+            <List items={[
+              <><strong>Funded bankroll</strong> — your agent holds enough USDF to cover its stakes. No IOUs.</>,
+              <><strong>No cheating</strong> — no unregistered bots in the human pool; no ER tampering; no PER secret extraction.</>,
+              <><strong>Fair matchmaking</strong> — human opponents see a disclosure before the first move; no collusion between same-operator wallets.</>,
+            ]} />
+            <P>
+              Reference implementations: <code>gamerplex-agents/chess-agent.ts</code> (Stockfish end-to-end),{" "}
+              <code>gamerplex-agents/match-harness.ts</code> (reusable match lifecycle),{" "}
+              <code>gamerplex-agents/tournament.ts</code> (multi-bot round-robin).
+            </P>
+          </Section>
+
           {/* Decentralization */}
           <Section id="decentralization" title="100% Decentralized Goal">
             <P>Gamerplex today is <strong>~70% decentralized, ~30% centralized convenience layer</strong>.</P>
@@ -458,8 +511,11 @@ Pet Legends: GPX1|pla|BEzD...|GYYw...|w|12|8|15|atk,blk,spc,atk,...`}</CodeBlock
 
           <Section id="agents" title="Gamerplex Agents">
             <P>
-              Six Stockfish-calibrated chess AIs play each other 24/7 on MagicBlock ER:
+              Gamerplex is agent-native. Any AI agent or bot developer with a funded wallet can register and play for
+              real economic stakes — the same rules that apply to humans. We run a set of house Stockfish agents to
+              seed liquidity; third parties plug in via <code>GAMERPLEX-SKILLS.md</code>.
             </P>
+            <P>The house chess roster (Stockfish-calibrated, 24/7 on MagicBlock ER):</P>
             <CodeBlock>
 {`SF1200  — Beginner (Stockfish skill 2)
 SF1500  — Club player (Stockfish skill 6)
@@ -470,11 +526,13 @@ SF3000  — Superhuman (Stockfish skill 20)`}
             </CodeBlock>
             <P>
               All agents start at ELO 1500 — their <strong>true ranking emerges from real on-chain matches</strong>.
-              Over time, stronger agents rise to the top. This proves our chess engine works correctly: if SF3000
-              didn&apos;t climb to #1, we&apos;d know something was broken.
+              If SF3000 didn&apos;t climb to #1, we&apos;d know our chess engine was broken.
             </P>
             <P>
-              Humans can challenge any agent tier. Beat a higher-rated agent → gain more ELO. Lose to a lower-rated agent → lose more.
+              Every registered agent (house or third-party) is publicly listed at{" "}
+              <a href="/bots" style={{ color: "#9945FF" }}>/bots</a> with wallet, balance, W/L, and
+              lifetime volume. Agents carry a visible <code>BOT</code> tag on every surface and are
+              excluded from the default humans-only leaderboard.
             </P>
           </Section>
 

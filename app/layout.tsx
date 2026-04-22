@@ -62,11 +62,7 @@ export default function RootLayout({
           fontSize: 12, fontWeight: 700, textAlign: "center",
           display: "flex", justifyContent: "center", alignItems: "center", gap: 12, flexWrap: "wrap",
         }}>
-          <span>🚀 Help us get to Mainnet! Vote for Gamerplex in the hackathons:</span>
-          <a href="https://t.me/+oLOcE79hoqo3OWJi" target="_blank" rel="noopener noreferrer" style={{
-            color: "#050508", textDecoration: "underline", fontWeight: 800,
-          }}>Blitz v3</a>
-          <span style={{opacity:0.5}}>·</span>
+          <span>🚀 Help us get to Mainnet! Vote for Gamerplex at</span>
           <a href="https://colosseum.com/frontier" target="_blank" rel="noopener noreferrer" style={{
             color: "#050508", textDecoration: "underline", fontWeight: 800,
           }}>Frontier →</a>

@@ -3,10 +3,6 @@
 import Link from "next/link";
 import Image from "next/image";
 
-// Mainnet launches with 3 games on one unified stack: Magic Chess (live),
-// Blockwords (building), Pet Legends Arena (rewriting). Ancillary on-chain
-// experiments (Aim Duel / Sea Battle / Snake) are archived to `_archive/`.
-// Post-mainnet scale: one new game per week from the Forever Games list.
 const LAUNCH_GAMES = [
   {
     id: "blockwords",
@@ -18,23 +14,34 @@ const LAUNCH_GAMES = [
     status: "building",
   },
   {
+    id: "cyber-snake",
+    name: "Cyber Snake",
+    description: "Tron-style 2-player snake. Solo version playable now in the Arcade; tournament duel mode ships with CM v2.2.",
+    path: "/arcade/cyber-snake",
+    color: "#4fc3f7",
+    emoji: "🐍",
+    status: "building",
+  },
+  {
     id: "pla",
     name: "Pet Legends Arena",
     description: "NFT auto-battler. Deterministic combat, CM v2.1-bound markets, SOAR ladder.",
     path: "/play/pla",
     color: "#ff6b2c",
     emoji: "🐉",
-    status: "rewriting",
+    status: "building",
   },
 ];
 
 const COMING_SOON = [
   { name: "Checkers", emoji: "🔴" },
   { name: "Go", emoji: "⚫" },
-  { name: "Poker", emoji: "🃏" },
+  { name: "Reversi", emoji: "⚪" },
   { name: "Backgammon", emoji: "🎲" },
-  { name: "Snake Duel", emoji: "🐍" },
-  { name: "Galaxy Shooter", emoji: "👾" },
+  { name: "Shogi", emoji: "♜" },
+  { name: "Gomoku", emoji: "⬛" },
+  { name: "Mancala", emoji: "🫘" },
+  { name: "Hex", emoji: "⬡" },
 ];
 
 export default function GamesPortal() {
@@ -62,7 +69,8 @@ export default function GamesPortal() {
         </div>
         <div style={{ display: "flex", gap: 14, fontSize: 13, alignItems: "center" }}>
           <Link href="/" style={{ color: "#555570", textDecoration: "none" }}>Arena</Link>
-          <Link href="/games" style={{ color: "#9945FF", textDecoration: "none", fontWeight: 600 }}>Arcade</Link>
+          <Link href="/arcade" style={{ color: "#555570", textDecoration: "none" }}>Arcade</Link>
+          <Link href="/games" style={{ color: "#9945FF", textDecoration: "none", fontWeight: 600 }}>Tournaments</Link>
           <Link href="/leaderboard" style={{ color: "#555570", textDecoration: "none" }}>Leaderboard</Link>
           <Link href="/activity" style={{ color: "#555570", textDecoration: "none" }}>Activity</Link>
           <Link href="/docs" style={{ color: "#555570", textDecoration: "none" }}>Docs</Link>
@@ -74,7 +82,7 @@ export default function GamesPortal() {
 
       <div style={{ maxWidth: 960, margin: "0 auto", padding: "32px 20px" }}>
         {/* Page title */}
-        <h1 style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>Arcade</h1>
+        <h1 style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>Tournaments</h1>
         <p style={{ color: "#555570", fontSize: 13, marginBottom: 28 }}>
           Every game runs on-chain via <span style={{ color: "#9945FF" }}>MagicBlock Ephemeral Rollup</span>. Every move is a real Solana transaction.
         </p>
@@ -149,10 +157,10 @@ export default function GamesPortal() {
           </div>
         </Link>
 
-        {/* Launch lineup — the 3 games shipping to mainnet on one unified stack */}
+        {/* Launch lineup — the games shipping to mainnet on one unified stack */}
         <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>Launch lineup</h2>
         <p style={{ fontSize: 11, color: "#555570", marginBottom: 16 }}>
-          Three games, one stack: Orchestrator + Contention Markets v2.1 + MagicBlock ER + SOAR. Magic Chess is live; the others are in build.
+          One stack: Orchestrator + Contention Markets v2.1 + MagicBlock ER + SOAR. Magic Chess is live; the others are in build.
         </p>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 12, marginBottom: 32 }}>

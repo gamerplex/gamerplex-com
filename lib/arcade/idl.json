@@ -1,0 +1,1884 @@
+{
+  "address": "4FVwdxxBp6PTax2tAcPyHE9rYt8tyNf2YBGrSnSqmx8t",
+  "metadata": {
+    "name": "gamerplex_arcade",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Gamerplex Arcade — first-party solo micro-games with on-chain scores, payments, and leaderboards"
+  },
+  "instructions": [
+    {
+      "name": "close_replay_receipt",
+      "docs": [
+        "Close ReplayReceipt and refund rent to the current owner. Only owner",
+        "can call. If wrapped as cNFT, block close — the cNFT must be burned",
+        "/ unwrapped first (kept as invariant for v1.3 integration)."
+      ],
+      "discriminator": [
+        43,
+        34,
+        80,
+        151,
+        103,
+        80,
+        205,
+        45
+      ],
+      "accounts": [
+        {
+          "name": "receipt",
+          "docs": [
+            "Receipt to close — rent refunded to owner's wallet. Close requires owner sig.",
+            "If wrapped as cNFT, the instruction body blocks close until unwrapped."
+          ],
+          "writable": true
+        },
+        {
+          "name": "owner",
+          "docs": [
+            "Current owner (signs + receives refunded rent)."
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "receipt"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "commit_session_replay",
+      "docs": [
+        "Commit a full deterministic move log on-chain so anyone can replay the",
+        "session and cryptographically verify the submitted score. Emits a",
+        "GPX5R memo carrying the base64-encoded log. Triggers the 🏆 VERIFIED",
+        "leaderboard badge.",
+        "",
+        "Pricing: player has already paid via a preceding `record_payment` with",
+        "category=CATEGORY_VERIFIED_COMMIT and amount=VERIFIED_COMMIT_MICRO_USD",
+        "($0.10) in the same tx. We trust the frontend to bundle them; if the",
+        "payment tx doesn't land the resolver flags the score + removes the",
+        "VERIFIED badge. Economic deterrent is the $0.10 fee already paid.",
+        "",
+        "Size limit: 400 bytes of binary move-data (~540 chars base64). Games",
+        "whose sessions routinely exceed this can instead use the",
+        "`external_ref` field on record_payment pointing at an off-chain store",
+        "(Arweave recommended)."
+      ],
+      "discriminator": [
+        168,
+        26,
+        124,
+        178,
+        123,
+        33,
+        18,
+        125
+      ],
+      "accounts": [
+        {
+          "name": "player",
+          "signer": true
+        },
+        {
+          "name": "memo_program",
+          "address": "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"
+        }
+      ],
+      "args": [
+        {
+          "name": "score_nonce",
+          "type": "u64"
+        },
+        {
+          "name": "session_seed",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "move_log",
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "initialize_config",
+      "docs": [
+        "One-time initialization of the arcade. Only callable once per program",
+        "(seeds = [\"config\"] PDA, `init` fails if already open)."
+      ],
+      "discriminator": [
+        208,
+        127,
+        21,
+        1,
+        194,
+        190,
+        196,
+        70
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "treasury_wallet",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "mint_replay_receipt",
+      "docs": [
+        "Mint a ReplayReceipt PDA for a completed run. Requires the player to",
+        "have paid CATEGORY_REPLAY_RECEIPT ($0.25) via record_payment in the",
+        "same tx. Stamps the run data immutably (original_player = signer,",
+        "owner = signer initially — these CAN diverge later via transfer).",
+        "",
+        "The PDA is seeded by (player, nonce) so each receipt is unique. Client",
+        "passes the nonce (typically the submit-score timestamp) to make",
+        "receipts addressable."
+      ],
+      "discriminator": [
+        15,
+        161,
+        240,
+        123,
+        212,
+        186,
+        112,
+        53
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "game"
+        },
+        {
+          "name": "receipt",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  99,
+                  101,
+                  105,
+                  112,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "player"
+              },
+              {
+                "kind": "arg",
+                "path": "nonce"
+              }
+            ]
+          }
+        },
+        {
+          "name": "player",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "nonce",
+          "type": "u64"
+        },
+        {
+          "name": "score",
+          "type": "u64"
+        },
+        {
+          "name": "continues_used",
+          "type": "u8"
+        },
+        {
+          "name": "powerups_used",
+          "type": "u8"
+        },
+        {
+          "name": "session_seed",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "move_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "duration_sec",
+          "type": "u32"
+        },
+        {
+          "name": "gpx5r_memo_tx",
+          "type": {
+            "array": [
+              "u8",
+              64
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "open_player_profile",
+      "docs": [
+        "Open a PlayerProfile PDA for a wallet. Called once per wallet, by the",
+        "wallet itself (anyone pays their own rent). Idempotent via `init`.",
+        "",
+        "If the caller arrived via a challenge link and wants to attribute their",
+        "referral, they pass `referrer = Some(<challenger_pubkey>)`. The",
+        "challenger MUST have an already-open PlayerProfile (passed in the",
+        "accounts as `referrer_profile`) — this blocks attribution to arbitrary",
+        "wallets and guarantees the referrer is a real Gamerplex participant.",
+        "Self-referral is rejected. The referrer becomes IMMUTABLE after this",
+        "call — first-refer-wins, no switcheroos."
+      ],
+      "discriminator": [
+        77,
+        227,
+        233,
+        84,
+        220,
+        213,
+        187,
+        232
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "profile",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  102,
+                  105,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "player"
+              }
+            ]
+          }
+        },
+        {
+          "name": "referrer_profile",
+          "docs": [
+            "Optional: if a referrer is passed in the instruction, the referrer's",
+            "already-open PlayerProfile must be provided here. The PDA seeds",
+            "constraint + `wallet` field check in the instruction guarantees the",
+            "referrer actually exists on Gamerplex — blocks arbitrary-wallet spoof.",
+            "When no referrer is passed, this account is ignored (None)."
+          ],
+          "optional": true
+        },
+        {
+          "name": "player",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "referrer",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "record_payment",
+      "docs": [
+        "Record a payment made via Solana Pay / Flipcash, tied to a specific",
+        "game action. Gives the player an auditable trail of what they paid for,",
+        "and accrues affiliate earnings to the referrer if the tail is active.",
+        "",
+        "This does NOT execute the underlying payment — the USDC/$GAMER transfer",
+        "already happened (player signed a Solana Pay tx before / atomically",
+        "with this call). `record_payment` commits the tx sig + category +",
+        "amount on-chain for audit and drives affiliate accrual.",
+        "",
+        "Amount bounds (defense against inflation / dust attacks):",
+        "MIN_PAYMENT_MICRO_USD  = $0.01   — blocks dust-spam farming",
+        "MAX_PAYMENT_MICRO_USD  = $100.00 — blocks inflated-claim attacks",
+        "",
+        "Affiliate payout logic:",
+        "- Only runs if profile.referrer is set and the tail window is open",
+        "(now < referrer_expires_at AND referrer_payments_remaining > 0)",
+        "- Computes 20% cut (AFFILIATE_CUT_BPS = 2000 basis points)",
+        "- Accrues to referrer_profile.affiliate_earned_accrued_micro",
+        "- Decrements referrer_payments_remaining",
+        "- Emits AffiliateAccrued event for off-chain indexers",
+        "",
+        "The referrer's PlayerProfile PDA must be passed if profile.referrer is",
+        "set. If profile has no referrer, referrer_profile is ignored (None)."
+      ],
+      "discriminator": [
+        226,
+        154,
+        10,
+        27,
+        9,
+        14,
+        148,
+        137
+      ],
+      "accounts": [
+        {
+          "name": "game"
+        },
+        {
+          "name": "profile",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  102,
+                  105,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "player"
+              }
+            ]
+          }
+        },
+        {
+          "name": "wallet",
+          "relations": [
+            "profile"
+          ]
+        },
+        {
+          "name": "referrer_profile",
+          "docs": [
+            "Referrer's PlayerProfile — required if profile.referrer is set and",
+            "the tail window is active. Seeds constrain it to the expected wallet",
+            "(no mismatched profile can be passed). Optional because many players",
+            "have no referrer and the instruction skips affiliate logic in that",
+            "case."
+          ],
+          "writable": true,
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  102,
+                  105,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "profile.referrer",
+                "account": "PlayerProfile"
+              }
+            ]
+          }
+        },
+        {
+          "name": "player",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "category",
+          "type": "u8"
+        },
+        {
+          "name": "amount_micro_usd",
+          "type": "u64"
+        },
+        {
+          "name": "payment_tx_sig",
+          "type": {
+            "array": [
+              "u8",
+              64
+            ]
+          }
+        },
+        {
+          "name": "gamer_paid",
+          "type": "bool"
+        },
+        {
+          "name": "external_ref",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "register_game",
+      "docs": [
+        "Register a new arcade game. Admin-only. Each game_id is permanent.",
+        "First call after initialize_config should register Cyber Snake",
+        "(game_id = 1, slug = \"cyber-snake\")."
+      ],
+      "discriminator": [
+        122,
+        44,
+        95,
+        58,
+        89,
+        33,
+        40,
+        59
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "game",
+          "writable": true
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "game_id",
+          "type": "u8"
+        },
+        {
+          "name": "slug",
+          "type": "string"
+        },
+        {
+          "name": "display_name",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "rotate_season",
+      "discriminator": [
+        19,
+        15,
+        9,
+        0,
+        130,
+        143,
+        153,
+        72
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "submit_score",
+      "docs": [
+        "Submit a completed session score. Emits a GPX5 v2 memo via CPI to the",
+        "SPL Memo program. Indexers scan memos to build leaderboards — no",
+        "on-chain leaderboard PDA in v1.",
+        "",
+        "Memo format:",
+        "GPX5|<game_slug>|<variant>|<player>|<score>|<continues>|<powerups>|<seed_b58>|<duration>|<move_hash_b58>[|<meta>]",
+        "",
+        "Fairness rule: `continues` and `powerups` must be visibly surfaced on",
+        "any leaderboard UI. The arcade-precedent guardrail (1980s 1CC culture)",
+        "is that no-continue runs are the \"pure\" board."
+      ],
+      "discriminator": [
+        212,
+        128,
+        45,
+        22,
+        112,
+        82,
+        85,
+        235
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "game",
+          "writable": true
+        },
+        {
+          "name": "profile",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  102,
+                  105,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "player"
+              }
+            ]
+          }
+        },
+        {
+          "name": "wallet",
+          "relations": [
+            "profile"
+          ]
+        },
+        {
+          "name": "player",
+          "signer": true
+        },
+        {
+          "name": "memo_program",
+          "address": "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"
+        }
+      ],
+      "args": [
+        {
+          "name": "variant",
+          "type": "string"
+        },
+        {
+          "name": "score",
+          "type": "u64"
+        },
+        {
+          "name": "continues_used",
+          "type": "u8"
+        },
+        {
+          "name": "powerups_used",
+          "type": "u8"
+        },
+        {
+          "name": "session_seed",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "duration_sec",
+          "type": "u32"
+        },
+        {
+          "name": "move_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "meta",
+          "type": "string"
+        },
+        {
+          "name": "vs_challenger",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "transfer_replay_receipt",
+      "docs": [
+        "Transfer ReplayReceipt ownership. Only the current owner can call.",
+        "`original_player` is IMMUTABLE — never touched here. The transfer",
+        "only moves the tradeable right, never the creator attribution."
+      ],
+      "discriminator": [
+        176,
+        21,
+        10,
+        129,
+        118,
+        108,
+        20,
+        121
+      ],
+      "accounts": [
+        {
+          "name": "receipt",
+          "docs": [
+            "Receipt to transfer — Anchor validates program-ownership + discriminator",
+            "via the account type. has_one enforces receipt.owner == signer."
+          ],
+          "writable": true
+        },
+        {
+          "name": "owner",
+          "signer": true,
+          "relations": [
+            "receipt"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "new_owner",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "update_avatar",
+      "docs": [
+        "Update avatar source preference. Fully off-chain-resolvable:",
+        "0 = fallback color tile (client-generated from wallet hash)",
+        "1 = SNS picture record (resolver does reverse-lookup)",
+        "2 = NFT PFP (nft_pfp_mint used)",
+        "3 = Gamerplex cosmetic (cosmetic_avatar_id used; must be owned)"
+      ],
+      "discriminator": [
+        244,
+        92,
+        83,
+        89,
+        34,
+        220,
+        163,
+        203
+      ],
+      "accounts": [
+        {
+          "name": "profile",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  102,
+                  105,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "player"
+              }
+            ]
+          }
+        },
+        {
+          "name": "wallet",
+          "relations": [
+            "profile"
+          ]
+        },
+        {
+          "name": "player",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "avatar_source",
+          "type": "u8"
+        },
+        {
+          "name": "nft_pfp_mint",
+          "type": "pubkey"
+        },
+        {
+          "name": "cosmetic_avatar_id",
+          "type": "u16"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "ArcadeConfig",
+      "discriminator": [
+        72,
+        72,
+        85,
+        65,
+        185,
+        246,
+        125,
+        96
+      ]
+    },
+    {
+      "name": "Game",
+      "discriminator": [
+        27,
+        90,
+        166,
+        125,
+        74,
+        100,
+        121,
+        18
+      ]
+    },
+    {
+      "name": "PlayerProfile",
+      "discriminator": [
+        82,
+        226,
+        99,
+        87,
+        164,
+        130,
+        181,
+        80
+      ]
+    },
+    {
+      "name": "ReplayReceipt",
+      "discriminator": [
+        242,
+        70,
+        132,
+        232,
+        184,
+        87,
+        71,
+        62
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "AffiliateAccrued",
+      "discriminator": [
+        254,
+        180,
+        121,
+        2,
+        160,
+        136,
+        21,
+        171
+      ]
+    },
+    {
+      "name": "AffiliateAttributed",
+      "discriminator": [
+        93,
+        100,
+        1,
+        187,
+        31,
+        168,
+        113,
+        107
+      ]
+    },
+    {
+      "name": "ConfigInitialized",
+      "discriminator": [
+        181,
+        49,
+        200,
+        156,
+        19,
+        167,
+        178,
+        91
+      ]
+    },
+    {
+      "name": "GameRegistered",
+      "discriminator": [
+        2,
+        83,
+        36,
+        122,
+        249,
+        190,
+        106,
+        31
+      ]
+    },
+    {
+      "name": "PaymentRecorded",
+      "discriminator": [
+        214,
+        3,
+        212,
+        116,
+        135,
+        35,
+        104,
+        98
+      ]
+    },
+    {
+      "name": "ProfileOpened",
+      "discriminator": [
+        245,
+        141,
+        9,
+        145,
+        14,
+        240,
+        165,
+        228
+      ]
+    },
+    {
+      "name": "ReplayReceiptClosed",
+      "discriminator": [
+        158,
+        179,
+        181,
+        35,
+        86,
+        177,
+        160,
+        215
+      ]
+    },
+    {
+      "name": "ReplayReceiptMinted",
+      "discriminator": [
+        197,
+        105,
+        193,
+        194,
+        76,
+        242,
+        136,
+        213
+      ]
+    },
+    {
+      "name": "ReplayReceiptTransferred",
+      "discriminator": [
+        53,
+        25,
+        114,
+        100,
+        227,
+        229,
+        65,
+        134
+      ]
+    },
+    {
+      "name": "ScoreSubmitted",
+      "discriminator": [
+        15,
+        74,
+        143,
+        188,
+        62,
+        88,
+        81,
+        104
+      ]
+    },
+    {
+      "name": "SeasonRotated",
+      "discriminator": [
+        154,
+        15,
+        96,
+        13,
+        222,
+        172,
+        94,
+        109
+      ]
+    },
+    {
+      "name": "SessionReplayCommitted",
+      "discriminator": [
+        184,
+        158,
+        198,
+        87,
+        164,
+        77,
+        249,
+        72
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "AdminOnly",
+      "msg": "Only the admin can call this instruction."
+    },
+    {
+      "code": 6001,
+      "name": "ProfileOwnerMismatch",
+      "msg": "Profile owner does not match the signer."
+    },
+    {
+      "code": 6002,
+      "name": "SlugTooLong",
+      "msg": "Game slug exceeds the maximum length."
+    },
+    {
+      "code": 6003,
+      "name": "NameTooLong",
+      "msg": "Game display name exceeds the maximum length."
+    },
+    {
+      "code": 6004,
+      "name": "InvalidGameId",
+      "msg": "Game ID must be > 0 and match config.next_game_id."
+    },
+    {
+      "code": 6005,
+      "name": "GameIdMismatch",
+      "msg": "Game ID does not match the expected next_game_id."
+    },
+    {
+      "code": 6006,
+      "name": "GameIdOverflow",
+      "msg": "Game ID counter overflowed u8."
+    },
+    {
+      "code": 6007,
+      "name": "Overflow",
+      "msg": "Integer overflow."
+    },
+    {
+      "code": 6008,
+      "name": "InvalidAvatarSource",
+      "msg": "Invalid avatar source (must be 0..=3)."
+    },
+    {
+      "code": 6009,
+      "name": "InvalidCosmeticId",
+      "msg": "Invalid cosmetic ID (out of bitmap range)."
+    },
+    {
+      "code": 6010,
+      "name": "CosmeticNotOwned",
+      "msg": "Cosmetic not owned by this player."
+    },
+    {
+      "code": 6011,
+      "name": "VariantTooLong",
+      "msg": "Variant field too long."
+    },
+    {
+      "code": 6012,
+      "name": "MetaTooLong",
+      "msg": "Meta field too long."
+    },
+    {
+      "code": 6013,
+      "name": "MemoTooLong",
+      "msg": "GPX5 memo exceeds MAX_MEMO_LEN."
+    },
+    {
+      "code": 6014,
+      "name": "InvalidDuration",
+      "msg": "Session duration must be > 0."
+    },
+    {
+      "code": 6015,
+      "name": "InvalidPaymentCategory",
+      "msg": "Invalid payment category (must be 0..=3)."
+    },
+    {
+      "code": 6016,
+      "name": "PaymentBelowMin",
+      "msg": "Payment amount below minimum ($0.01 / 10_000 micro-USD)."
+    },
+    {
+      "code": 6017,
+      "name": "PaymentAboveMax",
+      "msg": "Payment amount above maximum ($100 / 100_000_000 micro-USD)."
+    },
+    {
+      "code": 6018,
+      "name": "SelfReferralNotAllowed",
+      "msg": "Self-referral is not allowed."
+    },
+    {
+      "code": 6019,
+      "name": "ReferrerProfileRequired",
+      "msg": "Referrer must have an open PlayerProfile — referrer_profile account missing."
+    },
+    {
+      "code": 6020,
+      "name": "ReferrerProfileMismatch",
+      "msg": "Passed referrer_profile does not match the expected referrer wallet."
+    },
+    {
+      "code": 6021,
+      "name": "ExternalRefTooLong",
+      "msg": "external_ref string exceeds MAX_EXTERNAL_REF_LEN."
+    },
+    {
+      "code": 6022,
+      "name": "VerifiedRefRequired",
+      "msg": "VERIFIED payment must include an external_ref or be paired with commit_session_replay."
+    },
+    {
+      "code": 6023,
+      "name": "InvalidScoreCommitAmount",
+      "msg": "ScoreCommit amount must be exactly SCORE_COMMIT_MICRO_USD ($0.05)."
+    },
+    {
+      "code": 6024,
+      "name": "InvalidVerifiedAmount",
+      "msg": "VERIFIED commit amount must be exactly VERIFIED_COMMIT_MICRO_USD ($0.15)."
+    },
+    {
+      "code": 6025,
+      "name": "InvalidReplayReceiptAmount",
+      "msg": "ReplayReceipt mint amount must be exactly REPLAY_RECEIPT_MICRO_USD ($0.25)."
+    },
+    {
+      "code": 6026,
+      "name": "InvalidCnftWrapAmount",
+      "msg": "cNFT wrap amount must be exactly CNFT_WRAP_MICRO_USD ($0.50)."
+    },
+    {
+      "code": 6027,
+      "name": "NotReceiptOwner",
+      "msg": "Only the current receipt owner can call this instruction."
+    },
+    {
+      "code": 6028,
+      "name": "ReceiptWrappedAsCnft",
+      "msg": "Receipt is wrapped as a cNFT — unwrap first before closing."
+    },
+    {
+      "code": 6029,
+      "name": "InvalidScore",
+      "msg": "Score must be > 0."
+    },
+    {
+      "code": 6030,
+      "name": "InvalidNewOwner",
+      "msg": "new_owner cannot be the default (zero) pubkey."
+    },
+    {
+      "code": 6031,
+      "name": "MoveLogEmpty",
+      "msg": "Move log is empty."
+    },
+    {
+      "code": 6032,
+      "name": "MoveLogTooLong",
+      "msg": "Move log exceeds MAX_MOVE_LOG_BYTES (400)."
+    }
+  ],
+  "types": [
+    {
+      "name": "AffiliateAccrued",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "player",
+            "type": "pubkey"
+          },
+          {
+            "name": "referrer",
+            "type": "pubkey"
+          },
+          {
+            "name": "game_id",
+            "type": "u8"
+          },
+          {
+            "name": "cut_micro_usd",
+            "type": "u64"
+          },
+          {
+            "name": "gamer_paid",
+            "type": "bool"
+          },
+          {
+            "name": "payments_remaining",
+            "type": "u8"
+          },
+          {
+            "name": "expires_at",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AffiliateAttributed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "player",
+            "type": "pubkey"
+          },
+          {
+            "name": "referrer",
+            "type": "pubkey"
+          },
+          {
+            "name": "expires_at",
+            "type": "i64"
+          },
+          {
+            "name": "payments_allotted",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ArcadeConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "treasury_wallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "current_season",
+            "type": "u16"
+          },
+          {
+            "name": "next_game_id",
+            "type": "u8"
+          },
+          {
+            "name": "total_games_registered",
+            "type": "u32"
+          },
+          {
+            "name": "total_score_commits",
+            "type": "u64"
+          },
+          {
+            "name": "total_profiles_opened",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ConfigInitialized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "treasury_wallet",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Game",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "game_id",
+            "type": "u8"
+          },
+          {
+            "name": "slug",
+            "type": "string"
+          },
+          {
+            "name": "display_name",
+            "type": "string"
+          },
+          {
+            "name": "total_sessions",
+            "type": "u64"
+          },
+          {
+            "name": "total_score_commits",
+            "type": "u64"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GameRegistered",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "game_id",
+            "type": "u8"
+          },
+          {
+            "name": "slug",
+            "type": "string"
+          },
+          {
+            "name": "display_name",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PaymentRecorded",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "game_id",
+            "type": "u8"
+          },
+          {
+            "name": "player",
+            "type": "pubkey"
+          },
+          {
+            "name": "category",
+            "type": "u8"
+          },
+          {
+            "name": "amount_micro_usd",
+            "type": "u64"
+          },
+          {
+            "name": "payment_tx_sig",
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          },
+          {
+            "name": "gamer_paid",
+            "type": "bool"
+          },
+          {
+            "name": "external_ref",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PlayerProfile",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "wallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "total_sessions",
+            "type": "u64"
+          },
+          {
+            "name": "total_score_commits",
+            "type": "u64"
+          },
+          {
+            "name": "total_spent_usdc_micro",
+            "type": "u64"
+          },
+          {
+            "name": "total_spent_gamer_micro",
+            "type": "u64"
+          },
+          {
+            "name": "total_gamer_earned",
+            "type": "u64"
+          },
+          {
+            "name": "favorite_game_id",
+            "type": "u8"
+          },
+          {
+            "name": "vip_stake_amount",
+            "type": "u64"
+          },
+          {
+            "name": "cosmetics_owned",
+            "type": {
+              "array": [
+                "u32",
+                16
+              ]
+            }
+          },
+          {
+            "name": "avatar_source",
+            "type": "u8"
+          },
+          {
+            "name": "nft_pfp_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "cosmetic_avatar_id",
+            "type": "u16"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "referrer",
+            "docs": [
+              "Who referred this player via a challenge link. Pubkey::default() if",
+              "none. Set once at open_player_profile; NEVER changed afterward."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "referrer_expires_at",
+            "docs": [
+              "Unix seconds when the affiliate tail window expires."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "referrer_payments_remaining",
+            "docs": [
+              "How many more payments still accrue to the referrer (decrements)."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "total_referred_payouts_micro",
+            "docs": [
+              "Cumulative micro-USD this player has generated as affiliate payouts",
+              "to the referrer (lifetime, monotonic, audit trail)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "affiliate_earned_accrued_micro",
+            "docs": [
+              "Accrued but unclaimed affiliate earnings (in micro-USD). Grows with",
+              "every referred player's payment while their tail is active. Unclaimed",
+              "until Phase 2 `claim_affiliate_payout` ships; can be audited via",
+              "AffiliateAccrued events in the meantime."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "affiliate_earned_lifetime_micro",
+            "docs": [
+              "Lifetime total earned via affiliate (for display + audit)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "affiliate_referred_payers",
+            "docs": [
+              "Count of distinct referred players who've ever paid something."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProfileOpened",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "wallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "referrer",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ReplayReceipt",
+      "docs": [
+        "ReplayReceipt — user-owned, transferable certificate of a completed run.",
+        "",
+        "Key invariants (baked into the program — not mutable by any instruction):",
+        "- `original_player` is stamped at mint time and NEVER modified.",
+        "Even if the receipt is sold or transferred, the original player",
+        "attribution stays in history forever (same model as NBA Top Shot,",
+        "CryptoPunks: creator is immutable, owner is transferable).",
+        "- `owner` starts equal to `original_player` and can only be changed",
+        "via the explicit `transfer_replay_receipt` instruction, which",
+        "requires the current owner's signature.",
+        "- Leaderboards ALWAYS key on `original_player`, never on `owner`.",
+        "This prevents pay-to-win on leaderboards via receipt purchases.",
+        "",
+        "The canonical replay data (move log) lives permanently as a GPX5R memo",
+        "in Solana tx history; this PDA is a transferable pointer to it."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "original_player",
+            "type": "pubkey"
+          },
+          {
+            "name": "game_id",
+            "type": "u8"
+          },
+          {
+            "name": "score",
+            "type": "u64"
+          },
+          {
+            "name": "continues_used",
+            "type": "u8"
+          },
+          {
+            "name": "powerups_used",
+            "type": "u8"
+          },
+          {
+            "name": "session_seed",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "move_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "duration_sec",
+            "type": "u32"
+          },
+          {
+            "name": "gpx5r_memo_tx",
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          },
+          {
+            "name": "minted_at",
+            "type": "i64"
+          },
+          {
+            "name": "season",
+            "type": "u16"
+          },
+          {
+            "name": "nonce",
+            "type": "u64"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "cnft_wrapped",
+            "type": "bool"
+          },
+          {
+            "name": "cnft_asset_id",
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ReplayReceiptClosed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "original_player",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "nonce",
+            "type": "u64"
+          },
+          {
+            "name": "game_id",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ReplayReceiptMinted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "original_player",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "game_id",
+            "type": "u8"
+          },
+          {
+            "name": "score",
+            "type": "u64"
+          },
+          {
+            "name": "nonce",
+            "type": "u64"
+          },
+          {
+            "name": "gpx5r_memo_tx",
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ReplayReceiptTransferred",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "original_player",
+            "type": "pubkey"
+          },
+          {
+            "name": "prev_owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "new_owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "nonce",
+            "type": "u64"
+          },
+          {
+            "name": "game_id",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ScoreSubmitted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "game_id",
+            "type": "u8"
+          },
+          {
+            "name": "player",
+            "type": "pubkey"
+          },
+          {
+            "name": "score",
+            "type": "u64"
+          },
+          {
+            "name": "continues_used",
+            "type": "u8"
+          },
+          {
+            "name": "powerups_used",
+            "type": "u8"
+          },
+          {
+            "name": "duration_sec",
+            "type": "u32"
+          },
+          {
+            "name": "season",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SeasonRotated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "new_season",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SessionReplayCommitted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "player",
+            "type": "pubkey"
+          },
+          {
+            "name": "score_nonce",
+            "type": "u64"
+          },
+          {
+            "name": "move_log_bytes",
+            "type": "u16"
+          }
+        ]
+      }
+    }
+  ]
+}

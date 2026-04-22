@@ -8,6 +8,7 @@ const InterstellarSymphony = dynamic(() => import("../components/InterstellarSym
   loading: () => null,
 });
 const Chess3DBoard = dynamic(() => import("./play/magic-chess/Chess3DBoard"), { ssr: false });
+const OnchainPreview = dynamic(() => import("./_components/OnchainPreview"), { ssr: false });
 
 // ─── Agent Roster ───────────────────────────────────────────────────────────
 const AGENTS = [
@@ -42,6 +43,33 @@ function pickTwo(): [Agent, Agent] {
   return [s[0], s[1]];
 }
 
+// localStorage cache helpers — keep the home page feeling instant on repeat visits.
+// Writes cache every successful fetch; reads once on mount so first paint shows
+// prior data, then background polling swaps in fresh numbers silently.
+const CACHE_KEY_HOME = "gp.home.v1";
+interface HomeCache {
+  at: number;
+  matches: any[];
+  leaderboard: any[];
+  agents: any[];
+  liveGames: any[];
+}
+function readHomeCache(): HomeCache | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(CACHE_KEY_HOME);
+    return raw ? (JSON.parse(raw) as HomeCache) : null;
+  } catch {
+    return null;
+  }
+}
+function writeHomeCache(c: HomeCache) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(CACHE_KEY_HOME, JSON.stringify(c));
+  } catch {}
+}
+
 // ─── Component ──────────────────────────────────────────────────────────────
 export default function Home() {
   const [mounted, setMounted] = useState(false);
@@ -53,37 +81,71 @@ export default function Home() {
   const [selectedGame, setSelectedGame] = useState<string | null>(null);
   const [agentLeaderboard, setAgentLeaderboard] = useState<any[]>([]);
 
+  // Instant hydration from localStorage on first mount — before any network call.
+  useEffect(() => {
+    const c = readHomeCache();
+    if (!c) return;
+    if (c.matches) setRealMatches(c.matches);
+    if (c.leaderboard) setRealLeaderboard(c.leaderboard);
+    if (c.agents) setAgentLeaderboard(c.agents);
+    if (c.liveGames) {
+      setLiveGames(c.liveGames);
+      if (c.liveGames.length > 0) setSelectedGame(c.liveGames[0].gamePda);
+    }
+  }, []);
+
   // Fetch real stats + feed + leaderboard from resolver
   const RESOLVER = process.env.NEXT_PUBLIC_RESOLVER_URL || "https://resolver.gamerplex.com";
   useEffect(() => {
-    const fetchAll = () => {
-      fetch(`${RESOLVER}/feed`).then(r => r.json()).then(data => {
-        if (data.ok) setRealMatches(data.matches || []);
-      }).catch(() => {});
-
-      fetch(`${RESOLVER}/leaderboard/chess`).then(r => r.json()).then(data => {
-        if (data.ok) setRealLeaderboard(data.players || []);
-      }).catch(() => {});
-
-      fetch(`${RESOLVER}/rankings/agents`).then(r => r.json()).then(data => {
-        if (data.ok) setAgentLeaderboard(data.agents || []);
-      }).catch(() => {});
+    let matchesRef = realMatches;
+    let lbRef = realLeaderboard;
+    let agentsRef = agentLeaderboard;
+    let liveRef = liveGames;
+    const fetchAll = async () => {
+      const results = await Promise.allSettled([
+        fetch(`${RESOLVER}/feed`).then(r => r.json()),
+        fetch(`${RESOLVER}/leaderboard/chess`).then(r => r.json()),
+        fetch(`${RESOLVER}/rankings/agents`).then(r => r.json()),
+      ]);
+      const [feedRes, lbRes, agentsRes] = results;
+      if (feedRes.status === "fulfilled" && feedRes.value?.ok) {
+        matchesRef = feedRes.value.matches || [];
+        setRealMatches(matchesRef);
+      }
+      if (lbRes.status === "fulfilled" && lbRes.value?.ok) {
+        lbRef = lbRes.value.players || [];
+        setRealLeaderboard(lbRef);
+      }
+      if (agentsRes.status === "fulfilled" && agentsRes.value?.ok) {
+        agentsRef = agentsRes.value.agents || [];
+        setAgentLeaderboard(agentsRef);
+      }
+      writeHomeCache({ at: Date.now(), matches: matchesRef, leaderboard: lbRef, agents: agentsRef, liveGames: liveRef });
     };
     fetchAll();
     const interval = setInterval(fetchAll, 5000);
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Poll live games every 2s
+  // Poll live games every 2s — also refreshes cache so next visit paints instantly.
   useEffect(() => {
     const fetchLive = () => {
       fetch(`${RESOLVER}/game-pool/live`).then(r => r.json()).then(data => {
         if (data.ok) {
-          setLiveGames(data.games || []);
-          // Auto-select first game on load
-          if (data.games?.length > 0 && !selectedGame) {
-            setSelectedGame(data.games[0].gamePda);
+          const games = data.games || [];
+          setLiveGames(games);
+          if (games.length > 0 && !selectedGame) {
+            setSelectedGame(games[0].gamePda);
           }
+          const existing = readHomeCache();
+          writeHomeCache({
+            at: Date.now(),
+            matches: existing?.matches || [],
+            leaderboard: existing?.leaderboard || [],
+            agents: existing?.agents || [],
+            liveGames: games,
+          });
         }
       }).catch(() => {});
     };
@@ -106,9 +168,11 @@ export default function Home() {
         </div>
         <div className="nav-links">
           <a href="#arena">Arena</a>
-          <a href="/games">Arcade</a>
+          <a href="/arcade">Arcade</a>
+          <a href="/games">Tournaments</a>
           <a href="/leaderboard">Leaderboard</a>
           <a href="/activity">Activity</a>
+          <a href="/profile">Profile</a>
           <a href="/docs">Docs</a>
           <a href="https://x.com/gamerplex_com" target="_blank" title="@gamerplex_com" style={{display:"flex",alignItems:"center"}}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
@@ -235,6 +299,9 @@ export default function Home() {
           </div>
         )}
       </section>
+
+      {/* LIVE ON-CHAIN PREVIEW — hydrates from localStorage instantly */}
+      <OnchainPreview />
 
       {/* LEADERBOARDS — dedicated section */}
       <section className="arena-section" style={{paddingTop:30, paddingBottom:30}}>
