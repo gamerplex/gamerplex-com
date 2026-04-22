@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import ArcadeStats from "./_components/ArcadeStats";
 
 // Arcade landing — first-party solo games, F2P, microtransactions for
 // continues + powerups + score commits. Full spec: ENGINEERING/PRODUCT/GAMERPLEX_ARCADE.md
@@ -81,9 +82,10 @@ export default function ArcadePage() {
         <p style={{ fontSize: 17, color: "#a8a8c0", maxWidth: 720, margin: "14px 0 8px", lineHeight: 1.55 }}>
           Free-to-play solo arcade games on Solana mainnet. Climb on-chain leaderboards. Pay for continues if you want to keep going. Leaderboard glory is cosmetic, not cash — and 1CC (zero-continues) runs are gold-badged.
         </p>
-        <p style={{ fontSize: 13, color: "#6a6a80", margin: "0 0 38px", lineHeight: 1.55 }}>
+        <p style={{ fontSize: 13, color: "#6a6a80", margin: "0 0 16px", lineHeight: 1.55 }}>
           The viral acquisition layer that validates the stack and powers Tournaments + $GAMER flywheels.
         </p>
+        <ArcadeStats />
 
         {/* Games grid */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 14 }}>
