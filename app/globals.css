@@ -740,4 +740,16 @@ html, body {
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch;
   }
+
+  /* /activity — match + prediction + match-history tables have inline
+     grid-template with fixed px columns. Wrapper has `overflow: hidden`
+     which clips the grid; flip to horizontal scroll on narrow screens. */
+  div[style*="borderRadius: 14"][style*="overflow: \"hidden\""]:has(> div[style*="gridTemplateColumns"][style*="fr"][style*="px"]) {
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  div[style*="borderRadius: 14"] > div[style*="display: \"grid\""][style*="gridTemplateColumns"] {
+    min-width: 560px;
+  }
 }

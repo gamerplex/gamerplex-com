@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { SiteNav } from "../../components/SiteNav";
 
 const RESOLVER =
   process.env.NEXT_PUBLIC_RESOLVER_URL || "https://resolver.gamerplex.com";
@@ -231,6 +232,7 @@ export default function LeaderboardPage() {
           alignItems: "center",
           padding: "14px 24px",
           borderBottom: "1px solid #252540",
+          position: "relative",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -252,58 +254,17 @@ export default function LeaderboardPage() {
           </Link>
           <span className="devnet-badge">Devnet</span>
         </div>
-        <div
-          style={{
-            display: "flex",
-            gap: 18,
-            alignItems: "center",
-            fontSize: 13,
-          }}
-        >
-          <Link href="/" style={{ color: "#8a8aa0", textDecoration: "none" }}>
-            Arena
-          </Link>
-          <Link
-            href="/arcade"
-            style={{ color: "#8a8aa0", textDecoration: "none" }}
-          >
-            Arcade
-          </Link>
-          <Link
-            href="/games"
-            style={{ color: "#8a8aa0", textDecoration: "none" }}
-          >
-            Tournaments
-          </Link>
-          <Link
-            href="/leaderboard"
-            style={{
-              color: "#c99aff",
-              textDecoration: "none",
-              fontWeight: 700,
-            }}
-          >
-            Leaderboard
-          </Link>
-          <Link
-            href="/activity"
-            style={{ color: "#8a8aa0", textDecoration: "none" }}
-          >
-            Activity
-          </Link>
-          <Link
-            href="/profile"
-            style={{ color: "#8a8aa0", textDecoration: "none" }}
-          >
-            Profile
-          </Link>
-          <Link
-            href="/docs"
-            style={{ color: "#8a8aa0", textDecoration: "none" }}
-          >
-            Docs
-          </Link>
-        </div>
+        <SiteNav
+          links={[
+            { href: "/", label: "Arena" },
+            { href: "/arcade", label: "Arcade" },
+            { href: "/games", label: "Tournaments" },
+            { href: "/leaderboard", label: "Leaderboard", active: true },
+            { href: "/activity", label: "Activity" },
+            { href: "/profile", label: "Profile" },
+            { href: "/docs", label: "Docs" },
+          ]}
+        />
       </div>
 
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "32px 24px" }}>

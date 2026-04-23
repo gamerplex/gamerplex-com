@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { SiteNav } from "../../components/SiteNav";
 
 const SECTIONS = [
   { id: "intro", label: "What is Gamerplex?", group: "Overview" },
@@ -64,16 +65,16 @@ export default function DocsPage() {
           }}>GAMERPLEX</Link>
           <span className="devnet-badge">Devnet</span>
         </div>
-        <div style={{ display: "flex", gap: 14, fontSize: 13, alignItems: "center" }}>
-          <Link href="/" style={{ color: "#555", textDecoration: "none" }}>Arena</Link>
-          <Link href="/games" style={{ color: "#555", textDecoration: "none" }}>Arcade</Link>
-          <Link href="/leaderboard" style={{ color: "#555", textDecoration: "none" }}>Leaderboard</Link>
-          <Link href="/activity" style={{ color: "#555", textDecoration: "none" }}>Activity</Link>
-          <Link href="/docs" style={{ color: "#9945FF", textDecoration: "none", fontWeight: 600 }}>Docs</Link>
-          <a href="https://x.com/gamerplex_com" target="_blank" rel="noopener noreferrer" style={{ color: "#555", display: "flex" }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
-          </a>
-        </div>
+        <SiteNav
+          links={[
+            { href: "/", label: "Arena" },
+            { href: "/games", label: "Arcade" },
+            { href: "/leaderboard", label: "Leaderboard" },
+            { href: "/activity", label: "Activity" },
+            { href: "/docs", label: "Docs", active: true },
+            { href: "https://x.com/gamerplex_com", label: "𝕏", external: true },
+          ]}
+        />
       </div>
 
       <div style={{ display: "flex", maxWidth: 1200, margin: "0 auto" }}>

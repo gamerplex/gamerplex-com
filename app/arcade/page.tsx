@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import ArcadeStats from "./_components/ArcadeStats";
+import { SiteNav } from "../../components/SiteNav";
 
 // Arcade landing — first-party solo games, F2P, microtransactions for
 // continues + powerups + score commits. Full spec: ENGINEERING/PRODUCT/GAMERPLEX_ARCADE.md
@@ -59,19 +60,21 @@ export default function ArcadePage() {
   return (
     <div style={{ minHeight: "100vh", background: "#050508", color: "#e8e8f0", fontFamily: "'Space Grotesk', sans-serif" }}>
       {/* Header */}
-      <div style={{ padding: "14px 24px", borderBottom: "1px solid #252540", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ padding: "14px 24px", borderBottom: "1px solid #252540", display: "flex", justifyContent: "space-between", alignItems: "center", position: "relative" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <Link href="/" style={{ textDecoration: "none", fontSize: 24, fontWeight: 900, fontStyle: "italic", background: "linear-gradient(135deg, #9945FF, #14F195)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", paddingRight: 8 }}>GAMERPLEX</Link>
           <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 4, background: "rgba(79,195,247,0.15)", border: "1px solid rgba(79,195,247,0.4)", color: "#4fc3f7", letterSpacing: 1, textTransform: "uppercase" }}>Arcade</span>
         </div>
-        <div style={{ display: "flex", gap: 18, fontSize: 13 }}>
-          <Link href="/" style={{ color: "#8a8aa0", textDecoration: "none" }}>Arena</Link>
-          <Link href="/arcade" style={{ color: "#c99aff", textDecoration: "none", fontWeight: 700 }}>Arcade</Link>
-          <Link href="/games" style={{ color: "#8a8aa0", textDecoration: "none" }}>Tournaments</Link>
-          <Link href="/leaderboard" style={{ color: "#8a8aa0", textDecoration: "none" }}>Leaderboard</Link>
-          <Link href="/activity" style={{ color: "#8a8aa0", textDecoration: "none" }}>Activity</Link>
-          <Link href="/docs" style={{ color: "#8a8aa0", textDecoration: "none" }}>Docs</Link>
-        </div>
+        <SiteNav
+          links={[
+            { href: "/", label: "Arena" },
+            { href: "/arcade", label: "Arcade", active: true },
+            { href: "/games", label: "Tournaments" },
+            { href: "/leaderboard", label: "Leaderboard" },
+            { href: "/activity", label: "Activity" },
+            { href: "/docs", label: "Docs" },
+          ]}
+        />
       </div>
 
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "48px 24px 64px" }}>
