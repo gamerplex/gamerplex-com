@@ -266,6 +266,13 @@ export default function CyberSnake3DScene({ state, view }: Props) {
     const instancedP2 = new THREE.InstancedMesh(bodyGeom, bodyMatP2, MAX_LEN);
     instancedP1.count = 0;
     instancedP2.count = 0;
+    // InstancedMesh frustum culling uses a bounding sphere computed from the
+    // *base* geometry, centred at origin. As instances spread across the grid
+    // the sphere doesn't follow, so Three.js culls the whole mesh when the
+    // origin-centred sphere drifts out of frame — tail disappears in TPS. Turn
+    // culling off; we've only got ~30 instances total, no perf hit.
+    instancedP1.frustumCulled = false;
+    instancedP2.frustumCulled = false;
     scene.add(instancedP1);
     scene.add(instancedP2);
 
@@ -350,9 +357,11 @@ export default function CyberSnake3DScene({ state, view }: Props) {
     // a cross-file import for one constant.
     const TICK_SEC = 0.140;
 
-    // easeOutCubic — gives the snake a tiny bit of "snap" at the end of each
-    // tick rather than perfectly linear sliding. Feels more like the arcade.
-    const easeProgress = (t: number) => 1 - Math.pow(1 - t, 3);
+    // Linear progression across the tick — constant optical flow, which is
+    // what the inner ear expects for immersive cameras. Eased curves
+    // (ease-out-cubic etc.) subtly decelerate at tick boundaries and feel
+    // "spastic" in FPS where the camera IS the motion reference.
+    const easeProgress = (t: number) => t;
 
     /** Render a body (InstancedMesh) interpolated between prev-tick and
      *  curr-tick cell positions. Returns the rendered HEAD world XZ so the
@@ -514,10 +523,13 @@ export default function CyberSnake3DScene({ state, view }: Props) {
           ctx.camInitialised = true;
         }
 
-        // Direction lerp: 200ms target — closes ~80% of a 90° turn in
-        // ~200ms, fully in ~350ms. Player sees an arc instead of a snap,
-        // keeps orientation through the turn.
-        const alphaDir = 1 - Math.exp(-dt / 0.14);
+        // Direction lerp: TPS gets a visible arc (~200-300ms) because the
+        // player can see the snake move, so lag is actually pleasant. FPS
+        // must feel tight — the camera IS the player's orientation, so a
+        // long lag between turn-input and view-rotation is disorienting
+        // ("spastic"). Use a crisp 60ms tau in FPS.
+        const dirTau = isTps ? 0.14 : 0.06;
+        const alphaDir = 1 - Math.exp(-dt / dirTau);
         ctx.camDir.lerp(tgtDir, alphaDir);
         const dirLen = ctx.camDir.length();
         if (dirLen > 0.001) ctx.camDir.multiplyScalar(1 / dirLen);
