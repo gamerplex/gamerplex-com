@@ -18,6 +18,7 @@ import {
   Transaction,
   TransactionInstruction,
   SystemProgram,
+  SYSVAR_INSTRUCTIONS_PUBKEY,
 } from "@solana/web3.js";
 import {
   getAssociatedTokenAddressSync,
@@ -57,6 +58,13 @@ export const SPL_MEMO_ID = new PublicKey(
   "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"
 );
 
+// Max admin-ix deadline (7 days) — must match MAX_DEADLINE_FUTURE_SEC on chain.
+export const MAX_ADMIN_DEADLINE_SEC = 7 * 86_400;
+// Helper: compute a deadline N seconds in the future for admin txs.
+export function adminDeadline(secondsFromNow: number = 3600): BN {
+  return new BN(Math.floor(Date.now() / 1000) + secondsFromNow);
+}
+
 export const CYBER_SNAKE_GAME_ID = 1;
 
 // Category codes matching on-chain CATEGORY_*.
@@ -83,6 +91,12 @@ export const CONTINUE_BASE_MICRO_USD = 50_000;     // $0.05 × 2ⁿ exponential
 // ───── PDA derivation ─────────────────────────────────────────────────
 export function configPda(): [PublicKey, number] {
   return PublicKey.findProgramAddressSync([Buffer.from("config")], ARCADE_PROGRAM_ID);
+}
+export function stablecoinConfigPda(): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from("stablecoins")],
+    ARCADE_PROGRAM_ID
+  );
 }
 export function gamePda(gameId: number): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
@@ -138,17 +152,16 @@ export async function buildOpenProfileIx(
 ): Promise<TransactionInstruction> {
   const [cfg] = configPda();
   const [profile] = profilePda(player);
+  const refProfile = referrer.equals(PublicKey.default)
+    ? null
+    : profilePda(referrer)[0];
   const accounts: any = {
     config: cfg,
     profile,
+    referrerProfile: refProfile,
     player,
     systemProgram: SystemProgram.programId,
   };
-  // referrer_profile is only needed if referrer != default
-  if (!referrer.equals(PublicKey.default)) {
-    const [refPda] = profilePda(referrer);
-    accounts.referrerProfile = refPda;
-  }
   return await program.methods
     .openPlayerProfile(referrer)
     .accounts(accounts)
@@ -197,7 +210,9 @@ export async function buildSubmitScoreIx(
     .instruction();
 }
 
-/** Record a payment tied to a specific category (continue, powerup, VERIFIED commit, etc.). */
+/** Record a payment tied to a specific category (continue, powerup, VERIFIED commit, etc.).
+ *  v1.2 hardening: now requires config + stablecoin_config + instructions_sysvar
+ *  so the contract can introspect for the matching SPL TransferChecked. */
 export async function buildRecordPaymentIx(
   program: Program,
   player: PublicKey,
@@ -210,17 +225,22 @@ export async function buildRecordPaymentIx(
     referrerProfile?: PublicKey; // only if player has an active referrer
   }
 ): Promise<TransactionInstruction> {
+  const [cfg] = configPda();
+  const [stablecoinConfig] = stablecoinConfigPda();
   const [game] = gamePda(CYBER_SNAKE_GAME_ID);
   const [profile] = profilePda(player);
   const accounts: any = {
+    config: cfg,
+    stablecoinConfig,
     game,
     profile,
     wallet: player,
+    // Anchor's TS client requires Optional accounts to be passed explicitly —
+    // `null` means "not present", a PublicKey means "here's the referrer".
+    referrerProfile: params.referrerProfile ?? null,
     player,
+    instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
   };
-  if (params.referrerProfile) {
-    accounts.referrerProfile = params.referrerProfile;
-  }
   return await program.methods
     .recordPayment(
       params.category,
@@ -233,7 +253,9 @@ export async function buildRecordPaymentIx(
     .instruction();
 }
 
-/** Commit a full session move log on-chain. Triggers 🏆 VERIFIED badge. */
+/** Commit a full session move log on-chain. Triggers 🏆 VERIFIED badge.
+ *  v1.2 hardening: adds instructions_sysvar so the contract can confirm a
+ *  paid record_payment(VERIFIED) is bundled in the same tx. */
 export async function buildCommitReplayIx(
   program: Program,
   player: PublicKey,
@@ -252,6 +274,58 @@ export async function buildCommitReplayIx(
     .accounts({
       player,
       memoProgram: SPL_MEMO_ID,
+      instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
+    })
+    .instruction();
+}
+
+// ───── Admin builders (one-time bootstrap + updates) ──────────────────
+
+/** Admin bootstrap: open the StablecoinConfig PDA with the initial allowlist.
+ *  Call once per deployment. Idempotent is not supported — will fail if PDA
+ *  already exists (use buildUpdateStablecoinsIx to modify). */
+export async function buildInitStablecoinsIx(
+  program: Program,
+  admin: PublicKey,
+  mints: PublicKey[]
+): Promise<TransactionInstruction> {
+  const [cfg] = configPda();
+  const [sc] = stablecoinConfigPda();
+  // Pad to 8 slots with PublicKey.default.
+  const padded: PublicKey[] = [];
+  for (let i = 0; i < 8; i++) {
+    padded.push(i < mints.length ? mints[i] : PublicKey.default);
+  }
+  return await program.methods
+    .initializeStablecoins(padded)
+    .accounts({
+      config: cfg,
+      stablecoinConfig: sc,
+      admin,
+      systemProgram: SystemProgram.programId,
+    })
+    .instruction();
+}
+
+/** Admin: update the accepted stablecoin allowlist. Deadline-gated. */
+export async function buildUpdateStablecoinsIx(
+  program: Program,
+  admin: PublicKey,
+  mints: PublicKey[],
+  deadline: BN
+): Promise<TransactionInstruction> {
+  const [cfg] = configPda();
+  const [sc] = stablecoinConfigPda();
+  const padded: PublicKey[] = [];
+  for (let i = 0; i < 8; i++) {
+    padded.push(i < mints.length ? mints[i] : PublicKey.default);
+  }
+  return await program.methods
+    .updateAcceptedStablecoins(padded, deadline)
+    .accounts({
+      config: cfg,
+      stablecoinConfig: sc,
+      admin,
     })
     .instruction();
 }
@@ -375,6 +449,7 @@ export async function buildMintReceiptIx(
       receipt,
       player,
       systemProgram: SystemProgram.programId,
+      instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
     })
     .instruction();
 }

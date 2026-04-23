@@ -84,6 +84,13 @@
         {
           "name": "memo_program",
           "address": "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"
+        },
+        {
+          "name": "instructions_sysvar",
+          "docs": [
+            "record_payment(VERIFIED_COMMIT)."
+          ],
+          "address": "Sysvar1nstructions1111111111111111111111111"
         }
       ],
       "args": [
@@ -156,6 +163,99 @@
         {
           "name": "treasury_wallet",
           "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "initialize_stablecoins",
+      "docs": [
+        "One-time init of the StablecoinConfig PDA. Admin passes the initial",
+        "allowlist of accepted stablecoin mints. Up to MAX_STABLECOIN_SLOTS = 8",
+        "slots; unused slots set to `Pubkey::default()`.",
+        "",
+        "Typical bootstrap:",
+        "Devnet:  [USDC_DEVNET,  default, default, ...]",
+        "Mainnet: [USDC_MAINNET, default, default, ...]",
+        "Additional stablecoins added later via update_accepted_stablecoins."
+      ],
+      "discriminator": [
+        219,
+        26,
+        189,
+        116,
+        146,
+        30,
+        54,
+        54
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "docs": [
+            "Admin must match ArcadeConfig.admin. has_one enforces this."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "stablecoin_config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  98,
+                  108,
+                  101,
+                  99,
+                  111,
+                  105,
+                  110,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "mints",
+          "type": {
+            "array": [
+              "pubkey",
+              8
+            ]
+          }
         }
       ]
     },
@@ -239,6 +339,13 @@
         {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "instructions_sysvar",
+          "docs": [
+            "record_payment(REPLAY_RECEIPT)."
+          ],
+          "address": "Sysvar1nstructions1111111111111111111111111"
         }
       ],
       "args": [
@@ -426,6 +533,47 @@
       ],
       "accounts": [
         {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "stablecoin_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  98,
+                  108,
+                  101,
+                  99,
+                  111,
+                  105,
+                  110,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "game"
         },
         {
@@ -494,6 +642,13 @@
         {
           "name": "player",
           "signer": true
+        },
+        {
+          "name": "instructions_sysvar",
+          "docs": [
+            "SPL TransferChecked. Address-constrained to the canonical sysvar id."
+          ],
+          "address": "Sysvar1nstructions1111111111111111111111111"
         }
       ],
       "args": [
@@ -590,6 +745,10 @@
         {
           "name": "display_name",
           "type": "string"
+        },
+        {
+          "name": "deadline",
+          "type": "i64"
         }
       ]
     },
@@ -633,7 +792,12 @@
           ]
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "deadline",
+          "type": "i64"
+        }
+      ]
     },
     {
       "name": "submit_score",
@@ -813,6 +977,92 @@
       ]
     },
     {
+      "name": "update_accepted_stablecoins",
+      "docs": [
+        "Update the accepted stablecoin allowlist. Admin-only, deadline-gated.",
+        "Overwrite semantics — pass the full desired array each time.",
+        "",
+        "Deadline prevents pre-signed admin txs being replayed weeks later.",
+        "Drift-Apr-1 class of attack."
+      ],
+      "discriminator": [
+        236,
+        126,
+        175,
+        109,
+        156,
+        226,
+        14,
+        60
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "stablecoin_config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  98,
+                  108,
+                  101,
+                  99,
+                  111,
+                  105,
+                  110,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "mints",
+          "type": {
+            "array": [
+              "pubkey",
+              8
+            ]
+          }
+        },
+        {
+          "name": "deadline",
+          "type": "i64"
+        }
+      ]
+    },
+    {
       "name": "update_avatar",
       "docs": [
         "Update avatar source preference. Fully off-chain-resolvable:",
@@ -934,6 +1184,19 @@
         87,
         71,
         62
+      ]
+    },
+    {
+      "name": "StablecoinConfig",
+      "discriminator": [
+        127,
+        25,
+        244,
+        213,
+        1,
+        192,
+        101,
+        6
       ]
     }
   ],
@@ -1092,6 +1355,32 @@
         77,
         249,
         72
+      ]
+    },
+    {
+      "name": "StablecoinsInitialized",
+      "discriminator": [
+        45,
+        164,
+        89,
+        182,
+        45,
+        83,
+        91,
+        30
+      ]
+    },
+    {
+      "name": "StablecoinsUpdated",
+      "discriminator": [
+        85,
+        79,
+        241,
+        6,
+        152,
+        56,
+        169,
+        186
       ]
     }
   ],
@@ -1260,6 +1549,36 @@
       "code": 6032,
       "name": "MoveLogTooLong",
       "msg": "Move log exceeds MAX_MOVE_LOG_BYTES (400)."
+    },
+    {
+      "code": 6033,
+      "name": "PaymentTransferNotFound",
+      "msg": "No matching SPL TransferChecked of an accepted stablecoin to treasury found in tx."
+    },
+    {
+      "code": 6034,
+      "name": "RequiredPaymentMissing",
+      "msg": "Required record_payment of the expected category + amount was not bundled in the same tx."
+    },
+    {
+      "code": 6035,
+      "name": "DuplicateIxInTx",
+      "msg": "This instruction may appear at most once per tx."
+    },
+    {
+      "code": 6036,
+      "name": "InstructionExpired",
+      "msg": "Instruction deadline has expired."
+    },
+    {
+      "code": 6037,
+      "name": "DeadlineTooFar",
+      "msg": "Instruction deadline is too far in the future (> MAX_DEADLINE_FUTURE_SEC)."
+    },
+    {
+      "code": 6038,
+      "name": "GamerPaymentsDisabled",
+      "msg": "$GAMER-paid actions are not yet supported (v1.3)."
     }
   ],
   "types": [
@@ -1876,6 +2195,74 @@
           {
             "name": "move_log_bytes",
             "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "StablecoinConfig",
+      "docs": [
+        "Allowlist of stablecoin mints accepted for arcade payments. Stored in a",
+        "separate PDA (not ArcadeConfig) so the existing config's rent / layout is",
+        "undisturbed — avoids a painful realloc migration on the already-deployed",
+        "devnet account.",
+        "",
+        "Initialised once by the admin via `initialize_stablecoins`, updated via",
+        "`update_accepted_stablecoins` (deadline-gated). Empty slots = `Pubkey::default()`."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "mints",
+            "type": {
+              "array": [
+                "pubkey",
+                8
+              ]
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "StablecoinsInitialized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mints",
+            "type": {
+              "array": [
+                "pubkey",
+                8
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "StablecoinsUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mints",
+            "type": {
+              "array": [
+                "pubkey",
+                8
+              ]
+            }
           }
         ]
       }
