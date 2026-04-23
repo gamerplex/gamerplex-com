@@ -629,3 +629,115 @@ html, body {
   /* Games page feature card — smaller aspect */
   a[href="/play/chess"] div[style*="aspectRatio"] { aspect-ratio: 16/10 !important; }
 }
+
+/* ============================================================
+   Post-2026-04-23 mobile polish — targeted fixes for the four
+   pages flagged in the responsive audit (/arcade, /leaderboard,
+   /profile, /docs) plus cross-page nav crowding.
+   ============================================================ */
+
+/* /arcade — game grid was forcing horizontal scroll at minmax(280px). */
+@media (max-width: 600px) {
+  div[style*="minmax(280px"] { grid-template-columns: 1fr !important; gap: 12px !important; }
+}
+@media (min-width: 601px) and (max-width: 900px) {
+  div[style*="minmax(280px"] { grid-template-columns: repeat(2, 1fr) !important; }
+}
+
+/* Nav crowding — inline nav rows on all pages with many links. Target
+   both <nav> elements and the common <div style="display:flex;gap:N"> pattern.
+   Shrink gap + allow wrap so they flow instead of pushing the logo offscreen. */
+@media (max-width: 700px) {
+  nav[style*="display"][style*="flex"],
+  header nav,
+  div[style*="display"][style*="flex"][style*="gap: 14"][style*="fontSize: 13"],
+  div[style*="display"][style*="flex"][style*="gap: 16"][style*="fontSize: 13"],
+  div[style*="display"][style*="flex"][style*="gap: 18"][style*="fontSize: 13"],
+  div[style*="display"][style*="flex"][style*="gap: 14"][style*="fontSize: 12"],
+  div[style*="display"][style*="flex"][style*="gap: 16"][style*="fontSize: 12"],
+  div[style*="display"][style*="flex"][style*="gap: 18"][style*="fontSize: 12"] {
+    flex-wrap: wrap !important;
+    gap: 10px 12px !important;
+    font-size: 12px !important;
+    justify-content: flex-end !important;
+  }
+}
+@media (max-width: 480px) {
+  nav[style*="display"][style*="flex"],
+  header nav,
+  div[style*="display"][style*="flex"][style*="gap: 14"][style*="fontSize: 13"],
+  div[style*="display"][style*="flex"][style*="gap: 16"][style*="fontSize: 13"],
+  div[style*="display"][style*="flex"][style*="gap: 18"][style*="fontSize: 13"],
+  div[style*="display"][style*="flex"][style*="gap: 14"][style*="fontSize: 12"],
+  div[style*="display"][style*="flex"][style*="gap: 16"][style*="fontSize: 12"],
+  div[style*="display"][style*="flex"][style*="gap: 18"][style*="fontSize: 12"] {
+    flex-basis: 100% !important;
+    justify-content: flex-start !important;
+    font-size: 11px !important;
+    gap: 8px 10px !important;
+  }
+}
+
+/* /profile — receipt Transfer/Close buttons had ~24px tap targets. Bump to
+   accessible min on touch. Also slim down the 4-col stats grid on mobile. */
+@media (max-width: 600px) {
+  /* Stats grid: 4 → 2 cols below 600 */
+  div[style*="gridTemplateColumns: \"repeat(4, 1fr)\""],
+  div[style*="grid-template-columns: repeat(4, 1fr)"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  /* Best-scores + receipts tables — enable horizontal scroll if needed */
+  div[style*="gridTemplateColumns: \"1fr 80px 60px 60px 30px\""] {
+    font-size: 11px !important;
+  }
+  /* Bigger tap targets on profile receipt action buttons */
+  button[style*="padding: \"3px 10px\""],
+  button[style*="padding: \"4px 10px\""] {
+    padding: 8px 14px !important;
+    font-size: 11px !important;
+    min-height: 36px !important;
+  }
+}
+
+/* /docs — 240px fixed sidebar squeezes content to ~135px on 375px phone.
+   Stack layout using :has() selector to catch the docs flex parent. */
+@media (max-width: 768px) {
+  /* The docs page layout is `<div style="display: flex; max-width: 1200">`
+     wrapping an aside + main. :has() lets us find the parent by child. */
+  div:has(> aside[style*="width: 240"]) {
+    flex-direction: column !important;
+  }
+  aside[style*="width: 240"] {
+    width: 100% !important;
+    position: static !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    border-right: none !important;
+    border-bottom: 1px solid #252540 !important;
+    padding: 16px 14px !important;
+  }
+  /* Main content drops its huge desktop padding on mobile. */
+  main[style*="padding: \"48px 48px"] {
+    padding: 24px 16px 48px !important;
+  }
+  /* Sidebar nav buttons get real tap targets. */
+  aside[style*="width: 240"] button {
+    min-height: 38px !important;
+    font-size: 13px !important;
+  }
+}
+
+/* /leaderboard — 7-col grid was spilling ~620px on 390px phones. Enable
+   horizontal scroll on the table container as a safety net so columns stay
+   readable without truncating important data. Combined with existing
+   hide-columns rule at 480px this gives a two-tier fallback. */
+@media (max-width: 768px) {
+  div[style*="gridTemplateColumns"][style*="1.6fr"][style*="80px"][style*="90px"] {
+    min-width: 580px;
+  }
+  /* Wrap .leaderboard tables in horizontal scroll on narrow screens */
+  div[style*="borderRadius: 12"][style*="border: 1px solid #252540"]:has(> div[style*="gridTemplateColumns"][style*="1.6fr"]) {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+}
