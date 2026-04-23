@@ -12,9 +12,10 @@
 //   - Paid Continue ($0.05 × 2ⁿ) via Solana Pay USDC + record_payment
 //   - VERIFIED commit ($0.10) via commit_session_replay → 🏆 badge
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { BN } from "@coral-xyz/anchor";
+import { getSfx } from "../../../lib/arcade/sfx";
 import { PublicKey, Transaction } from "@solana/web3.js";
 import {
   useAnchorWallet,
@@ -315,10 +316,21 @@ function toSceneState(g: GameState) {
   };
 }
 
+// ── View mode ─────────────────────────────────────────────────────────
+type SnakeCamera = "top" | "tps-p1" | "fpv-p1";
+
 // ── Component ──────────────────────────────────────────────────────────
 export default function CyberSnakeSolo() {
-  const [view, setView] = useState<"top" | "fpv-p1">("top");
+  const [view, setView] = useState<SnakeCamera>("top");
   const [tick, setTick] = useState(0); // drives React re-renders
+  const sfx = useMemo(() => getSfx(), []);
+  const [muted, setMuted] = useState<boolean>(false);
+  useEffect(() => { setMuted(sfx.isMuted()); }, [sfx]);
+  const boardRef = useRef<HTMLDivElement>(null);
+  // Previous game status + score — lets us fire one-shot SFX on transitions.
+  const prevStatusRef = useRef<GameState["status"] | null>(null);
+  const prevScoreRef = useRef<number>(0);
+  const prevDirRef = useRef<number>(DIR_E);
   const [board, setBoard] = useState<LocalScore[]>([]);
   const gameRef = useRef<GameState | null>(null);
   const loopRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -361,11 +373,16 @@ export default function CyberSnakeSolo() {
   }, []);
 
   const startNewGame = useCallback(() => {
+    sfx.unlock();
+    sfx.start();
     gameRef.current = freshGame(generateSeed());
     savedRef.current = false;
+    prevStatusRef.current = "active";
+    prevScoreRef.current = 0;
+    prevDirRef.current = DIR_E;
     // Monotonic increment forces React to re-render even if tick was already 0.
     setTick((t) => t + 1);
-  }, []);
+  }, [sfx]);
 
   const resetSnakePosition = useCallback((g: GameState) => {
     g.body.fill(0);
@@ -674,28 +691,100 @@ export default function CyberSnakeSolo() {
     };
   }, []);
 
+  // Input — keyboard + touch swipe. Both pipe through the same direction
+  // queue so behaviour is identical.
+  const queueDir = useCallback((nextDir: number) => {
+    const g = gameRef.current;
+    if (!g || g.status !== "active") return;
+    if (nextDir !== opposite(g.dir) && nextDir !== g.queuedDir) {
+      g.queuedDir = nextDir;
+      sfx.turn();
+    }
+  }, [sfx]);
+
   // Keyboard input
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const g = gameRef.current;
-      if (!g || g.status !== "active") return;
       let nextDir: number | null = null;
       switch (e.key) {
         case "ArrowUp": case "w": case "W": nextDir = DIR_N; break;
         case "ArrowRight": case "d": case "D": nextDir = DIR_E; break;
         case "ArrowDown": case "s": case "S": nextDir = DIR_S; break;
         case "ArrowLeft": case "a": case "A": nextDir = DIR_W; break;
-        case "v": case "V": setView(view === "top" ? "fpv-p1" : "top"); break;
+        case "v": case "V": {
+          // Cycle views: top → tps-p1 → fpv-p1 → top
+          const next: SnakeCamera = view === "top" ? "tps-p1" : view === "tps-p1" ? "fpv-p1" : "top";
+          setView(next);
+          sfx.uiClick();
+          break;
+        }
+        case "m": case "M": {
+          // Mute toggle
+          const m = !sfx.isMuted();
+          sfx.setMuted(m);
+          setMuted(m);
+          break;
+        }
       }
       if (nextDir !== null) {
         e.preventDefault();
-        // anti-180 guard
-        if (nextDir !== opposite(g.dir)) g.queuedDir = nextDir;
+        queueDir(nextDir);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [view]);
+  }, [view, sfx, queueDir]);
+
+  // Touch swipe input — any swipe over the board threshold fires a dir change.
+  // Uses touchstart / touchend rather than live touchmove for crisp gestures.
+  useEffect(() => {
+    const el = boardRef.current;
+    if (!el) return;
+    let startX = 0, startY = 0, startT = 0;
+    const SWIPE_MIN = 30;
+    const onStart = (e: TouchEvent) => {
+      if (e.touches.length === 0) return;
+      const t = e.touches[0];
+      startX = t.clientX; startY = t.clientY; startT = Date.now();
+      sfx.unlock(); // first touch unlocks iOS AudioContext
+    };
+    const onEnd = (e: TouchEvent) => {
+      if (e.changedTouches.length === 0) return;
+      const t = e.changedTouches[0];
+      const dx = t.clientX - startX;
+      const dy = t.clientY - startY;
+      if (Math.abs(dx) < SWIPE_MIN && Math.abs(dy) < SWIPE_MIN) return;
+      if (Date.now() - startT > 800) return; // too slow → ignore
+      if (Math.abs(dx) > Math.abs(dy)) {
+        queueDir(dx > 0 ? DIR_E : DIR_W);
+      } else {
+        queueDir(dy > 0 ? DIR_S : DIR_N);
+      }
+    };
+    el.addEventListener("touchstart", onStart, { passive: true });
+    el.addEventListener("touchend", onEnd, { passive: true });
+    return () => {
+      el.removeEventListener("touchstart", onStart);
+      el.removeEventListener("touchend", onEnd);
+    };
+  }, [sfx, queueDir]);
+
+  // One-shot SFX on state transitions (eat = score went up, crash, starve)
+  useEffect(() => {
+    const g = gameRef.current;
+    if (!g) return;
+    // Eat — score jumped since last tick
+    if (g.status === "active" && g.score > prevScoreRef.current) {
+      sfx.eat();
+    }
+    prevScoreRef.current = g.score;
+    // Crash / starve
+    if (g.status === "crashed" && prevStatusRef.current === "active") {
+      if (g.ticksSinceLastFood >= FOOD_STARVATION_TICKS) sfx.starve();
+      else sfx.crash();
+    }
+    prevStatusRef.current = g.status;
+  }, [tick, sfx]);
 
   // Submit to local board on crash (one-shot)
   useEffect(() => {
@@ -750,10 +839,61 @@ export default function CyberSnakeSolo() {
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", maxWidth: 1400, margin: "0 auto", padding: "24px", gap: 20 }}>
+      <div className="arcade-layout" style={{ maxWidth: 1400, margin: "0 auto", padding: "16px 16px 24px", gap: 16 }}>
         {/* ── LEFT: game scene ── */}
         <div>
-          <div style={{ position: "relative", width: "100%", height: 600, borderRadius: 16, overflow: "hidden", border: "1px solid #252540", background: "#020614" }}>
+          {/* View selector — above the board. Tri-toggle: TV · TPS · FPS */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
+            <div style={{ display: "inline-flex", padding: 3, background: "#0c0c14", border: "1px solid #252540", borderRadius: 10 }}>
+              {([
+                { key: "top",    label: "🗺️ TV" },
+                { key: "tps-p1", label: "🎥 TPS" },
+                { key: "fpv-p1", label: "👁 FPS" },
+              ] as { key: SnakeCamera; label: string }[]).map((opt) => {
+                const active = view === opt.key;
+                return (
+                  <button
+                    key={opt.key}
+                    onClick={() => { setView(opt.key); sfx.uiClick(); }}
+                    style={{
+                      padding: "7px 14px",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      letterSpacing: 0.5,
+                      textTransform: "uppercase",
+                      borderRadius: 7,
+                      border: "none",
+                      background: active ? "linear-gradient(135deg, #4fc3f7, #14F195)" : "transparent",
+                      color: active ? "#020614" : "#8a8aa0",
+                      cursor: "pointer",
+                      fontFamily: "'Space Grotesk', sans-serif",
+                      transition: "background 120ms",
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              onClick={() => { const m = !sfx.isMuted(); sfx.setMuted(m); setMuted(m); }}
+              title={muted ? "Sound off — click to unmute (M)" : "Sound on — click to mute (M)"}
+              style={{
+                padding: "7px 12px",
+                fontSize: 12,
+                fontWeight: 700,
+                borderRadius: 8,
+                border: "1px solid #252540",
+                background: "#0c0c14",
+                color: muted ? "#6a6a80" : "#14F195",
+                cursor: "pointer",
+                fontFamily: "'Space Grotesk', sans-serif",
+              }}
+            >
+              {muted ? "🔇 Muted" : "🔊 Sound"}
+            </button>
+          </div>
+          <div ref={boardRef} className="arcade-board" style={{ position: "relative", width: "100%", borderRadius: 16, overflow: "hidden", border: "1px solid #252540", background: "#020614", touchAction: "none" }}>
             {sceneState ? (
               <CyberSnake3DScene state={sceneState} view={view} />
             ) : (
@@ -898,11 +1038,7 @@ export default function CyberSnakeSolo() {
                 )}
               </div>
             )}
-            {g && g.status === "active" && (
-              <button onClick={() => setView(view === "top" ? "fpv-p1" : "top")} style={{ position: "absolute", top: 14, right: 14, ...btnSmall }}>
-                {view === "top" ? "🎮 FPV" : "🗺️ TOP"}
-              </button>
-            )}
+            {/* (Corner view button removed — tri-selector sits above the board.) */}
 
             {/* CRASH overlay */}
             {g && g.status === "crashed" && (
@@ -983,9 +1119,81 @@ export default function CyberSnakeSolo() {
             )}
           </div>
 
-          <style>{`@keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: 0.4 } }`}</style>
+          {/* Mobile D-pad — only shown on touch devices via CSS. Same handlers as swipe + keyboard. */}
+          <div className="arcade-dpad" aria-hidden={false}>
+            <button className="dpad-btn dpad-up"    aria-label="Up"    onPointerDown={(e) => { e.preventDefault(); queueDir(DIR_N); }}>▲</button>
+            <button className="dpad-btn dpad-left"  aria-label="Left"  onPointerDown={(e) => { e.preventDefault(); queueDir(DIR_W); }}>◀</button>
+            <button className="dpad-btn dpad-right" aria-label="Right" onPointerDown={(e) => { e.preventDefault(); queueDir(DIR_E); }}>▶</button>
+            <button className="dpad-btn dpad-down"  aria-label="Down"  onPointerDown={(e) => { e.preventDefault(); queueDir(DIR_S); }}>▼</button>
+          </div>
+
+          <style>{`
+            @keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: 0.4 } }
+
+            /* Board responsive height — keeps a pleasant aspect ratio across
+               phones, tablets, desktops. Mobile is landscape-friendly too. */
+            .arcade-board {
+              height: 600px;
+              min-height: 360px;
+            }
+            @media (max-width: 900px) {
+              .arcade-board { height: 70vh; max-height: 560px; }
+            }
+            @media (max-width: 600px) {
+              .arcade-board { height: 62vh; min-height: 320px; }
+            }
+
+            /* Layout: sidebar on wide, stacked on mobile. */
+            .arcade-layout {
+              display: grid;
+              grid-template-columns: 1fr 340px;
+            }
+            @media (max-width: 1100px) {
+              .arcade-layout { grid-template-columns: 1fr; }
+            }
+
+            /* D-pad — hidden on wide screens (keyboard-only), shown on touch. */
+            .arcade-dpad {
+              display: none;
+              position: relative;
+              width: min(240px, 60%);
+              margin: 14px auto 0;
+              aspect-ratio: 3 / 2;
+            }
+            @media (hover: none) and (pointer: coarse), (max-width: 900px) {
+              .arcade-dpad { display: block; }
+            }
+            .dpad-btn {
+              position: absolute;
+              width: 33.33%;
+              height: 50%;
+              border: 1px solid #2a3f55;
+              background: linear-gradient(180deg, rgba(20,241,149,0.12), rgba(79,195,247,0.08));
+              color: #cfe3ff;
+              font-size: 22px;
+              font-weight: 800;
+              border-radius: 10px;
+              cursor: pointer;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              -webkit-tap-highlight-color: transparent;
+              user-select: none;
+              touch-action: manipulation;
+              font-family: 'Space Grotesk', sans-serif;
+              transition: transform 80ms ease, background 120ms;
+            }
+            .dpad-btn:active {
+              transform: scale(0.94);
+              background: linear-gradient(180deg, rgba(20,241,149,0.28), rgba(79,195,247,0.18));
+            }
+            .dpad-up    { top: 0;    left: 33.33%; }
+            .dpad-down  { top: 50%;  left: 33.33%; }
+            .dpad-left  { top: 25%;  left: 0;      height: 50%; }
+            .dpad-right { top: 25%;  right: 0;     height: 50%; }
+          `}</style>
           <div style={{ marginTop: 14, padding: "12px 14px", background: "#0c0c14", border: "1px solid #252540", borderRadius: 10, fontSize: 12, color: "#8a8aa0", lineHeight: 1.6 }}>
-            <strong style={{ color: "#4fc3f7" }}>Controls:</strong> arrow keys or WASD to move · V to toggle top / FPV · eat gold food to grow · avoid walls + yourself<br />
+            <strong style={{ color: "#4fc3f7" }}>Controls:</strong> arrow keys / WASD · swipe on mobile · <kbd style={{ padding: "1px 6px", background: "#14141f", border: "1px solid #2a3f55", borderRadius: 3, fontSize: 10 }}>V</kbd> cycle view · <kbd style={{ padding: "1px 6px", background: "#14141f", border: "1px solid #2a3f55", borderRadius: 3, fontSize: 10 }}>M</kbd> mute · eat gold food to grow · avoid walls + yourself<br />
             <strong style={{ color: "#ff9a40" }}>Hunger:</strong> eat food within 30s or snake starves · <strong style={{ color: "#ff9a40" }}>Moves:</strong> max 130 direction changes per session (keep replay compact)
           </div>
         </div>
