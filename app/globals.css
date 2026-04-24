@@ -700,13 +700,15 @@ html, body {
 }
 
 /* /docs — 240px fixed sidebar squeezes content to ~135px on 375px phone.
-   Stack layout using :has() selector to catch the docs flex parent. */
+   Stack layout using :has() selector to catch the docs flex parent.
+   Note: inline styles render both with and without spaces depending on the
+   build pipeline (`width: 240px` vs `width:240px`), so we match both. */
 @media (max-width: 768px) {
-  /* The docs page layout is `<div style="display: flex; max-width: 1200">`
-     wrapping an aside + main. :has() lets us find the parent by child. */
+  div:has(> aside[style*="width:240"]),
   div:has(> aside[style*="width: 240"]) {
     flex-direction: column !important;
   }
+  aside[style*="width:240"],
   aside[style*="width: 240"] {
     width: 100% !important;
     position: static !important;
@@ -717,10 +719,14 @@ html, body {
     padding: 16px 14px !important;
   }
   /* Main content drops its huge desktop padding on mobile. */
-  main[style*="padding: \"48px 48px"] {
+  main[style*="padding:\"48px"],
+  main[style*="padding: \"48px"],
+  main[style*="padding:48px 48px"],
+  main[style*="padding: 48px 48px"] {
     padding: 24px 16px 48px !important;
   }
   /* Sidebar nav buttons get real tap targets. */
+  aside[style*="width:240"] button,
   aside[style*="width: 240"] button {
     min-height: 38px !important;
     font-size: 13px !important;
