@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { SiteNav } from "../../components/SiteNav";
 
 const LAUNCH_GAMES = [
   {
@@ -55,6 +56,7 @@ export default function GamesPortal() {
       <div style={{
         padding: "20px 24px", borderBottom: "1px solid #252540",
         display: "flex", justifyContent: "space-between", alignItems: "center",
+        position: "relative",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <Link href="/" style={{ textDecoration: "none" }}>
@@ -67,17 +69,17 @@ export default function GamesPortal() {
           </Link>
           <span style={{fontSize:9,fontWeight:700,padding:"2px 6px",borderRadius:4,background:"rgba(255,170,0,0.15)",border:"1px solid rgba(255,170,0,0.4)",color:"#ffaa00",letterSpacing:1,textTransform:"uppercase"}}>Devnet</span>
         </div>
-        <div style={{ display: "flex", gap: 14, fontSize: 13, alignItems: "center" }}>
-          <Link href="/" style={{ color: "#555570", textDecoration: "none" }}>Arena</Link>
-          <Link href="/arcade" style={{ color: "#555570", textDecoration: "none" }}>Arcade</Link>
-          <Link href="/games" style={{ color: "#9945FF", textDecoration: "none", fontWeight: 600 }}>Tournaments</Link>
-          <Link href="/leaderboard" style={{ color: "#555570", textDecoration: "none" }}>Leaderboard</Link>
-          <Link href="/activity" style={{ color: "#555570", textDecoration: "none" }}>Activity</Link>
-          <Link href="/docs" style={{ color: "#555570", textDecoration: "none" }}>Docs</Link>
-          <a href="https://x.com/gamerplex_com" target="_blank" rel="noopener noreferrer" style={{ color: "#555570", display: "flex", alignItems: "center" }} title="@gamerplex_com">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-          </a>
-        </div>
+        <SiteNav
+          links={[
+            { href: "/", label: "Arena" },
+            { href: "/arcade", label: "Arcade" },
+            { href: "/games", label: "Tournaments", active: true },
+            { href: "/leaderboard", label: "Leaderboard" },
+            { href: "/activity", label: "Activity" },
+            { href: "/docs", label: "Docs" },
+            { href: "https://x.com/gamerplex_com", label: "𝕏", external: true },
+          ]}
+        />
       </div>
 
       <div style={{ maxWidth: 960, margin: "0 auto", padding: "32px 20px" }}>
