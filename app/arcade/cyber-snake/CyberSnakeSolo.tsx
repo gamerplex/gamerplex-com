@@ -55,6 +55,11 @@ const CyberSnake3DScene = dynamic(
   () => import("../../play/cyber-snake/CyberSnake3DScene"),
   { ssr: false }
 );
+// 2D canvas scene — alternative for players who prefer classic top-down.
+const CyberSnake2DScene = dynamic(
+  () => import("../../play/cyber-snake/CyberSnake2DScene"),
+  { ssr: false }
+);
 
 // ── Constants ──────────────────────────────────────────────────────────
 const GRID = 32;
@@ -317,7 +322,7 @@ function toSceneState(g: GameState) {
 }
 
 // ── View mode ─────────────────────────────────────────────────────────
-type SnakeCamera = "top" | "tps-p1" | "fpv-p1";
+type SnakeCamera = "top" | "tps-p1" | "fpv-p1" | "2d-top";
 
 // ── Component ──────────────────────────────────────────────────────────
 export default function CyberSnakeSolo() {
@@ -331,6 +336,29 @@ export default function CyberSnakeSolo() {
   const prevStatusRef = useRef<GameState["status"] | null>(null);
   const prevScoreRef = useRef<number>(0);
   const prevDirRef = useRef<number>(DIR_E);
+  // View-change toast: timestamp of last view switch. Re-keyed on setView so
+  // the CSS animation replays each time.
+  const [viewKey, setViewKey] = useState(0);
+  const isFirstViewRender = useRef(true);
+  useEffect(() => {
+    if (isFirstViewRender.current) { isFirstViewRender.current = false; return; }
+    setViewKey((k) => k + 1);
+  }, [view]);
+  // Swipe hint — dismissed once the user actually swipes / D-pads / touches.
+  // Only rendered on touch devices; keyboard players never see it.
+  const [showSwipeHint, setShowSwipeHint] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const dismissed = window.localStorage.getItem("gp.snake.swipeHint.v1") === "1";
+    const touchDevice =
+      window.matchMedia?.("(hover: none) and (pointer: coarse)").matches === true
+      || window.matchMedia?.("(max-width: 900px)").matches === true;
+    if (!dismissed && touchDevice) setShowSwipeHint(true);
+  }, []);
+  const dismissSwipeHint = useCallback(() => {
+    setShowSwipeHint(false);
+    try { window.localStorage.setItem("gp.snake.swipeHint.v1", "1"); } catch {}
+  }, []);
   const [board, setBoard] = useState<LocalScore[]>([]);
   const gameRef = useRef<GameState | null>(null);
   const loopRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -699,8 +727,10 @@ export default function CyberSnakeSolo() {
     if (nextDir !== opposite(g.dir) && nextDir !== g.queuedDir) {
       g.queuedDir = nextDir;
       sfx.turn();
+      // Any successful steering input dismisses the onboarding hint.
+      if (showSwipeHint) dismissSwipeHint();
     }
-  }, [sfx]);
+  }, [sfx, showSwipeHint, dismissSwipeHint]);
 
   // Keyboard input
   useEffect(() => {
@@ -712,8 +742,10 @@ export default function CyberSnakeSolo() {
         case "ArrowDown": case "s": case "S": nextDir = DIR_S; break;
         case "ArrowLeft": case "a": case "A": nextDir = DIR_W; break;
         case "v": case "V": {
-          // Cycle views: top → tps-p1 → fpv-p1 → top
-          const next: SnakeCamera = view === "top" ? "tps-p1" : view === "tps-p1" ? "fpv-p1" : "top";
+          // Cycle views: top → tps-p1 → fpv-p1 → 2d-top → top
+          const order: SnakeCamera[] = ["top", "tps-p1", "fpv-p1", "2d-top"];
+          const idx = order.indexOf(view);
+          const next = order[(idx + 1) % order.length];
           setView(next);
           sfx.uiClick();
           break;
@@ -735,21 +767,32 @@ export default function CyberSnakeSolo() {
     return () => window.removeEventListener("keydown", onKey);
   }, [view, sfx, queueDir]);
 
-  // Touch swipe input — any swipe over the board threshold fires a dir change.
-  // Uses touchstart / touchend rather than live touchmove for crisp gestures.
+  // Touch swipe input — listen on WINDOW so the gesture works even in TV
+  // view where Three.js OrbitControls attaches its own touch listeners to
+  // the canvas. We only activate the handler when the gesture starts inside
+  // the board element, so random taps elsewhere don't steer the snake.
   useEffect(() => {
-    const el = boardRef.current;
-    if (!el) return;
+    const boardEl = boardRef.current;
+    if (!boardEl) return;
     let startX = 0, startY = 0, startT = 0;
-    const SWIPE_MIN = 30;
+    let active = false;
+    const SWIPE_MIN = 24;
     const onStart = (e: TouchEvent) => {
       if (e.touches.length === 0) return;
       const t = e.touches[0];
+      // Gesture must START on the board to count as a steering swipe.
+      const target = document.elementFromPoint(t.clientX, t.clientY);
+      if (!target || !(boardEl.contains(target) || target === boardEl)) {
+        active = false;
+        return;
+      }
+      active = true;
       startX = t.clientX; startY = t.clientY; startT = Date.now();
-      sfx.unlock(); // first touch unlocks iOS AudioContext
+      sfx.unlock();
     };
     const onEnd = (e: TouchEvent) => {
-      if (e.changedTouches.length === 0) return;
+      if (!active || e.changedTouches.length === 0) { active = false; return; }
+      active = false;
       const t = e.changedTouches[0];
       const dx = t.clientX - startX;
       const dy = t.clientY - startY;
@@ -761,11 +804,12 @@ export default function CyberSnakeSolo() {
         queueDir(dy > 0 ? DIR_S : DIR_N);
       }
     };
-    el.addEventListener("touchstart", onStart, { passive: true });
-    el.addEventListener("touchend", onEnd, { passive: true });
+    window.addEventListener("touchstart", onStart, { passive: true });
+    window.addEventListener("touchend", onEnd, { passive: true });
+    window.addEventListener("touchcancel", () => { active = false; }, { passive: true });
     return () => {
-      el.removeEventListener("touchstart", onStart);
-      el.removeEventListener("touchend", onEnd);
+      window.removeEventListener("touchstart", onStart);
+      window.removeEventListener("touchend", onEnd);
     };
   }, [sfx, queueDir]);
 
@@ -842,13 +886,14 @@ export default function CyberSnakeSolo() {
       <div className="arcade-layout" style={{ maxWidth: 1400, margin: "0 auto", padding: "16px 16px 24px", gap: 16 }}>
         {/* ── LEFT: game scene ── */}
         <div>
-          {/* View selector — above the board. Tri-toggle: TV · TPS · FPS */}
+          {/* View selector — above the board. Quad-toggle: TV · TPS · FPS · 2D */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
-            <div style={{ display: "inline-flex", padding: 3, background: "#0c0c14", border: "1px solid #252540", borderRadius: 10 }}>
+            <div style={{ display: "inline-flex", padding: 3, background: "#0c0c14", border: "1px solid #252540", borderRadius: 10, flexWrap: "wrap" }}>
               {([
                 { key: "top",    label: "🗺️ TV" },
                 { key: "tps-p1", label: "🎥 TPS" },
                 { key: "fpv-p1", label: "👁 FPS" },
+                { key: "2d-top", label: "▦ 2D" },
               ] as { key: SnakeCamera; label: string }[]).map((opt) => {
                 const active = view === opt.key;
                 return (
@@ -856,7 +901,7 @@ export default function CyberSnakeSolo() {
                     key={opt.key}
                     onClick={() => { setView(opt.key); sfx.uiClick(); }}
                     style={{
-                      padding: "7px 14px",
+                      padding: "7px 12px",
                       fontSize: 12,
                       fontWeight: 700,
                       letterSpacing: 0.5,
@@ -895,7 +940,11 @@ export default function CyberSnakeSolo() {
           </div>
           <div ref={boardRef} className="arcade-board" style={{ position: "relative", width: "100%", borderRadius: 16, overflow: "hidden", border: "1px solid #252540", background: "#020614", touchAction: "none" }}>
             {sceneState ? (
-              <CyberSnake3DScene state={sceneState} view={view} />
+              view === "2d-top" ? (
+                <CyberSnake2DScene state={sceneState} />
+              ) : (
+                <CyberSnake3DScene state={sceneState} view={view} />
+              )
             ) : (
               <div
                 style={{
@@ -1038,7 +1087,29 @@ export default function CyberSnakeSolo() {
                 )}
               </div>
             )}
-            {/* (Corner view button removed — tri-selector sits above the board.) */}
+            {/* (Corner view button removed — quad-selector sits above the board.) */}
+
+            {/* View change toast — flashes the new view name at top-centre so
+                the player knows what they switched to. Re-keyed per switch so
+                the CSS animation replays each time. */}
+            {viewKey > 0 && (
+              <div key={viewKey} className="view-toast">
+                {view === "top" ? "TV · TOP-DOWN"
+                 : view === "tps-p1" ? "TPS · THIRD-PERSON"
+                 : view === "fpv-p1" ? "FPS · FIRST-PERSON"
+                 : "2D · CLASSIC"}
+              </div>
+            )}
+
+            {/* One-shot swipe hint — dismisses after first input + persisted in
+                localStorage so repeat players don't see it. Tap to dismiss. */}
+            {g && g.status === "active" && showSwipeHint && (
+              <div className="swipe-hint" onClick={dismissSwipeHint} style={{ pointerEvents: "auto", cursor: "pointer" }}>
+                swipe anywhere on the board<br/>
+                or use the ◆ pad at the bottom-right
+                <div style={{ fontSize: 10, opacity: 0.7, letterSpacing: 1.5, textTransform: "uppercase", marginTop: 8 }}>tap to dismiss</div>
+              </div>
+            )}
 
             {/* CRASH overlay */}
             {g && g.status === "crashed" && (
@@ -1129,9 +1200,11 @@ export default function CyberSnakeSolo() {
 
           <style>{`
             @keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: 0.4 } }
+            @keyframes viewToast { 0% { opacity: 0; transform: translate(-50%, -8px); } 15% { opacity: 1; transform: translate(-50%, 0); } 85% { opacity: 1; } 100% { opacity: 0; } }
 
             /* Board responsive height — keeps a pleasant aspect ratio across
-               phones, tablets, desktops. Mobile is landscape-friendly too. */
+               phones, tablets, desktops. On small phones the D-pad floats
+               over the viewport so the board doesn't need to leave room. */
             .arcade-board {
               height: 600px;
               min-height: 360px;
@@ -1140,7 +1213,10 @@ export default function CyberSnakeSolo() {
               .arcade-board { height: 70vh; max-height: 560px; }
             }
             @media (max-width: 600px) {
-              .arcade-board { height: 62vh; min-height: 320px; }
+              /* Reduce board so view selector + HUD fit above the fold on
+                 short phones (iPhone SE = 667px tall). Floating D-pad
+                 overlays the viewport separately. */
+              .arcade-board { height: 52vh; min-height: 280px; max-height: 420px; }
             }
 
             /* Layout: sidebar on wide, stacked on mobile. */
@@ -1152,27 +1228,41 @@ export default function CyberSnakeSolo() {
               .arcade-layout { grid-template-columns: 1fr; }
             }
 
-            /* D-pad — hidden on wide screens (keyboard-only), shown on touch. */
-            .arcade-dpad {
-              display: none;
-              position: relative;
-              width: min(240px, 60%);
-              margin: 14px auto 0;
-              aspect-ratio: 3 / 2;
-            }
+            /* D-pad — hidden on wide screens (keyboard-only). On touch
+               devices, floats fixed at the bottom-right of the VIEWPORT so
+               it's always reachable without scrolling. */
+            .arcade-dpad { display: none; }
             @media (hover: none) and (pointer: coarse), (max-width: 900px) {
-              .arcade-dpad { display: block; }
+              .arcade-dpad {
+                display: block;
+                position: fixed;
+                bottom: env(safe-area-inset-bottom, 16px);
+                right: 12px;
+                width: min(180px, 44vw);
+                aspect-ratio: 3 / 2;
+                z-index: 50;
+                pointer-events: none; /* let buttons re-enable */
+              }
+              .arcade-dpad .dpad-btn { pointer-events: auto; }
+            }
+            /* Narrow + short screens → scale D-pad a bit smaller and move to bottom-centre. */
+            @media (max-width: 420px) {
+              .arcade-dpad {
+                right: 50%;
+                transform: translateX(50%);
+                width: min(170px, 52vw);
+              }
             }
             .dpad-btn {
               position: absolute;
               width: 33.33%;
               height: 50%;
-              border: 1px solid #2a3f55;
-              background: linear-gradient(180deg, rgba(20,241,149,0.12), rgba(79,195,247,0.08));
-              color: #cfe3ff;
+              border: 1px solid rgba(79, 195, 247, 0.35);
+              background: linear-gradient(180deg, rgba(20,241,149,0.22), rgba(79,195,247,0.14));
+              color: #e8f3ff;
               font-size: 22px;
               font-weight: 800;
-              border-radius: 10px;
+              border-radius: 12px;
               cursor: pointer;
               display: flex;
               align-items: center;
@@ -1182,15 +1272,60 @@ export default function CyberSnakeSolo() {
               touch-action: manipulation;
               font-family: 'Space Grotesk', sans-serif;
               transition: transform 80ms ease, background 120ms;
+              backdrop-filter: blur(6px);
+              box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
             }
             .dpad-btn:active {
-              transform: scale(0.94);
-              background: linear-gradient(180deg, rgba(20,241,149,0.28), rgba(79,195,247,0.18));
+              transform: scale(0.92);
+              background: linear-gradient(180deg, rgba(20,241,149,0.42), rgba(79,195,247,0.28));
             }
             .dpad-up    { top: 0;    left: 33.33%; }
             .dpad-down  { top: 50%;  left: 33.33%; }
             .dpad-left  { top: 25%;  left: 0;      height: 50%; }
             .dpad-right { top: 25%;  right: 0;     height: 50%; }
+
+            /* Swipe / view hint — briefly shown centred on the board the
+               first time the player loads on a touch device. */
+            .swipe-hint {
+              position: absolute;
+              top: 50%;
+              left: 50%;
+              transform: translate(-50%, -50%);
+              padding: 14px 22px;
+              background: rgba(2, 6, 20, 0.82);
+              border: 1px solid rgba(79, 195, 247, 0.4);
+              border-radius: 12px;
+              color: #e8f3ff;
+              font-size: 13px;
+              font-weight: 600;
+              letter-spacing: 0.3px;
+              text-align: center;
+              pointer-events: none;
+              backdrop-filter: blur(6px);
+              animation: pulse 2.4s ease-in-out 2;
+              z-index: 40;
+            }
+
+            /* View change toast — brief "TV" / "TPS" / "FPS" / "2D" label
+               top-centre on the board so the player knows what they switched to. */
+            .view-toast {
+              position: absolute;
+              top: 14px;
+              left: 50%;
+              transform: translate(-50%, 0);
+              padding: 6px 18px;
+              background: rgba(2, 6, 20, 0.82);
+              border: 1px solid rgba(20, 241, 149, 0.45);
+              border-radius: 20px;
+              color: #14F195;
+              font-size: 11px;
+              font-weight: 800;
+              letter-spacing: 2.5px;
+              text-transform: uppercase;
+              pointer-events: none;
+              z-index: 30;
+              animation: viewToast 900ms ease-out forwards;
+            }
           `}</style>
           <div style={{ marginTop: 14, padding: "12px 14px", background: "#0c0c14", border: "1px solid #252540", borderRadius: 10, fontSize: 12, color: "#8a8aa0", lineHeight: 1.6 }}>
             <strong style={{ color: "#4fc3f7" }}>Controls:</strong> arrow keys / WASD · swipe on mobile · <kbd style={{ padding: "1px 6px", background: "#14141f", border: "1px solid #2a3f55", borderRadius: 3, fontSize: 10 }}>V</kbd> cycle view · <kbd style={{ padding: "1px 6px", background: "#14141f", border: "1px solid #2a3f55", borderRadius: 3, fontSize: 10 }}>M</kbd> mute · eat gold food to grow · avoid walls + yourself<br />
