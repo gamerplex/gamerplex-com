@@ -344,6 +344,28 @@ export default function CyberSnakeSolo() {
     if (isFirstViewRender.current) { isFirstViewRender.current = false; return; }
     setViewKey((k) => k + 1);
   }, [view]);
+  // Fullscreen state — arcade games on mobile web typically offer fullscreen
+  // to escape browser chrome (URL bar, tab strip) and recover ~30% play area.
+  // Uses the standard Fullscreen API; gracefully no-ops on iOS Safari where
+  // the API isn't implemented on non-video elements (iOS still gets more
+  // usable area via the default behaviour as user scrolls).
+  const [fullscreen, setFullscreen] = useState(false);
+  const toggleFullscreen = useCallback(async () => {
+    if (typeof document === "undefined") return;
+    try {
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen?.();
+      } else {
+        await document.exitFullscreen?.();
+      }
+    } catch { /* no-op on unsupported browsers */ }
+  }, []);
+  useEffect(() => {
+    const onFs = () => setFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", onFs);
+    return () => document.removeEventListener("fullscreenchange", onFs);
+  }, []);
+
   // Swipe hint — dismissed once the user actually swipes / D-pads / touches.
   // Only rendered on touch devices; keyboard players never see it.
   const [showSwipeHint, setShowSwipeHint] = useState(false);
@@ -705,10 +727,16 @@ export default function CyberSnakeSolo() {
 
   // Game loop — runs once on mount, no-ops when there's no game.
   // Driven by a single interval; re-renders triggered via setTick inside.
+  //
+  // Auto-pause when the tab is hidden (mobile-web best practice: otherwise
+  // the snake keeps ticking while backgrounded and often dies before the
+  // player can get back to it). `document.hidden` is the canonical check;
+  // stays set until the tab is re-focused.
   useEffect(() => {
     loopRef.current = setInterval(() => {
       const g = gameRef.current;
       if (!g) return;
+      if (typeof document !== "undefined" && document.hidden) return;
       if (g.status === "active") {
         tickGame(g);
         setTick((t) => t + 1);
@@ -757,6 +785,10 @@ export default function CyberSnakeSolo() {
           setMuted(m);
           break;
         }
+        case "f": case "F": {
+          toggleFullscreen();
+          break;
+        }
       }
       if (nextDir !== null) {
         e.preventDefault();
@@ -765,7 +797,7 @@ export default function CyberSnakeSolo() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [view, sfx, queueDir]);
+  }, [view, sfx, queueDir, toggleFullscreen]);
 
   // Touch swipe input — listen on WINDOW so the gesture works even in TV
   // view where Three.js OrbitControls attaches its own touch listeners to
@@ -813,22 +845,39 @@ export default function CyberSnakeSolo() {
     };
   }, [sfx, queueDir]);
 
-  // One-shot SFX on state transitions (eat = score went up, crash, starve)
+  // Haptic-feedback helper — safe on devices without Vibration API (iOS Safari
+  // doesn't support it; Android Chrome + most touch browsers do). Short
+  // durations follow mobile-game conventions: ~15ms for discrete events so the
+  // player feels it without distraction.
+  const haptic = useCallback((ms: number) => {
+    if (typeof navigator === "undefined") return;
+    const v: ((p: number) => boolean) | undefined = (navigator as any).vibrate?.bind(navigator);
+    if (v) v(ms);
+  }, []);
+
+  // One-shot SFX + haptics on state transitions (eat / crash / starve)
   useEffect(() => {
     const g = gameRef.current;
     if (!g) return;
     // Eat — score jumped since last tick
     if (g.status === "active" && g.score > prevScoreRef.current) {
       sfx.eat();
+      haptic(18);
     }
     prevScoreRef.current = g.score;
     // Crash / starve
     if (g.status === "crashed" && prevStatusRef.current === "active") {
-      if (g.ticksSinceLastFood >= FOOD_STARVATION_TICKS) sfx.starve();
-      else sfx.crash();
+      if (g.ticksSinceLastFood >= FOOD_STARVATION_TICKS) {
+        sfx.starve();
+        haptic(70);
+      } else {
+        sfx.crash();
+        // "game over" pattern — short-long-short so the player feels it.
+        haptic(120);
+      }
     }
     prevStatusRef.current = g.status;
-  }, [tick, sfx]);
+  }, [tick, sfx, haptic]);
 
   // Submit to local board on crash (one-shot)
   useEffect(() => {
@@ -920,23 +969,43 @@ export default function CyberSnakeSolo() {
                 );
               })}
             </div>
-            <button
-              onClick={() => { const m = !sfx.isMuted(); sfx.setMuted(m); setMuted(m); }}
-              title={muted ? "Sound off — click to unmute (M)" : "Sound on — click to mute (M)"}
-              style={{
-                padding: "7px 12px",
-                fontSize: 12,
-                fontWeight: 700,
-                borderRadius: 8,
-                border: "1px solid #252540",
-                background: "#0c0c14",
-                color: muted ? "#6a6a80" : "#14F195",
-                cursor: "pointer",
-                fontFamily: "'Space Grotesk', sans-serif",
-              }}
-            >
-              {muted ? "🔇 Muted" : "🔊 Sound"}
-            </button>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={() => { const m = !sfx.isMuted(); sfx.setMuted(m); setMuted(m); }}
+                title={muted ? "Sound off — click to unmute (M)" : "Sound on — click to mute (M)"}
+                style={{
+                  padding: "7px 12px",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  borderRadius: 8,
+                  border: "1px solid #252540",
+                  background: "#0c0c14",
+                  color: muted ? "#6a6a80" : "#14F195",
+                  cursor: "pointer",
+                  fontFamily: "'Space Grotesk', sans-serif",
+                }}
+              >
+                {muted ? "🔇" : "🔊"}
+              </button>
+              <button
+                onClick={toggleFullscreen}
+                title={fullscreen ? "Exit fullscreen" : "Fullscreen (F)"}
+                aria-label={fullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+                style={{
+                  padding: "7px 12px",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  borderRadius: 8,
+                  border: "1px solid #252540",
+                  background: "#0c0c14",
+                  color: fullscreen ? "#14F195" : "#8a8aa0",
+                  cursor: "pointer",
+                  fontFamily: "'Space Grotesk', sans-serif",
+                }}
+              >
+                {fullscreen ? "⤢" : "⛶"}
+              </button>
+            </div>
           </div>
           <div ref={boardRef} className="arcade-board" style={{ position: "relative", width: "100%", borderRadius: 16, overflow: "hidden", border: "1px solid #252540", background: "#020614", touchAction: "none" }}>
             {sceneState ? (
@@ -1190,13 +1259,18 @@ export default function CyberSnakeSolo() {
             )}
           </div>
 
-          {/* Mobile D-pad — only shown on touch devices via CSS. Same handlers as swipe + keyboard. */}
-          <div className="arcade-dpad" aria-hidden={false}>
-            <button className="dpad-btn dpad-up"    aria-label="Up"    onPointerDown={(e) => { e.preventDefault(); queueDir(DIR_N); }}>▲</button>
-            <button className="dpad-btn dpad-left"  aria-label="Left"  onPointerDown={(e) => { e.preventDefault(); queueDir(DIR_W); }}>◀</button>
-            <button className="dpad-btn dpad-right" aria-label="Right" onPointerDown={(e) => { e.preventDefault(); queueDir(DIR_E); }}>▶</button>
-            <button className="dpad-btn dpad-down"  aria-label="Down"  onPointerDown={(e) => { e.preventDefault(); queueDir(DIR_S); }}>▼</button>
-          </div>
+          {/* Mobile D-pad — only rendered while the game is ACTIVE. Hiding
+              it during pre-start + crash removes the overlap with START GAME /
+              Save on-chain buttons (mobile gaming best practice: controls must
+              never obscure primary calls-to-action). */}
+          {g && g.status === "active" && (
+            <div className="arcade-dpad" aria-hidden={false}>
+              <button className="dpad-btn dpad-up"    aria-label="Up"    onPointerDown={(e) => { e.preventDefault(); queueDir(DIR_N); }}>▲</button>
+              <button className="dpad-btn dpad-left"  aria-label="Left"  onPointerDown={(e) => { e.preventDefault(); queueDir(DIR_W); }}>◀</button>
+              <button className="dpad-btn dpad-right" aria-label="Right" onPointerDown={(e) => { e.preventDefault(); queueDir(DIR_E); }}>▶</button>
+              <button className="dpad-btn dpad-down"  aria-label="Down"  onPointerDown={(e) => { e.preventDefault(); queueDir(DIR_S); }}>▼</button>
+            </div>
+          )}
 
           <style>{`
             @keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: 0.4 } }
