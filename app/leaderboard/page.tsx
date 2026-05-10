@@ -34,7 +34,7 @@ interface LeaderboardTotals {
   matches: number;
   totalPotRaw: string;
   treasuryRaw: string;
-  poolSponsorRaw: string;
+  poolBackerRaw: string;
   winnerPayoutRaw: string;
 }
 
@@ -327,8 +327,8 @@ export default function LeaderboardPage() {
             loading={showSkeleton}
           />
           <StatCard
-            label="PoolSponsor inflow"
-            value={totals ? fmtUsdf(totals.poolSponsorRaw) : null}
+            label="PoolBacker inflow"
+            value={totals ? fmtUsdf(totals.poolBackerRaw) : null}
             accent="#00e676"
             loading={showSkeleton}
           />

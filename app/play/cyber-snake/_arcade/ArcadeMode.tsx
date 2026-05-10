@@ -1,28 +1,20 @@
 "use client";
 
-// Cyber Snake Solo — single-player arcade game engine.
-//
-// v1.1 scope:
-//   - 32×32 grid, classic Snake mechanic (eat food, grow, avoid wall + self)
-//   - Deterministic xorshift food spawn seeded from session_seed (matches
-//     on-chain game program's RNG)
-//   - Keyboard input (arrow keys + WASD)
-//   - Local leaderboard (top 10) via localStorage — free play, no wallet
-//   - Wallet connect (Phantom) → on-chain score submission via submit_score
-//   - Paid Continue ($0.05 × 2ⁿ) via Solana Pay USDC + record_payment
-//   - VERIFIED commit ($0.10) via commit_session_replay → 🏆 badge
-
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import { useSearchParams } from "next/navigation";
+import ModeToggle from "../../../../components/games/ModeToggle";
 import { BN } from "@coral-xyz/anchor";
-import { getSfx } from "../../../lib/arcade/sfx";
+import bs58 from "bs58";
+import { getSfx } from "../../../../lib/arcade/sfx";
+import { fetchArcadeScore, shortAddr, type ArcadeScoreDetail } from "../../../../lib/arcade/leaderboard";
 import { PublicKey, Transaction } from "@solana/web3.js";
 import {
   useAnchorWallet,
   useConnection,
   useWallet,
 } from "@solana/wallet-adapter-react";
-import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+import { WalletMultiButton, useWalletModal } from "@solana/wallet-adapter-react-ui";
 import {
   makeProgram,
   buildOpenProfileIx,
@@ -36,7 +28,6 @@ import {
   encodeMoveLog,
   sha256,
   sigToBytes,
-  continueCostMicroUsd,
   getTreasuryWallet,
   CATEGORY,
   SCORE_COMMIT_MICRO_USD,
@@ -45,41 +36,27 @@ import {
   CNFT_WRAP_MICRO_USD,
   ARCADE_PROGRAM_ID,
   ARCADE_NETWORK,
-} from "../../../lib/arcade/client";
-import { ArcadeLeaderboard } from "../_components/ArcadeLeaderboard";
+} from "../../../../lib/arcade/client";
+import { ArcadeLeaderboard } from "../../../arcade/_components/ArcadeLeaderboard";
 
 const EXPLORER_SUFFIX = ARCADE_NETWORK === "mainnet" ? "" : `?cluster=${ARCADE_NETWORK}`;
 
-// 3D scene — reuse the existing component from the Duel surface.
-const CyberSnake3DScene = dynamic(
-  () => import("../../play/cyber-snake/CyberSnake3DScene"),
-  { ssr: false }
-);
-// 2D canvas scene — alternative for players who prefer classic top-down.
-const CyberSnake2DScene = dynamic(
-  () => import("../../play/cyber-snake/CyberSnake2DScene"),
-  { ssr: false }
-);
+const CyberSnake3DScene = dynamic(() => import("./CyberSnake3DScene"), { ssr: false });
+const CyberSnake2DScene = dynamic(() => import("./CyberSnake2DScene"), { ssr: false });
 
-// ── Constants ──────────────────────────────────────────────────────────
 const GRID = 32;
 const MAX_LEN = 256;
 const START_LEN = 3;
-const TICK_MS = 140; // snake speed — ~7 ticks per second
+const TICK_MS = 140;
 const DIR_N = 0, DIR_E = 1, DIR_S = 2, DIR_W = 3;
-// Anti-infinite-loop: snake starves if it doesn't eat within this many ticks.
-// 30 seconds of circling without eating = death. Authentic arcade pressure.
-const FOOD_STARVATION_TICKS = 210; // 30s at 7 ticks/sec
-const FOOD_WARNING_TICKS = 140;    // warn on HUD for last 10s of the timer
-// Move-log cap so GPX5R memo always fits in Solana's memo budget.
-// 130 × 3 bytes/change = 390 bytes raw, well under MAX_MOVE_LOG_BYTES=400.
-// 130 direction changes in 60s = 2.2/sec, well above realistic human play.
+// Snake starves if it doesn't eat within this many ticks (~30s).
+const FOOD_STARVATION_TICKS = 210;
+const FOOD_WARNING_TICKS = 140;
+// Move-log cap so GPX5R memo always fits in MAX_MOVE_LOG_BYTES=400.
 const MAX_MOVE_CHANGES = 130;
-const MOVE_CHANGE_WARN = 110; // warn the player when approaching the cap
+const MOVE_CHANGE_WARN = 110;
 
-// ── Xorshift RNG (matches on-chain Xorshift64 for determinism) ─────────
 function makeRng(seedBytes: Uint8Array): () => number {
-  // Fold 32 bytes into a u64 seed. Pragmatic; on-chain program does the same.
   const ZERO = BigInt(0);
   const U64_MASK = BigInt("0xffffffffffffffff");
   const U32_MASK = BigInt("0xffffffff");
@@ -98,7 +75,6 @@ function makeRng(seedBytes: Uint8Array): () => number {
   };
 }
 
-// ── Seed helpers ───────────────────────────────────────────────────────
 function generateSeed(): Uint8Array {
   const s = new Uint8Array(32);
   if (typeof window !== "undefined" && window.crypto) {
@@ -113,32 +89,30 @@ function seedToHex(s: Uint8Array): string {
   return Array.from(s).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-// ── Game state ─────────────────────────────────────────────────────────
 interface GameState {
   seed: Uint8Array;
-  body: number[];         // ring buffer of positions (MAX_LEN)
-  headIdx: number;        // write cursor
-  len: number;            // current snake length
-  dir: number;            // current direction
-  queuedDir: number;      // pending input for next tick (anti-180°)
+  body: number[];
+  headIdx: number;
+  len: number;
+  dir: number;
+  queuedDir: number;
   foodPos: number;
-  grid: Uint8Array;       // cell occupancy bitmap
+  grid: Uint8Array;
   tick: number;
   score: number;
   status: "active" | "crashed" | "paused" | "gameover";
-  startedAt: number;      // unix ms
-  moveLog: Array<{ tick: number; dir: number }>;  // for GPX5R replay
+  startedAt: number;
+  moveLog: Array<{ tick: number; dir: number }>;
   rng: () => number;
   continuesUsed: number;
-  ticksSinceLastFood: number; // reset on eat; when hits FOOD_STARVATION_TICKS → starve
-  moveLogCapped: boolean;     // true once MAX_MOVE_CHANGES exceeded (log stops growing)
+  ticksSinceLastFood: number;
+  moveLogCapped: boolean;
 }
 
 function freshGame(seed: Uint8Array): GameState {
   const rng = makeRng(seed);
   const body = new Array<number>(MAX_LEN).fill(0);
   const grid = new Uint8Array(GRID * GRID);
-  // Start mid-grid heading east.
   const startRow = GRID / 2;
   const startCol = GRID / 4;
   for (let i = 0; i < START_LEN; i++) {
@@ -146,8 +120,7 @@ function freshGame(seed: Uint8Array): GameState {
     body[i] = pos;
     grid[pos] = 1;
   }
-  const headIdx = START_LEN; // next write cursor
-  // Initial food — walk the RNG until we find an empty cell.
+  const headIdx = START_LEN;
   let food = 0;
   for (let attempts = 0; attempts < 50; attempts++) {
     food = rng() % (GRID * GRID);
@@ -188,23 +161,19 @@ function stepDir(pos: number, dir: number): number | null {
     case DIR_S: nr = r + 1; break;
     case DIR_W: nc = c - 1; break;
   }
-  if (nr < 0 || nr >= GRID || nc < 0 || nc >= GRID) return null; // wall
+  if (nr < 0 || nr >= GRID || nc < 0 || nc >= GRID) return null;
   return nr * GRID + nc;
 }
 
 function tickGame(g: GameState): GameState {
   if (g.status !== "active") return g;
 
-  // Food-starvation check: die if too long since last eat. Blocks the
-  // "circle forever" attack — every session must be economically engaged.
   if (g.ticksSinceLastFood >= FOOD_STARVATION_TICKS) {
     g.status = "crashed";
     return g;
   }
 
-  // Commit queued direction unless it's a 180° flip.
   if (g.queuedDir !== opposite(g.dir)) g.dir = g.queuedDir;
-  // Move-log append, capped at MAX_MOVE_CHANGES so GPX5R memo always fits.
   if (g.dir !== g.moveLog[g.moveLog.length - 1]?.dir) {
     if (g.moveLog.length < MAX_MOVE_CHANGES) {
       g.moveLog.push({ tick: g.tick, dir: g.dir });
@@ -216,7 +185,6 @@ function tickGame(g: GameState): GameState {
   const headPos = g.body[(g.headIdx + MAX_LEN - 1) % MAX_LEN];
   const nextPos = stepDir(headPos, g.dir);
 
-  // Wall crash
   if (nextPos === null) {
     g.status = "crashed";
     return g;
@@ -224,9 +192,7 @@ function tickGame(g: GameState): GameState {
 
   const eating = nextPos === g.foodPos;
 
-  // Self-collision: need to check against body cells that WON'T move away.
-  // If NOT eating, the tail cell will vacate this tick — so collision with
-  // the tail position is OK (classic Snake).
+  // Tail cell vacates this tick when not eating, so collision with tailPos is OK.
   const tailIdx = (g.headIdx + MAX_LEN - g.len) % MAX_LEN;
   const tailPos = g.body[tailIdx];
   if (g.grid[nextPos] === 1 && !(nextPos === tailPos && !eating)) {
@@ -234,16 +200,14 @@ function tickGame(g: GameState): GameState {
     return g;
   }
 
-  // Move: write new head
   g.body[g.headIdx] = nextPos;
   g.headIdx = (g.headIdx + 1) % MAX_LEN;
   g.grid[nextPos] = 1;
 
   if (eating) {
     g.len++;
-    g.score += 10 + Math.floor(g.len / 5); // accelerating score as snake grows
-    g.ticksSinceLastFood = 0; // reset starvation timer
-    // Spawn new food on an empty cell
+    g.score += 10 + Math.floor(g.len / 5);
+    g.ticksSinceLastFood = 0;
     let newFood = g.foodPos;
     for (let attempts = 0; attempts < 200; attempts++) {
       const candidate = g.rng() % (GRID * GRID);
@@ -253,10 +217,8 @@ function tickGame(g: GameState): GameState {
       }
     }
     g.foodPos = newFood;
-    // Cap at max length
     if (g.len > MAX_LEN) g.len = MAX_LEN;
   } else {
-    // Tail retracts
     g.grid[tailPos] = 0;
     g.ticksSinceLastFood++;
   }
@@ -265,7 +227,6 @@ function tickGame(g: GameState): GameState {
   return g;
 }
 
-// ── Local leaderboard ──────────────────────────────────────────────────
 const LB_KEY = "gp.arcade.cyber-snake.local.v1";
 interface LocalScore {
   score: number;
@@ -293,7 +254,7 @@ function saveLocalBoard(entries: LocalScore[]) {
 function insertLocalScore(entry: LocalScore): LocalScore[] {
   const board = loadLocalBoard();
   board.push(entry);
-  // Sort: 0-continues first (1CC principle), then score desc
+  // 0-continues first (1CC), then score desc.
   board.sort((a, b) => {
     if (a.continues !== b.continues) return a.continues - b.continues;
     return b.score - a.score;
@@ -303,7 +264,6 @@ function insertLocalScore(entry: LocalScore): LocalScore[] {
   return top;
 }
 
-// ── Scene-state adapter: GameState → SnakeSceneState ──────────────────
 function toSceneState(g: GameState) {
   return {
     bodyP1: Array.from(g.body),
@@ -311,7 +271,7 @@ function toSceneState(g: GameState) {
     headIdxP1: g.headIdx,
     headIdxP2: 0,
     lenP1: g.len,
-    lenP2: 0, // solo — P2 body hidden
+    lenP2: 0,
     dirP1: g.dir,
     dirP2: 0,
     foodPos: g.foodPos,
@@ -321,34 +281,24 @@ function toSceneState(g: GameState) {
   };
 }
 
-// ── View mode ─────────────────────────────────────────────────────────
 type SnakeCamera = "top" | "tps-p1" | "fpv-p1" | "2d-top";
 
-// ── Component ──────────────────────────────────────────────────────────
 export default function CyberSnakeSolo() {
   const [view, setView] = useState<SnakeCamera>("top");
-  const [tick, setTick] = useState(0); // drives React re-renders
+  const [tick, setTick] = useState(0);
   const sfx = useMemo(() => getSfx(), []);
   const [muted, setMuted] = useState<boolean>(false);
   useEffect(() => { setMuted(sfx.isMuted()); }, [sfx]);
   const boardRef = useRef<HTMLDivElement>(null);
-  // Previous game status + score — lets us fire one-shot SFX on transitions.
   const prevStatusRef = useRef<GameState["status"] | null>(null);
   const prevScoreRef = useRef<number>(0);
   const prevDirRef = useRef<number>(DIR_E);
-  // View-change toast: timestamp of last view switch. Re-keyed on setView so
-  // the CSS animation replays each time.
   const [viewKey, setViewKey] = useState(0);
   const isFirstViewRender = useRef(true);
   useEffect(() => {
     if (isFirstViewRender.current) { isFirstViewRender.current = false; return; }
     setViewKey((k) => k + 1);
   }, [view]);
-  // Fullscreen state — arcade games on mobile web typically offer fullscreen
-  // to escape browser chrome (URL bar, tab strip) and recover ~30% play area.
-  // Uses the standard Fullscreen API; gracefully no-ops on iOS Safari where
-  // the API isn't implemented on non-video elements (iOS still gets more
-  // usable area via the default behaviour as user scrolls).
   const [fullscreen, setFullscreen] = useState(false);
   const toggleFullscreen = useCallback(async () => {
     if (typeof document === "undefined") return;
@@ -358,7 +308,7 @@ export default function CyberSnakeSolo() {
       } else {
         await document.exitFullscreen?.();
       }
-    } catch { /* no-op on unsupported browsers */ }
+    } catch {}
   }, []);
   useEffect(() => {
     const onFs = () => setFullscreen(!!document.fullscreenElement);
@@ -366,8 +316,6 @@ export default function CyberSnakeSolo() {
     return () => document.removeEventListener("fullscreenchange", onFs);
   }, []);
 
-  // Swipe hint — dismissed once the user actually swipes / D-pads / touches.
-  // Only rendered on touch devices; keyboard players never see it.
   const [showSwipeHint, setShowSwipeHint] = useState(false);
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -386,12 +334,33 @@ export default function CyberSnakeSolo() {
   const loopRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const savedRef = useRef<boolean>(false);
 
-  // ── On-chain wallet state ──────────────────────────────────────────
+  // ?challenge=<sig> uses the challenger's exact seed once, then clears.
+  const searchParams = useSearchParams();
+  const [challenger, setChallenger] = useState<ArcadeScoreDetail | null>(null);
+  const challengerSeedRef = useRef<Uint8Array | null>(null);
+  useEffect(() => {
+    const sig = searchParams?.get("challenge");
+    if (!sig) return;
+    let cancelled = false;
+    fetchArcadeScore(sig).then((d) => {
+      if (cancelled || !d) return;
+      try {
+        const seed = bs58.decode(d.seedB58);
+        if (seed.length === 32) {
+          challengerSeedRef.current = seed;
+          setChallenger(d);
+        }
+      } catch {}
+    });
+    return () => { cancelled = true; };
+  }, [searchParams]);
+
   const { connection } = useConnection();
   const anchorWallet = useAnchorWallet();
   const { publicKey, connected } = useWallet();
+  const { setVisible: setWalletModalVisible } = useWalletModal();
   const [profileExists, setProfileExists] = useState<boolean | null>(null);
-  const [busy, setBusy] = useState<null | "save" | "verify" | "receipt" | "continue">(null);
+  const [busy, setBusy] = useState<null | "save" | "verify" | "receipt">(null);
   const [lastSaveSig, setLastSaveSig] = useState<string | null>(null);
   const [lastVerifySig, setLastVerifySig] = useState<string | null>(null);
   const [lastReceiptSig, setLastReceiptSig] = useState<string | null>(null);
@@ -402,9 +371,6 @@ export default function CyberSnakeSolo() {
   const [ownedThisRun, setOwnedThisRun] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
-  // Detect whether this wallet already has a PlayerProfile opened. Updates
-  // on wallet-connect so the onSaveOnChain flow knows whether to bundle
-  // open_player_profile + submit_score (first time) or just submit_score.
   useEffect(() => {
     if (!publicKey) {
       setProfileExists(null);
@@ -417,7 +383,6 @@ export default function CyberSnakeSolo() {
       .catch(() => setProfileExists(null));
   }, [publicKey, connection]);
 
-  // Init leaderboard on mount
   useEffect(() => {
     setBoard(loadLocalBoard());
   }, []);
@@ -425,12 +390,18 @@ export default function CyberSnakeSolo() {
   const startNewGame = useCallback(() => {
     sfx.unlock();
     sfx.start();
-    gameRef.current = freshGame(generateSeed());
+    let seed: Uint8Array;
+    if (challengerSeedRef.current) {
+      seed = challengerSeedRef.current;
+      challengerSeedRef.current = null;
+    } else {
+      seed = generateSeed();
+    }
+    gameRef.current = freshGame(seed);
     savedRef.current = false;
     prevStatusRef.current = "active";
     prevScoreRef.current = 0;
     prevDirRef.current = DIR_E;
-    // Monotonic increment forces React to re-render even if tick was already 0.
     setTick((t) => t + 1);
   }, [sfx]);
 
@@ -449,21 +420,13 @@ export default function CyberSnakeSolo() {
     g.dir = DIR_E;
     g.queuedDir = DIR_E;
     g.status = "active";
-    g.ticksSinceLastFood = 0; // fresh food window on continue
+    g.ticksSinceLastFood = 0;
     for (let attempts = 0; attempts < 200; attempts++) {
       const candidate = g.rng() % (GRID * GRID);
       if (g.grid[candidate] === 0) { g.foodPos = candidate; break; }
     }
   }, []);
 
-  // ── On-chain actions ───────────────────────────────────────────────
-
-  // Save score to the on-chain leaderboard — $0.05 Gamerplex fee +
-  // Solana gas (~$0.001). If this is the wallet's first save, also pays the
-  // ~$0.41 refundable PlayerProfile rent-exempt deposit.
-  //
-  // One tx bundles: [open_player_profile if needed] + USDC $0.05 transfer
-  // → treasury + record_payment(ScoreCommit, $0.05) + submit_score(GPX5 memo).
   const onSaveOnChain = useCallback(async () => {
     const g = gameRef.current;
     if (!g || !anchorWallet || !publicKey) return;
@@ -474,14 +437,12 @@ export default function CyberSnakeSolo() {
       const treasury = await getTreasuryWallet(program);
       const tx = new Transaction();
 
-      // First-time profile onboarding.
       if (profileExists === false || profileExists === null) {
         tx.add(
           await buildOpenProfileIx(program, publicKey, PublicKey.default)
         );
       }
 
-      // USDC $0.05 → treasury.
       const usdcIxs = await buildUsdcTransferIxs(
         connection,
         publicKey,
@@ -491,7 +452,6 @@ export default function CyberSnakeSolo() {
       );
       usdcIxs.forEach((ix) => tx.add(ix));
 
-      // Record the payment.
       const emptySig = new Uint8Array(64);
       tx.add(
         await buildRecordPaymentIx(program, publicKey, {
@@ -503,7 +463,6 @@ export default function CyberSnakeSolo() {
         })
       );
 
-      // Submit score (emits GPX5 memo).
       const moveLogBytes = encodeMoveLog(g.moveLog);
       const moveHash = await sha256(moveLogBytes);
       tx.add(
@@ -534,8 +493,6 @@ export default function CyberSnakeSolo() {
     }
   }, [anchorWallet, publicKey, connection, profileExists]);
 
-  // VERIFIED commit — $0.10 USDC → treasury, then commit full move log as
-  // GPX5R memo. Triggers 🏆 VERIFIED badge on global leaderboard.
   const onVerifyRun = useCallback(async () => {
     const g = gameRef.current;
     if (!g || !anchorWallet || !publicKey) return;
@@ -550,7 +507,6 @@ export default function CyberSnakeSolo() {
       const treasury = await getTreasuryWallet(program);
       const tx = new Transaction();
 
-      // USDC $0.10 transfer → treasury
       const usdcIxs = await buildUsdcTransferIxs(
         connection,
         publicKey,
@@ -560,8 +516,6 @@ export default function CyberSnakeSolo() {
       );
       usdcIxs.forEach((ix) => tx.add(ix));
 
-      // record_payment with empty tx_sig (same tx — resolver correlates via
-      // neighboring instructions). external_ref empty; inline replay lands next.
       const emptySig = new Uint8Array(64);
       tx.add(
         await buildRecordPaymentIx(program, publicKey, {
@@ -573,7 +527,6 @@ export default function CyberSnakeSolo() {
         })
       );
 
-      // commit_session_replay — emits GPX5R memo with compact move log.
       const moveLog = encodeMoveLog(g.moveLog);
       if (moveLog.length > 400) {
         throw new Error(
@@ -601,10 +554,6 @@ export default function CyberSnakeSolo() {
     }
   }, [anchorWallet, publicKey, connection, savedThisRun]);
 
-  // T3 — Mint ReplayReceipt PDA ($0.25 USDC + ~$0.33 refundable rent).
-  // Transferable, tradeable certificate of ownership bound to the canonical
-  // GPX5R memo. original_player is stamped immutably = current wallet;
-  // owner starts = original_player and can be transferred via separate ix.
   const onMintReceipt = useCallback(async () => {
     const g = gameRef.current;
     if (!g || !anchorWallet || !publicKey || !lastVerifySig) return;
@@ -619,7 +568,6 @@ export default function CyberSnakeSolo() {
       const treasury = await getTreasuryWallet(program);
       const tx = new Transaction();
 
-      // USDC $0.25 → treasury
       const usdcIxs = await buildUsdcTransferIxs(
         connection,
         publicKey,
@@ -629,7 +577,6 @@ export default function CyberSnakeSolo() {
       );
       usdcIxs.forEach((ix) => tx.add(ix));
 
-      // record_payment for audit
       const emptySig = new Uint8Array(64);
       tx.add(
         await buildRecordPaymentIx(program, publicKey, {
@@ -641,7 +588,6 @@ export default function CyberSnakeSolo() {
         })
       );
 
-      // Mint the ReplayReceipt PDA
       const nonce = new BN(g.startedAt);
       const moveLogBytes = encodeMoveLog(g.moveLog);
       const moveHash = await sha256(moveLogBytes);
@@ -670,68 +616,7 @@ export default function CyberSnakeSolo() {
     }
   }, [anchorWallet, publicKey, connection, verifiedThisRun, lastVerifySig]);
 
-  // Paid continue — $0.05 × 2ⁿ USDC → treasury + record_payment, then resume.
-  const onPaidContinue = useCallback(async () => {
-    const g = gameRef.current;
-    if (!g || !anchorWallet || !publicKey) return;
-    setBusy("continue");
-    setOnchainError(null);
-    try {
-      const program = makeProgram(connection, anchorWallet);
-      const treasury = await getTreasuryWallet(program);
-      const amount = continueCostMicroUsd(g.continuesUsed);
-      const tx = new Transaction();
-
-      const usdcIxs = await buildUsdcTransferIxs(
-        connection,
-        publicKey,
-        publicKey,
-        treasury,
-        amount
-      );
-      usdcIxs.forEach((ix) => tx.add(ix));
-
-      const emptySig = new Uint8Array(64);
-      tx.add(
-        await buildRecordPaymentIx(program, publicKey, {
-          category: CATEGORY.CONTINUE,
-          amountMicroUsd: amount,
-          paymentTxSig: emptySig,
-          gamerPaid: false,
-          externalRef: "",
-        })
-      );
-
-      await program.provider.sendAndConfirm!(tx, [], { skipPreflight: false });
-
-      // Payment confirmed — reset the snake + increment counter.
-      g.continuesUsed++;
-      resetSnakePosition(g);
-      setSavedThisRun(false); // need to re-save after beating previous score
-      setVerifiedThisRun(false);
-    } catch (e: any) {
-      console.error("continue failed:", e);
-      setOnchainError(e?.message || "Continue failed");
-    } finally {
-      setBusy(null);
-    }
-  }, [anchorWallet, publicKey, connection, resetSnakePosition]);
-
-  // Free-play continue (no wallet required) — legacy local behavior.
-  const continueGame = useCallback(() => {
-    if (!gameRef.current) return;
-    const g = gameRef.current;
-    resetSnakePosition(g);
-    g.continuesUsed++;
-  }, [resetSnakePosition]);
-
-  // Game loop — runs once on mount, no-ops when there's no game.
-  // Driven by a single interval; re-renders triggered via setTick inside.
-  //
-  // Auto-pause when the tab is hidden (mobile-web best practice: otherwise
-  // the snake keeps ticking while backgrounded and often dies before the
-  // player can get back to it). `document.hidden` is the canonical check;
-  // stays set until the tab is re-focused.
+  // Pauses while tab is hidden so the snake doesn't tick out of view.
   useEffect(() => {
     loopRef.current = setInterval(() => {
       const g = gameRef.current;
@@ -747,20 +632,16 @@ export default function CyberSnakeSolo() {
     };
   }, []);
 
-  // Input — keyboard + touch swipe. Both pipe through the same direction
-  // queue so behaviour is identical.
   const queueDir = useCallback((nextDir: number) => {
     const g = gameRef.current;
     if (!g || g.status !== "active") return;
     if (nextDir !== opposite(g.dir) && nextDir !== g.queuedDir) {
       g.queuedDir = nextDir;
       sfx.turn();
-      // Any successful steering input dismisses the onboarding hint.
       if (showSwipeHint) dismissSwipeHint();
     }
   }, [sfx, showSwipeHint, dismissSwipeHint]);
 
-  // Keyboard input
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       let nextDir: number | null = null;
@@ -770,7 +651,6 @@ export default function CyberSnakeSolo() {
         case "ArrowDown": case "s": case "S": nextDir = DIR_S; break;
         case "ArrowLeft": case "a": case "A": nextDir = DIR_W; break;
         case "v": case "V": {
-          // Cycle views: top → tps-p1 → fpv-p1 → 2d-top → top
           const order: SnakeCamera[] = ["top", "tps-p1", "fpv-p1", "2d-top"];
           const idx = order.indexOf(view);
           const next = order[(idx + 1) % order.length];
@@ -779,7 +659,6 @@ export default function CyberSnakeSolo() {
           break;
         }
         case "m": case "M": {
-          // Mute toggle
           const m = !sfx.isMuted();
           sfx.setMuted(m);
           setMuted(m);
@@ -799,10 +678,7 @@ export default function CyberSnakeSolo() {
     return () => window.removeEventListener("keydown", onKey);
   }, [view, sfx, queueDir, toggleFullscreen]);
 
-  // Touch swipe input — listen on WINDOW so the gesture works even in TV
-  // view where Three.js OrbitControls attaches its own touch listeners to
-  // the canvas. We only activate the handler when the gesture starts inside
-  // the board element, so random taps elsewhere don't steer the snake.
+  // Touch swipe must listen on window because OrbitControls captures canvas touches.
   useEffect(() => {
     const boardEl = boardRef.current;
     if (!boardEl) return;
@@ -812,7 +688,6 @@ export default function CyberSnakeSolo() {
     const onStart = (e: TouchEvent) => {
       if (e.touches.length === 0) return;
       const t = e.touches[0];
-      // Gesture must START on the board to count as a steering swipe.
       const target = document.elementFromPoint(t.clientX, t.clientY);
       if (!target || !(boardEl.contains(target) || target === boardEl)) {
         active = false;
@@ -829,7 +704,7 @@ export default function CyberSnakeSolo() {
       const dx = t.clientX - startX;
       const dy = t.clientY - startY;
       if (Math.abs(dx) < SWIPE_MIN && Math.abs(dy) < SWIPE_MIN) return;
-      if (Date.now() - startT > 800) return; // too slow → ignore
+      if (Date.now() - startT > 800) return;
       if (Math.abs(dx) > Math.abs(dy)) {
         queueDir(dx > 0 ? DIR_E : DIR_W);
       } else {
@@ -845,41 +720,32 @@ export default function CyberSnakeSolo() {
     };
   }, [sfx, queueDir]);
 
-  // Haptic-feedback helper — safe on devices without Vibration API (iOS Safari
-  // doesn't support it; Android Chrome + most touch browsers do). Short
-  // durations follow mobile-game conventions: ~15ms for discrete events so the
-  // player feels it without distraction.
   const haptic = useCallback((ms: number) => {
     if (typeof navigator === "undefined") return;
     const v: ((p: number) => boolean) | undefined = (navigator as any).vibrate?.bind(navigator);
     if (v) v(ms);
   }, []);
 
-  // One-shot SFX + haptics on state transitions (eat / crash / starve)
   useEffect(() => {
     const g = gameRef.current;
     if (!g) return;
-    // Eat — score jumped since last tick
     if (g.status === "active" && g.score > prevScoreRef.current) {
       sfx.eat();
       haptic(18);
     }
     prevScoreRef.current = g.score;
-    // Crash / starve
     if (g.status === "crashed" && prevStatusRef.current === "active") {
       if (g.ticksSinceLastFood >= FOOD_STARVATION_TICKS) {
         sfx.starve();
         haptic(70);
       } else {
         sfx.crash();
-        // "game over" pattern — short-long-short so the player feels it.
         haptic(120);
       }
     }
     prevStatusRef.current = g.status;
   }, [tick, sfx, haptic]);
 
-  // Submit to local board on crash (one-shot)
   useEffect(() => {
     const g = gameRef.current;
     if (!g) return;
@@ -902,11 +768,9 @@ export default function CyberSnakeSolo() {
 
   const g = gameRef.current;
   const sceneState = g ? toSceneState(g) : null;
-  const continueCost = g ? (0.05 * Math.pow(2, g.continuesUsed)).toFixed(2) : "0.05";
 
   return (
     <div style={{ minHeight: "100vh", background: "#050508", color: "#e8e8f0", fontFamily: "'Space Grotesk', sans-serif" }}>
-      {/* Header */}
       <div style={{ padding: "14px 24px", borderBottom: "1px solid #252540", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <a href="/" style={{ textDecoration: "none", fontSize: 24, fontWeight: 900, fontStyle: "italic", background: "linear-gradient(135deg, #9945FF, #14F195)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", paddingRight: 8 }}>GAMERPLEX</a>
@@ -933,9 +797,7 @@ export default function CyberSnakeSolo() {
       </div>
 
       <div className="arcade-layout" style={{ maxWidth: 1400, margin: "0 auto", padding: "16px 16px 24px", gap: 16 }}>
-        {/* ── LEFT: game scene ── */}
         <div>
-          {/* View selector — above the board. Quad-toggle: TV · TPS · FPS · 2D */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
             <div style={{ display: "inline-flex", padding: 3, background: "#0c0c14", border: "1px solid #252540", borderRadius: 10, flexWrap: "wrap" }}>
               {([
@@ -1029,7 +891,6 @@ export default function CyberSnakeSolo() {
                     "radial-gradient(ellipse at center, rgba(79,195,247,0.08) 0%, rgba(2,6,20,0) 60%)",
                 }}
               >
-                {/* Animated grid — subtle scanline pulse so the board never looks dead. */}
                 <div
                   aria-hidden
                   style={{
@@ -1061,7 +922,15 @@ export default function CyberSnakeSolo() {
                   CYBER SNAKE
                 </div>
 
-                {/* Controls — keyboard chips instead of plain text */}
+                <div style={{ zIndex: 1 }}>
+                  <ModeToggle
+                    gameLabel="Cyber Snake"
+                    active="arcade"
+                    arcade={{ status: "live-mainnet-soon", href: "/play/cyber-snake?mode=arcade" }}
+                    battle={{ status: "live-devnet", href: "/play/cyber-snake?mode=battle", programId: "EK8gFE1ojW61QuLTvy6dHyLxCq5yjCnauJz8eisNPTk3" }}
+                  />
+                </div>
+
                 <div style={{ display: "flex", gap: 12, alignItems: "center", zIndex: 1, flexWrap: "wrap", justifyContent: "center" }}>
                   <div style={{ display: "flex", gap: 6 }}>
                     <KeyChip>↑</KeyChip>
@@ -1083,6 +952,33 @@ export default function CyberSnakeSolo() {
                   </div>
                 </div>
 
+                {challenger && (
+                  <div
+                    style={{
+                      marginTop: 4,
+                      padding: "10px 16px",
+                      borderRadius: 10,
+                      border: "1px solid rgba(255,154,64,0.4)",
+                      background: "rgba(80,40,10,0.45)",
+                      color: "#ffd24a",
+                      fontFamily: "monospace",
+                      fontSize: 13,
+                      maxWidth: 420,
+                      textAlign: "center",
+                      zIndex: 1,
+                      boxShadow: "0 0 20px rgba(255,154,64,0.18)",
+                    }}
+                  >
+                    🏁 Challenge from <strong>{shortAddr(challenger.player)}</strong>
+                    <div style={{ color: "#ff9a40", fontSize: 22, fontWeight: 800, marginTop: 2 }}>
+                      score {challenger.score}
+                    </div>
+                    <div style={{ color: "#8a8aa0", fontSize: 11, marginTop: 4 }}>
+                      Same seed · same food spawns · pure skill
+                    </div>
+                  </div>
+                )}
+
                 <button
                   onClick={startNewGame}
                   style={{
@@ -1092,17 +988,21 @@ export default function CyberSnakeSolo() {
                     fontWeight: 800,
                     letterSpacing: 2,
                     textTransform: "uppercase",
-                    background: "linear-gradient(135deg, #14F195, #4fc3f7)",
+                    background: challenger
+                      ? "linear-gradient(135deg, #ff9a40, #ffd24a)"
+                      : "linear-gradient(135deg, #14F195, #4fc3f7)",
                     color: "#020614",
                     border: "none",
                     borderRadius: 10,
                     cursor: "pointer",
-                    boxShadow: "0 0 28px rgba(20,241,149,0.35), inset 0 1px 0 rgba(255,255,255,0.2)",
+                    boxShadow: challenger
+                      ? "0 0 28px rgba(255,154,64,0.45), inset 0 1px 0 rgba(255,255,255,0.2)"
+                      : "0 0 28px rgba(20,241,149,0.35), inset 0 1px 0 rgba(255,255,255,0.2)",
                     animation: "csStartPulse 2s ease-in-out infinite",
                     zIndex: 1,
                   }}
                 >
-                  ▶ Start Game
+                  {challenger ? "▶ Accept Challenge" : "▶ Start Game"}
                 </button>
 
                 <div style={{ fontSize: 11, color: "#5a5a70", zIndex: 1, textAlign: "center", maxWidth: 320 }}>
@@ -1126,7 +1026,6 @@ export default function CyberSnakeSolo() {
               </div>
             )}
 
-            {/* HUD overlay — score + tick + hunger/move warnings, top-left */}
             {g && g.status === "active" && (
               <div style={{ position: "absolute", top: 14, left: 14, color: "#e8e8f0", fontFamily: "monospace", fontSize: 13, background: "rgba(2,6,20,0.85)", padding: "8px 12px", borderRadius: 8, border: "1px solid #252540", minWidth: 150 }}>
                 <div>score <span style={{ color: "#ffd24a", fontSize: 16, fontWeight: 700 }}>{g.score}</span></div>
@@ -1135,7 +1034,7 @@ export default function CyberSnakeSolo() {
                   const ticksLeft = FOOD_STARVATION_TICKS - g.ticksSinceLastFood;
                   const secsLeft = Math.ceil(ticksLeft / (1000 / TICK_MS));
                   if (g.ticksSinceLastFood >= FOOD_WARNING_TICKS) {
-                    const urgent = ticksLeft <= 35; // last ~5s
+                    const urgent = ticksLeft <= 35;
                     return (
                       <div style={{ color: urgent ? "#ff5230" : "#ff9a40", marginTop: 4, fontWeight: 700, animation: urgent ? "pulse 0.6s ease-in-out infinite" : "none" }}>
                         🍎 starving · {secsLeft}s
@@ -1156,11 +1055,7 @@ export default function CyberSnakeSolo() {
                 )}
               </div>
             )}
-            {/* (Corner view button removed — quad-selector sits above the board.) */}
 
-            {/* View change toast — flashes the new view name at top-centre so
-                the player knows what they switched to. Re-keyed per switch so
-                the CSS animation replays each time. */}
             {viewKey > 0 && (
               <div key={viewKey} className="view-toast">
                 {view === "top" ? "TV · TOP-DOWN"
@@ -1170,8 +1065,6 @@ export default function CyberSnakeSolo() {
               </div>
             )}
 
-            {/* One-shot swipe hint — dismisses after first input + persisted in
-                localStorage so repeat players don't see it. Tap to dismiss. */}
             {g && g.status === "active" && showSwipeHint && (
               <div className="swipe-hint" onClick={dismissSwipeHint} style={{ pointerEvents: "auto", cursor: "pointer" }}>
                 swipe anywhere on the board<br/>
@@ -1180,7 +1073,6 @@ export default function CyberSnakeSolo() {
               </div>
             )}
 
-            {/* CRASH overlay */}
             {g && g.status === "crashed" && (
               <div style={{ position: "absolute", inset: 0, background: "rgba(5,5,20,0.88)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, padding: 20 }}>
                 {g.ticksSinceLastFood >= FOOD_STARVATION_TICKS ? (
@@ -1192,11 +1084,9 @@ export default function CyberSnakeSolo() {
                   <div style={{ fontSize: 54, fontWeight: 900, color: "#ff5230", letterSpacing: 4, textShadow: "0 0 20px rgba(255,82,48,0.6)" }}>CRASHED</div>
                 )}
                 <div style={{ fontSize: 14, color: "#8a8aa0" }}>
-                  Score <span style={{ color: "#ffd24a", fontWeight: 700, fontSize: 18 }}>{g.score}</span> ·
-                  Continues used <span style={{ color: "#ff9a40", fontWeight: 700 }}>{g.continuesUsed}</span>
+                  Score <span style={{ color: "#ffd24a", fontWeight: 700, fontSize: 18 }}>{g.score}</span>
                 </div>
 
-                {/* wallet-aware action row — progressive disclosure UX */}
                 {connected ? (
                   <ProgressiveUpgradeStack
                     busy={busy}
@@ -1210,20 +1100,39 @@ export default function CyberSnakeSolo() {
                     onVerify={onVerifyRun}
                     onMintReceipt={onMintReceipt}
                     onWrapCnft={() => setOnchainError("T4 cNFT wrap ships in v1.3 — Metaplex Bubblegum integration pending.")}
-                    onContinue={onPaidContinue}
-                    onNewGame={startNewGame}
-                    continueCost={continueCost}
+                    onRestart={startNewGame}
                   />
                 ) : (
-                  <div style={{ display: "flex", gap: 14, marginTop: 6, flexDirection: "column", alignItems: "center" }}>
-                    <div style={{ fontSize: 12, color: "#8a8aa0" }}>
-                      Connect wallet to save on-chain · or keep playing locally
+                  <div className="snake-end-actions" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, marginTop: 4, width: "100%", maxWidth: 420 }}>
+                    <button
+                      onClick={() => setWalletModalVisible(true)}
+                      className="snake-end-save"
+                      style={{
+                        background: "linear-gradient(90deg, #9945FF, #14F195)",
+                        color: "#000",
+                        padding: "16px 28px",
+                        border: "none",
+                        borderRadius: 10,
+                        fontSize: 16,
+                        fontWeight: 900,
+                        letterSpacing: 0.5,
+                        cursor: "pointer",
+                        fontFamily: "inherit",
+                        boxShadow: "0 0 32px rgba(20,241,149,0.55), 0 0 64px rgba(153,69,255,0.35)",
+                        width: "100%",
+                        maxWidth: 360,
+                      }}
+                    >
+                      💾 SAVE SCORE — CONNECT WALLET
+                    </button>
+                    <div style={{ fontSize: 11, color: "#8a8aa0", textAlign: "center", lineHeight: 1.5 }}>
+                      First save free on devnet · GPX5 memo on Solana, permanent
                     </div>
-                    <div style={{ display: "flex", gap: 14 }}>
-                      <button onClick={continueGame} style={btnSecondary}>
-                        Continue free (no wallet)
-                      </button>
-                      <button onClick={startNewGame} style={btnPrimary}>New Game</button>
+                    <div className="snake-end-secondary" style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center", marginTop: 4 }}>
+                      <button onClick={startNewGame} style={{ ...btnSecondary, minHeight: 40 }}>↻ Try Again</button>
+                      <a href="/arcade" style={{ ...btnSecondary, textDecoration: "none", display: "inline-flex", alignItems: "center", minHeight: 40 }}>
+                        ← Back
+                      </a>
                     </div>
                   </div>
                 )}
@@ -1252,6 +1161,12 @@ export default function CyberSnakeSolo() {
                     )}
                   </div>
                 )}
+                {lastSaveSig && g && (
+                  <ChallengeShareRow
+                    sig={lastSaveSig}
+                    score={g.score}
+                  />
+                )}
                 <div style={{ fontSize: 10, color: "#555", marginTop: 2 }}>
                   local leaderboard updated · program <code>{ARCADE_PROGRAM_ID.toBase58().slice(0, 8)}…</code> on devnet
                 </div>
@@ -1259,10 +1174,6 @@ export default function CyberSnakeSolo() {
             )}
           </div>
 
-          {/* Mobile D-pad — only rendered while the game is ACTIVE. Hiding
-              it during pre-start + crash removes the overlap with START GAME /
-              Save on-chain buttons (mobile gaming best practice: controls must
-              never obscure primary calls-to-action). */}
           {g && g.status === "active" && (
             <div className="arcade-dpad" aria-hidden={false}>
               <button className="dpad-btn dpad-up"    aria-label="Up"    onPointerDown={(e) => { e.preventDefault(); queueDir(DIR_N); }}>▲</button>
@@ -1276,9 +1187,6 @@ export default function CyberSnakeSolo() {
             @keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: 0.4 } }
             @keyframes viewToast { 0% { opacity: 0; transform: translate(-50%, -8px); } 15% { opacity: 1; transform: translate(-50%, 0); } 85% { opacity: 1; } 100% { opacity: 0; } }
 
-            /* Board responsive height — keeps a pleasant aspect ratio across
-               phones, tablets, desktops. On small phones the D-pad floats
-               over the viewport so the board doesn't need to leave room. */
             .arcade-board {
               height: 600px;
               min-height: 360px;
@@ -1287,13 +1195,9 @@ export default function CyberSnakeSolo() {
               .arcade-board { height: 70vh; max-height: 560px; }
             }
             @media (max-width: 600px) {
-              /* Reduce board so view selector + HUD fit above the fold on
-                 short phones (iPhone SE = 667px tall). Floating D-pad
-                 overlays the viewport separately. */
               .arcade-board { height: 52vh; min-height: 280px; max-height: 420px; }
             }
 
-            /* Layout: sidebar on wide, stacked on mobile. */
             .arcade-layout {
               display: grid;
               grid-template-columns: 1fr 340px;
@@ -1302,9 +1206,6 @@ export default function CyberSnakeSolo() {
               .arcade-layout { grid-template-columns: 1fr; }
             }
 
-            /* D-pad — hidden on wide screens (keyboard-only). On touch
-               devices, floats fixed at the bottom-right of the VIEWPORT so
-               it's always reachable without scrolling. */
             .arcade-dpad { display: none; }
             @media (hover: none) and (pointer: coarse), (max-width: 900px) {
               .arcade-dpad {
@@ -1315,11 +1216,10 @@ export default function CyberSnakeSolo() {
                 width: min(180px, 44vw);
                 aspect-ratio: 3 / 2;
                 z-index: 50;
-                pointer-events: none; /* let buttons re-enable */
+                pointer-events: none;
               }
               .arcade-dpad .dpad-btn { pointer-events: auto; }
             }
-            /* Narrow + short screens → scale D-pad a bit smaller and move to bottom-centre. */
             @media (max-width: 420px) {
               .arcade-dpad {
                 right: 50%;
@@ -1358,8 +1258,6 @@ export default function CyberSnakeSolo() {
             .dpad-left  { top: 25%;  left: 0;      height: 50%; }
             .dpad-right { top: 25%;  right: 0;     height: 50%; }
 
-            /* Swipe / view hint — briefly shown centred on the board the
-               first time the player loads on a touch device. */
             .swipe-hint {
               position: absolute;
               top: 50%;
@@ -1380,8 +1278,6 @@ export default function CyberSnakeSolo() {
               z-index: 40;
             }
 
-            /* View change toast — brief "TV" / "TPS" / "FPS" / "2D" label
-               top-centre on the board so the player knows what they switched to. */
             .view-toast {
               position: absolute;
               top: 14px;
@@ -1407,7 +1303,6 @@ export default function CyberSnakeSolo() {
           </div>
         </div>
 
-        {/* ── RIGHT: leaderboard + info ── */}
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <div style={{ background: "#0c0c14", border: "1px solid #252540", borderRadius: 12, padding: "18px 20px" }}>
             <div style={{ fontSize: 11, fontWeight: 800, color: "#14F195", letterSpacing: 2, textTransform: "uppercase", marginBottom: 12 }}>
@@ -1419,7 +1314,6 @@ export default function CyberSnakeSolo() {
               </div>
             ) : (
               <div>
-                {/* Column header */}
                 <div style={{ display: "grid", gridTemplateColumns: "30px 1fr 64px 56px", gap: 8, fontSize: 10, color: "#555570", letterSpacing: 1.2, textTransform: "uppercase", fontWeight: 700, marginBottom: 6, padding: "0 2px" }}>
                   <div>#</div>
                   <div>Score</div>
@@ -1463,52 +1357,29 @@ export default function CyberSnakeSolo() {
             highlightWallet={publicKey?.toBase58() ?? null}
           />
 
-          <div style={{ background: "#0c0c14", border: "1px solid #252540", borderRadius: 12, padding: "16px 20px" }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: "#14F195", letterSpacing: 2, textTransform: "uppercase", marginBottom: 10 }}>
-              On-chain actions
+          <details style={{ background: "#0c0c14", border: "1px solid #252540", borderRadius: 12, padding: "12px 16px" }}>
+            <summary style={{ cursor: "pointer", fontSize: 11, fontWeight: 800, color: "#14F195", letterSpacing: 2, textTransform: "uppercase", listStyle: "none", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span>💸 Save options · pricing</span>
+              <span style={{ fontSize: 14, color: "#6a6a80" }}>+</span>
+            </summary>
+            <div style={{ marginTop: 10, fontSize: 12, color: "#a8a8c0", lineHeight: 1.7 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}><span style={{ color: "#4fc3f7" }}>💾 Save score</span><b>$0.05</b></div>
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}><span style={{ color: "#ffd740" }}>🏆 Save replay (verified)</span><b>$0.15</b></div>
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}><span style={{ color: "#9945FF" }}>🎴 Mint cNFT receipt</span><b>$0.25</b></div>
+              <div style={{ fontSize: 10, color: "#666", marginTop: 8, lineHeight: 1.5 }}>
+                Paid in USDC. ~$0.001/tx Solana gas. PlayerProfile setup ~$0.41 refundable rent (one-time per wallet).
+              </div>
             </div>
-            <div style={{ fontSize: 11, color: "#6a6a80", marginBottom: 8, letterSpacing: 1, textTransform: "uppercase", fontWeight: 700 }}>Per action (Gamerplex fee)</div>
-            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: "#a8a8c0", lineHeight: 1.7 }}>
-              <li><strong style={{ color: "#4fc3f7" }}>Save score — $0.05</strong> · GPX5 memo, permanent</li>
-              <li><strong style={{ color: "#ffd740" }}>Save replay — $0.15</strong> · 3× base · full move log → 🏆</li>
-              <li><strong style={{ color: "#9945FF" }}>Mint cNFT — $0.25</strong> · 5× base · tradeable NFT (v1.2)</li>
-              <li>Continue — $0.05 × 2ⁿ · exponential per crash</li>
-            </ul>
-            <div style={{ fontSize: 11, color: "#6a6a80", marginTop: 12, marginBottom: 4, letterSpacing: 1, textTransform: "uppercase", fontWeight: 700 }}>One-time (per wallet)</div>
-            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: "#a8a8c0", lineHeight: 1.7 }}>
-              <li>PlayerProfile verification — <strong style={{ color: "#e8e8f0" }}>~$0.41 refundable Solana rent</strong> (no Gamerplex fee)</li>
-            </ul>
-            <div style={{ fontSize: 10, color: "#555", marginTop: 10, lineHeight: 1.5 }}>
-              Plus Solana network gas ~$0.001/tx. Paid in USDC to the treasury, auditable on-chain.
-            </div>
-            <div style={{ fontSize: 11, fontWeight: 800, color: "#9945FF", letterSpacing: 2, textTransform: "uppercase", marginTop: 14, marginBottom: 8 }}>
-              Coming next
-            </div>
-            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: "#a8a8c0", lineHeight: 1.7 }}>
-              <li>cNFT mint via Metaplex Bubblegum (v1.2)</li>
-              <li>Affiliate 20% cut on referred spend</li>
-              <li>SNS avatar + cosmetic skins</li>
-              <li>Global on-chain leaderboard</li>
-            </ul>
-          </div>
+          </details>
         </div>
       </div>
+
     </div>
   );
 }
 
-// ── Progressive upgrade stack (value-first sales UX) ──────────────────
-//
-// Sales principles applied:
-//  • Free option always primary ("Play again" is the largest non-paid action)
-//  • Single adaptive CTA advances the user along the 4-tier progression,
-//    never overwhelming with parallel upsells
-//  • Value-first copy (what the user GETS, not what the fee is for)
-//  • Advanced toggle reveals all 4 tiers for users who want the full menu
-//  • Running "total spent this run" transparency; never hidden cost surprises
-//  • No urgency, no dark patterns, no pre-checked boxes, clean "skip" path
 type StackProps = {
-  busy: null | "save" | "verify" | "receipt" | "continue";
+  busy: null | "save" | "verify" | "receipt";
   profileExists: boolean | null;
   savedThisRun: boolean;
   verifiedThisRun: boolean;
@@ -1519,20 +1390,17 @@ type StackProps = {
   onVerify: () => void;
   onMintReceipt: () => void;
   onWrapCnft: () => void;
-  onContinue: () => void;
-  onNewGame: () => void;
-  continueCost: string;
+  onRestart: () => void;
 };
 
 function ProgressiveUpgradeStack(p: StackProps) {
-  // Determine the "next tier" to offer as the primary upsell CTA.
   const nextTier: 1 | 2 | 3 | 4 | null = !p.savedThisRun
     ? 1
     : !p.verifiedThisRun
     ? 2
     : !p.ownedThisRun
     ? 3
-    : 4; // once T3 done, T4 is next (but disabled pending v1.3)
+    : 4;
 
   const tier1Text = !p.profileExists
     ? "Save to the global leaderboard · $0.05 + ~$0.41 rent (refundable)"
@@ -1582,7 +1450,6 @@ function ProgressiveUpgradeStack(p: StackProps) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "center", width: "100%", maxWidth: 480 }}>
-      {/* Progression pills — shows what's already unlocked */}
       <div style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 10, color: "#6a6a80", letterSpacing: 1, textTransform: "uppercase", fontWeight: 700 }}>
         <TierPill done={p.savedThisRun} busy={p.busy === "save"} label="1· Saved" />
         <span style={{ color: "#2a2a40" }}>›</span>
@@ -1593,7 +1460,6 @@ function ProgressiveUpgradeStack(p: StackProps) {
         <TierPill done={false} busy={false} label="4· cNFT" pending={true} />
       </div>
 
-      {/* Primary adaptive CTA */}
       {nextTier !== null && nextTier <= 4 && (
         <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 8, alignItems: "center" }}>
           <button
@@ -1623,22 +1489,18 @@ function ProgressiveUpgradeStack(p: StackProps) {
         </div>
       )}
 
-      {/* Secondary always-visible: new game + paid continue */}
       <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
-        <button
-          onClick={p.onContinue}
-          disabled={p.busy !== null}
-          style={p.busy === "continue" ? btnBusy : btnSecondarySmall}
-          title="Resume this run from death position. Exponential per crash — each continue costs twice the last."
+        <a
+          href="/arcade"
+          style={{ ...btnSecondarySmall, textDecoration: "none", display: "inline-flex", alignItems: "center" }}
         >
-          {p.busy === "continue" ? "Processing…" : `Continue · $${p.continueCost}`}
-        </button>
-        <button onClick={p.onNewGame} disabled={p.busy !== null} style={btnPrimary}>
-          New game
+          ← Back to arcade
+        </a>
+        <button onClick={p.onRestart} disabled={p.busy !== null} style={btnPrimary}>
+          🔄 Restart
         </button>
       </div>
 
-      {/* Advanced disclosure */}
       <button
         onClick={() => p.setShowAdvanced(!p.showAdvanced)}
         style={{
@@ -1738,7 +1600,6 @@ function AdvancedRow({ done, tier, label, fee, detail, pending }: { done: boolea
   );
 }
 
-// ── Styles ─────────────────────────────────────────────────────────────
 const btnPrimary: React.CSSProperties = {
   background: "linear-gradient(135deg, #4fc3f7, #14F195)",
   color: "#020614",
@@ -1831,3 +1692,38 @@ const btnGhostDone: React.CSSProperties = {
   cursor: "default",
   fontFamily: "'Space Grotesk', sans-serif",
 };
+
+function ChallengeShareRow({ sig, score }: { sig: string; score: number }) {
+  const [copied, setCopied] = useState(false);
+  const link = useMemo(() => {
+    if (typeof window === "undefined") return "";
+    return `${window.location.origin}/play/cyber-snake?mode=arcade&challenge=${sig}`;
+  }, [sig]);
+  const tweetHref = useMemo(() => {
+    const text = `🐍 Just scored ${score} on Cyber Snake. Beat me on the same seed?`;
+    return `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(link)}`;
+  }, [link, score]);
+  const onCopy = useCallback(async () => {
+    if (!link) return;
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {}
+  }, [link]);
+  return (
+    <div style={{ display: "flex", gap: 10, marginTop: 6, alignItems: "center", flexWrap: "wrap", justifyContent: "center" }}>
+      <button onClick={onCopy} style={btnSecondarySmall} aria-label="Copy challenge link">
+        {copied ? "✓ link copied" : "🔗 Copy challenge link"}
+      </button>
+      <a
+        href={tweetHref}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{ ...btnSecondarySmall, textDecoration: "none", display: "inline-flex", alignItems: "center", color: "#7cd1ff", borderColor: "#1a3a4a" }}
+      >
+        🐦 Share on X
+      </a>
+    </div>
+  );
+}

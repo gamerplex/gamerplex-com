@@ -4,7 +4,6 @@ import { useEffect, useRef, useCallback } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
-// Piece encoding from the existing game logic
 const isW = (p: number) => p > 0 && p % 2 === 0;
 const pt = (p: number) => p & 0xfe;
 
@@ -24,10 +23,9 @@ const BOARD_OFFSET = -3.5;
 const MAGIC_PURPLE = 0x9945ff;
 const NEON_CYAN = 0x00f0ff;
 
-// Convert board index (0-63) to world position
 function idxToWorld(idx: number): THREE.Vector3 {
-  const rank = idx >> 3; // 0=rank1, 7=rank8
-  const file = idx & 7;  // 0=a, 7=h
+  const rank = idx >> 3;
+  const file = idx & 7;
   return new THREE.Vector3(
     file + BOARD_OFFSET + 0.5,
     0.12,
@@ -35,13 +33,11 @@ function idxToWorld(idx: number): THREE.Vector3 {
   );
 }
 
-// LatheGeometry from profile points
 function createLatheProfile(points: [number, number][], segments = 32): THREE.LatheGeometry {
   const vectors = points.map(p => new THREE.Vector2(p[0], p[1]));
   return new THREE.LatheGeometry(vectors, segments);
 }
 
-// Piece profiles
 function getPawnProfile(): [number, number][] {
   return [[0,0],[0.32,0],[0.34,0.03],[0.34,0.08],[0.30,0.12],[0.15,0.18],[0.12,0.30],[0.11,0.50],[0.13,0.55],[0.18,0.58],[0.13,0.61],[0.11,0.65],[0.18,0.72],[0.22,0.80],[0.22,0.88],[0.18,0.94],[0.10,0.98],[0,1.0]];
 }
@@ -61,7 +57,6 @@ function getKingProfile(): [number, number][] {
   return [[0,0],[0.40,0],[0.42,0.04],[0.42,0.10],[0.36,0.14],[0.19,0.22],[0.16,0.45],[0.14,0.70],[0.16,0.75],[0.22,0.78],[0.16,0.81],[0.13,0.85],[0.20,0.95],[0.26,1.05],[0.24,1.12],[0.28,1.18],[0.22,1.14],[0.26,1.22],[0.18,1.16],[0.10,1.28],[0.04,1.32],[0,1.35]];
 }
 
-// Map piece encoding to type letter
 function pieceTypeFromEncoding(p: number): string {
   const t = pt(p);
   switch (t) {
@@ -192,7 +187,6 @@ function createPieceMesh(type: string, white: boolean): THREE.Group {
     }
   }
 
-  // Glowing base ring
   const baseRing = new THREE.Mesh(
     new THREE.TorusGeometry(0.32 * scale, 0.04, 12, 24),
     glowMat
@@ -204,7 +198,6 @@ function createPieceMesh(type: string, white: boolean): THREE.Group {
   return group;
 }
 
-// ====================== MAIN COMPONENT ======================
 export default function Chess3DBoard({ board, selected, validMoves, lastMove, check, phase, onClick, autoRotate = false }: Chess3DProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<{
@@ -231,14 +224,12 @@ export default function Chess3DBoard({ board, selected, validMoves, lastMove, ch
   const checkRef = useRef(check);
   const onClickRef = useRef(onClick);
 
-  // Keep refs in sync
   useEffect(() => { onClickRef.current = onClick; }, [onClick]);
   useEffect(() => { selectedRef.current = selected; }, [selected]);
   useEffect(() => { validRef.current = validMoves; }, [validMoves]);
   useEffect(() => { lastMoveRef.current = lastMove; }, [lastMove]);
   useEffect(() => { checkRef.current = check; }, [check]);
 
-  // Initialize Three.js scene
   useEffect(() => {
     if (!containerRef.current || sceneRef.current) return;
 
@@ -248,7 +239,6 @@ export default function Chess3DBoard({ board, selected, validMoves, lastMove, ch
     scene.fog = new THREE.FogExp2(0x08000f, 0.015);
 
     const camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 1000);
-    // In auto-rotate mode, pull back further so board doesn't clip when rotating
     if (autoRotate) {
       camera.position.set(0.5, 11, 12);
     } else {
@@ -276,13 +266,12 @@ export default function Chess3DBoard({ board, selected, validMoves, lastMove, ch
     controls.target.set(0.5, 0.5, 0.5);
     if (autoRotate) {
       controls.autoRotate = true;
-      controls.autoRotateSpeed = 0.8; // cinematic slow rotation
+      controls.autoRotateSpeed = 0.8;
       controls.enableZoom = false;
       controls.enablePan = false;
-      controls.enableRotate = false; // disable right-click camera drag on homepage viewer
+      controls.enableRotate = false;
     }
 
-    // Lighting
     scene.add(new THREE.AmbientLight(0x6633aa, 0.35));
     scene.add(new THREE.HemisphereLight(0x8866cc, 0x221144, 0.4));
 
@@ -337,7 +326,6 @@ export default function Chess3DBoard({ board, selected, validMoves, lastMove, ch
     frame.receiveShadow = true; frame.castShadow = true;
     scene.add(frame);
 
-    // Inlay strips
     const inlayMat = new THREE.MeshStandardMaterial({
       color: 0x6633aa, emissive: 0x4422aa, emissiveIntensity: 0.5,
       roughness: 0.1, metalness: 0.9
@@ -359,7 +347,6 @@ export default function Chess3DBoard({ board, selected, validMoves, lastMove, ch
       scene.add(inlay);
     }
 
-    // Board squares
     const lightMat = new THREE.MeshStandardMaterial({ color: 0xf0e0f8, roughness: 0.2, metalness: 0.05 });
     const darkMat = new THREE.MeshStandardMaterial({ color: 0x5a2d8c, roughness: 0.3, metalness: 0.2, emissive: 0x1a0833, emissiveIntensity: 0.1 });
 
@@ -402,7 +389,6 @@ export default function Chess3DBoard({ board, selected, validMoves, lastMove, ch
       nebulaPlanes.push(plane);
     }
 
-    // Embers
     const emberCount = 600;
     const emberPos = new Float32Array(emberCount * 3);
     const emberCol = new Float32Array(emberCount * 3);
@@ -426,7 +412,6 @@ export default function Chess3DBoard({ board, selected, validMoves, lastMove, ch
     }));
     scene.add(ambientEmbers);
 
-    // Fire columns
     for (let side = 0; side < 4; side++) {
       const fireCount = 150;
       const fp = new Float32Array(fireCount * 3);
@@ -469,7 +454,6 @@ export default function Chess3DBoard({ board, selected, validMoves, lastMove, ch
       mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
       raycaster.setFromCamera(mouse, camera);
 
-      // Build list of clickable objects: pieces + board squares + highlight rings
       const s = sceneRef.current;
       const clickTargets: THREE.Object3D[] = [...boardSquares];
       if (s) {
@@ -479,7 +463,7 @@ export default function Chess3DBoard({ board, selected, validMoves, lastMove, ch
 
       const intersects = raycaster.intersectObjects(clickTargets, true);
       if (intersects.length === 0) {
-        // Last resort: raycast against a virtual ground plane at board height
+        // Fallback: raycast against virtual ground plane at board height.
         const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -0.06);
         const hitPoint = new THREE.Vector3();
         raycaster.ray.intersectPlane(groundPlane, hitPoint);
@@ -496,8 +480,6 @@ export default function Chess3DBoard({ board, selected, validMoves, lastMove, ch
 
       let clickedIdx: number | null = null;
 
-      // Check ALL intersections — find the first one with a valid idx
-      // Prefer piece hits over board square hits (pieces sit on top of squares)
       for (const hit of intersects) {
         let obj: THREE.Object3D | null = hit.object;
         while (obj) {
@@ -510,7 +492,6 @@ export default function Chess3DBoard({ board, selected, validMoves, lastMove, ch
         if (clickedIdx !== null) break;
       }
 
-      // Fallback: compute from closest hit world position
       if (clickedIdx === null) {
         const point = intersects[0].point;
         const file = Math.round(point.x - BOARD_OFFSET - 0.5);
@@ -521,7 +502,6 @@ export default function Chess3DBoard({ board, selected, validMoves, lastMove, ch
         }
       }
 
-      // Debug: log clicked square
       if (clickedIdx !== null) {
         const file = clickedIdx & 7;
         const rank = clickedIdx >> 3;
@@ -535,7 +515,6 @@ export default function Chess3DBoard({ board, selected, validMoves, lastMove, ch
 
     renderer.domElement.addEventListener("click", handleClick);
 
-    // Resize handler
     const onResize = () => {
       if (!container) return;
       camera.aspect = container.clientWidth / container.clientHeight;
@@ -554,14 +533,12 @@ export default function Chess3DBoard({ board, selected, validMoves, lastMove, ch
     };
     sceneRef.current = state;
 
-    // Animation loop
     const animate = () => {
       if (state.disposed) return;
       requestAnimationFrame(animate);
       state.floatTime += 0.016;
       controls.update();
 
-      // Particles
       for (let i = state.particles.length - 1; i >= 0; i--) {
         const p = state.particles[i];
         p.life--;
@@ -581,7 +558,6 @@ export default function Chess3DBoard({ board, selected, validMoves, lastMove, ch
         }
       }
 
-      // Background animations
       const t = state.floatTime;
       nebulaPlanes.forEach(plane => {
         const rs = plane.userData.rotSpeed;
@@ -633,23 +609,19 @@ export default function Chess3DBoard({ board, selected, validMoves, lastMove, ch
         auraLight.color.setHSL(0.75 + Math.sin(t * 0.5) * 0.05, 0.9, 0.5);
       }
 
-      // Camera nudge toward selected piece (smooth lerp)
       if (selectedRef.current !== null && state.pieceMeshes.has(selectedRef.current)) {
         const selMesh = state.pieceMeshes.get(selectedRef.current)!;
-        // Target: slightly toward the selected piece, closer and lower
         const targetX = 0.5 + (selMesh.position.x - 0.5) * 0.15;
         const targetZ = 10 + (selMesh.position.z - 0.5) * 0.08;
         const targetY = 8.5;
         camera.position.x += (targetX - camera.position.x) * 0.04;
         camera.position.y += (targetY - camera.position.y) * 0.04;
         camera.position.z += (targetZ - camera.position.z) * 0.04;
-        // Look slightly toward the piece
         const lookX = 0.5 + (selMesh.position.x - 0.5) * 0.3;
         const lookZ = 0.5 + (selMesh.position.z - 0.5) * 0.3;
         controls.target.x += (lookX - controls.target.x) * 0.04;
         controls.target.z += (lookZ - controls.target.z) * 0.04;
       } else {
-        // Return to default position
         camera.position.x += (0.5 - camera.position.x) * 0.03;
         camera.position.y += (9 - camera.position.y) * 0.03;
         camera.position.z += (10 - camera.position.z) * 0.03;
@@ -657,23 +629,19 @@ export default function Chess3DBoard({ board, selected, validMoves, lastMove, ch
         controls.target.z += (0.5 - controls.target.z) * 0.03;
       }
 
-      // Piece float + selected piece lift
       state.pieceMeshes.forEach((mesh, idx) => {
         const isSelected = selectedRef.current === idx;
-        const baseY = isSelected ? 0.35 : 0.12; // lift selected piece
+        const baseY = isSelected ? 0.35 : 0.12;
         const floatAmt = isSelected ? 0.03 : 0.015;
         mesh.position.y = baseY + Math.sin(t * (isSelected ? 3 : 1.5) + idx) * floatAmt;
-        // Scale pulse on selected piece
         const s = isSelected ? 1.08 + Math.sin(t * 4) * 0.03 : 1;
         mesh.scale.setScalar(s);
       });
 
-      // Highlight float
       state.highlights.forEach((h, i) => {
         if ((h as THREE.Mesh).geometry?.type === "TorusGeometry") {
           h.position.y = 0.13 + Math.sin(t * 3 + i) * 0.03;
         }
-        // Pulse the last-move glow discs
         if (h.userData.isLastMoveGlow) {
           const mat = (h as THREE.Mesh).material as THREE.MeshStandardMaterial;
           const phase = h.userData.pulsePhase || 0;
@@ -697,29 +665,24 @@ export default function Chess3DBoard({ board, selected, validMoves, lastMove, ch
     };
   }, []);
 
-  // Sync board state to 3D scene
   useEffect(() => {
     const s = sceneRef.current;
     if (!s) return;
     const prevBoard = boardRef.current;
     boardRef.current = board;
 
-    // Find which piece moved (for animation)
     let movedFrom = -1;
     let movedTo = -1;
     for (let i = 0; i < 64; i++) {
       if (prevBoard[i] !== 0 && board[i] === 0 && prevBoard[i] !== board[i]) {
-        // A piece left this square
         if (movedFrom === -1) movedFrom = i;
       }
       if (board[i] !== 0 && prevBoard[i] !== board[i]) {
-        // A piece appeared/changed here
         if (movedTo === -1) movedTo = i;
       }
     }
 
-    // Remove all existing pieces and rebuild
-    // (simpler and avoids complex diffing for castling/en passant/promotion)
+    // Full rebuild avoids diffing castling/en-passant/promotion edge cases.
     s.pieceMeshes.forEach((mesh) => s.scene.remove(mesh));
     s.pieceMeshes.clear();
 
@@ -733,13 +696,11 @@ export default function Chess3DBoard({ board, selected, validMoves, lastMove, ch
       const pos = idxToWorld(i);
       mesh.position.copy(pos);
       mesh.userData = { idx: i };
-      // Tag all children with idx for raycasting
       mesh.traverse(child => { child.userData.idx = i; });
       s.scene.add(mesh);
       s.pieceMeshes.set(i, mesh);
     }
 
-    // Red glow under king when in check
     if (checkRef.current) {
       const whiteKingIdx = board.indexOf(12);
       if (whiteKingIdx >= 0) {
@@ -751,7 +712,6 @@ export default function Chess3DBoard({ board, selected, validMoves, lastMove, ch
         glow.rotation.x = -Math.PI / 2;
         glow.userData.isCheckGlow = true;
         s.scene.add(glow);
-        // Also add a red point light
         const light = new THREE.PointLight(0xff1744, 3, 3);
         light.position.set(kingPos.x, 1.5, kingPos.z);
         light.userData.isCheckGlow = true;
@@ -759,7 +719,6 @@ export default function Chess3DBoard({ board, selected, validMoves, lastMove, ch
       }
     }
 
-    // Sparkle burst at the destination if a piece moved
     if (movedTo >= 0) {
       const toPos = idxToWorld(movedTo);
       const count = 60;
@@ -793,25 +752,21 @@ export default function Chess3DBoard({ board, selected, validMoves, lastMove, ch
     }
   }, [board]);
 
-  // Sync highlights (selection + valid moves)
   useEffect(() => {
     const s = sceneRef.current;
     if (!s) return;
 
-    // Clear old highlights
     s.highlights.forEach(h => s.scene.remove(h));
     s.highlights = [];
 
-    // Last move highlight — pulsing pink aura on source + destination squares
     if (lastMove) {
       [lastMove.f, lastMove.t].forEach((idx, i) => {
         const pos = idxToWorld(idx);
-        // Glowing disc on square
         const discGeo = new THREE.CircleGeometry(0.45, 32);
         const discMat = new THREE.MeshStandardMaterial({
           color: 0xff44aa,
           emissive: 0xff44aa,
-          emissiveIntensity: i === 1 ? 2.5 : 1.5, // destination brighter
+          emissiveIntensity: i === 1 ? 2.5 : 1.5,
           transparent: true,
           opacity: i === 1 ? 0.7 : 0.4,
         });
@@ -826,7 +781,6 @@ export default function Chess3DBoard({ board, selected, validMoves, lastMove, ch
       });
     }
 
-    // Selected square highlight
     if (selected !== null) {
       const selPos = idxToWorld(selected);
       const selGeo = new THREE.BoxGeometry(0.96, 0.02, 0.96);
@@ -841,7 +795,6 @@ export default function Chess3DBoard({ board, selected, validMoves, lastMove, ch
       s.highlights.push(selMesh);
     }
 
-    // Valid move highlights
     validMoves.forEach(idx => {
       const pos = idxToWorld(idx);
       const isCapture = board[idx] !== 0;

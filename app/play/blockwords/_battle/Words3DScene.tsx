@@ -15,12 +15,6 @@ interface Words3DProps {
 const MAGIC_PURPLE = 0x9945FF;
 const NEON_GREEN = 0x14F195;
 
-/**
- * Background-only 3D scene for Blockwords.
- * Purple nebula + floating particles + magic aura.
- * Does NOT render tiles or letters — those are in the 2D UI overlay.
- * Same vibe as Magic Chess background.
- */
 export default function Words3DScene({ wrongGuesses, maxWrong, phase, shaking }: Words3DProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -44,10 +38,8 @@ export default function Words3DScene({ wrongGuesses, maxWrong, phase, shaking }:
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     container.appendChild(renderer.domElement);
 
-    // Ambient light
     scene.add(new THREE.AmbientLight(0x1a0833, 0.5));
 
-    // Colored point lights that drift
     const purpleLight = new THREE.PointLight(MAGIC_PURPLE, 3, 30);
     purpleLight.position.set(-4, 5, 2);
     scene.add(purpleLight);
@@ -60,12 +52,10 @@ export default function Words3DScene({ wrongGuesses, maxWrong, phase, shaking }:
     deepLight.position.set(0, -2, -5);
     scene.add(deepLight);
 
-    // Wrong guess light — gets redder as you lose lives
     const dangerLight = new THREE.PointLight(0xff1744, 0, 15);
     dangerLight.position.set(0, 4, 3);
     scene.add(dangerLight);
 
-    // Nebula clouds — large translucent planes at different depths
     const nebulaGeo = new THREE.PlaneGeometry(40, 40);
     const nebulae: THREE.Mesh[] = [];
     for (let i = 0; i < 6; i++) {
@@ -95,7 +85,6 @@ export default function Words3DScene({ wrongGuesses, maxWrong, phase, shaking }:
       nebulae.push(mesh);
     }
 
-    // Sparkle particles — lots of tiny floating lights
     const particleCount = 600;
     const pPos = new Float32Array(particleCount * 3);
     const pCol = new Float32Array(particleCount * 3);
@@ -103,7 +92,6 @@ export default function Words3DScene({ wrongGuesses, maxWrong, phase, shaking }:
       pPos[i * 3] = (Math.random() - 0.5) * 40;
       pPos[i * 3 + 1] = Math.random() * 20 - 5;
       pPos[i * 3 + 2] = (Math.random() - 0.5) * 30 - 5;
-      // Mix of purple and green sparkles
       const isPurple = Math.random() > 0.3;
       const c = isPurple
         ? new THREE.Color().setHSL(0.75 + Math.random() * 0.08, 0.9, 0.5 + Math.random() * 0.4)
@@ -125,7 +113,6 @@ export default function Words3DScene({ wrongGuesses, maxWrong, phase, shaking }:
     }));
     scene.add(particles);
 
-    // Ember columns — rising magical embers at the edges
     const emberCount = 150;
     for (let col = 0; col < 4; col++) {
       const angle = (col / 4) * Math.PI * 2;
@@ -154,7 +141,6 @@ export default function Words3DScene({ wrongGuesses, maxWrong, phase, shaking }:
       scene.add(embers);
     }
 
-    // Animation
     const shakingRef = { current: shaking };
     const wrongRef = { current: wrongGuesses };
     const phaseRef = { current: phase };
@@ -164,7 +150,6 @@ export default function Words3DScene({ wrongGuesses, maxWrong, phase, shaking }:
       requestAnimationFrame(animate);
       time += 0.016;
 
-      // Nebula drift
       nebulae.forEach(n => {
         n.rotation.x += n.userData.rotSpeed.x;
         n.rotation.y += n.userData.rotSpeed.y;
@@ -172,7 +157,6 @@ export default function Words3DScene({ wrongGuesses, maxWrong, phase, shaking }:
         n.position.y = n.userData.baseY + Math.sin(time * 0.2 + n.position.x * 0.1) * 0.5;
       });
 
-      // Particle drift upward
       const pp = particles.geometry.attributes.position.array as Float32Array;
       for (let i = 0; i < pp.length; i += 3) {
         pp[i + 1] += 0.005 + Math.sin(time + i) * 0.002;
@@ -185,7 +169,6 @@ export default function Words3DScene({ wrongGuesses, maxWrong, phase, shaking }:
       }
       particles.geometry.attributes.position.needsUpdate = true;
 
-      // Ember rise
       scene.children.forEach(child => {
         if (child.userData?.baseAngle !== undefined && child instanceof THREE.Points) {
           const ep = child.geometry.attributes.position.array as Float32Array;
@@ -201,22 +184,18 @@ export default function Words3DScene({ wrongGuesses, maxWrong, phase, shaking }:
         }
       });
 
-      // Light animation
       purpleLight.intensity = 2.5 + Math.sin(time * 1.2) * 1;
       purpleLight.position.x = -4 + Math.sin(time * 0.4) * 3;
       greenLight.intensity = 1.5 + Math.sin(time * 0.8 + 1) * 0.8;
       greenLight.position.x = 4 + Math.cos(time * 0.3) * 2;
 
-      // Danger light — increases with wrong guesses
       const dangerLevel = wrongRef.current / 6;
       dangerLight.intensity = dangerLevel * 4;
 
-      // Win glow
       if (phaseRef.current === "won") {
         greenLight.intensity = 4 + Math.sin(time * 3) * 2;
       }
 
-      // Camera shake
       if (shakingRef.current) {
         camera.position.x = (Math.random() - 0.5) * 0.15;
         camera.position.y = 2 + (Math.random() - 0.5) * 0.15;
@@ -225,7 +204,6 @@ export default function Words3DScene({ wrongGuesses, maxWrong, phase, shaking }:
         camera.position.y += (2 - camera.position.y) * 0.05;
       }
 
-      // Gentle camera sway
       camera.position.x += Math.sin(time * 0.15) * 0.003;
       camera.position.y += Math.sin(time * 0.2) * 0.002;
 
@@ -233,7 +211,6 @@ export default function Words3DScene({ wrongGuesses, maxWrong, phase, shaking }:
     };
     animate();
 
-    // Resize
     const onResize = () => {
       camera.aspect = container.clientWidth / container.clientHeight;
       camera.updateProjectionMatrix();
@@ -241,7 +218,6 @@ export default function Words3DScene({ wrongGuesses, maxWrong, phase, shaking }:
     };
     window.addEventListener("resize", onResize);
 
-    // Update refs for animation access
     const interval = setInterval(() => {
       shakingRef.current = shaking;
       wrongRef.current = wrongGuesses;
@@ -257,10 +233,7 @@ export default function Words3DScene({ wrongGuesses, maxWrong, phase, shaking }:
     };
   }, []);
 
-  // Update refs without re-creating scene
-  useEffect(() => {
-    // Handled by interval in the main effect
-  }, [wrongGuesses, shaking, phase]);
+  useEffect(() => {}, [wrongGuesses, shaking, phase]);
 
   return (
     <div ref={containerRef} style={{ width: "100%", height: "100%", position: "absolute", inset: 0 }} />

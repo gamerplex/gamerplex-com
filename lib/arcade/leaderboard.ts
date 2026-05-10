@@ -1,9 +1,17 @@
 // Leaderboard MVP — on-chain-sourced top scores per game.
 //
-// Strategy: query getSignaturesForAddress(ARCADE_PROGRAM_ID) which returns
-// a list of signatures plus each tx's memo inline. We parse the GPX5 memos
-// directly — no need to fetch full transactions. This keeps the leaderboard
-// cheap (1 RPC round trip) and fast enough for a v1 MVP.
+// Strategy: query getSignaturesForAddress(ARCADE_PROGRAM_ID) for candidate txs,
+// then fetch each tx and parse the GPX5 memo from the program logs.
+//
+// Why we can't read sig.memo directly: the arcade contract emits the GPX5
+// memo as a *CPI* to the SPL Memo program from inside submit_score (see
+// lib.rs:449). Solana RPC's getSignaturesForAddress only populates `memo` for
+// top-level memo instructions — CPI memos land in the tx's logMessages and
+// innerInstructions, NOT in the signature's top-level memo field. Scanning
+// sig.memo always returns 0 results for arcade saves; we have to fetch full
+// txs and parse the "Program log: Memo (len N): \"GPX5|...\"" log lines.
+// (Bug found 2026-05-05; previous strategy returned an empty leaderboard
+// despite real saves on chain.)
 //
 // Memo format (from lib.rs submit_score):
 //   GPX5|<game_slug>|<variant>|<player>|<score>|<continues>|<powerups>|<seed_b58>|<duration>|<move_hash_b58>[|<meta>]
@@ -14,7 +22,7 @@
 // Upgrade path (post-MVP): dedicated resolver that indexes events into SQLite,
 // exposes /api/leaderboard?game=cyber-snake. Same output shape.
 
-import { Connection, PublicKey, ConfirmedSignatureInfo } from "@solana/web3.js";
+import { Connection, ConfirmedSignatureInfo } from "@solana/web3.js";
 import { ARCADE_PROGRAM_ID } from "./client";
 
 export type LeaderboardEntry = {
@@ -28,10 +36,67 @@ export type LeaderboardEntry = {
   verified: boolean;
 };
 
-// Chunked RPC pagination — one getSignaturesForAddress call returns up to
-// 1000 signatures. For arcade v1 we cap at 500 which is plenty for the
-// first few months of volume.
-const MAX_SIGNATURES = 500;
+// Cap signatures aggressively. Public devnet RPC rate-limits hard
+// (~5–10 req/sec sustained, with 429 retries adding multiplicative cost);
+// 25 sigs sequential fits within the rate window and finishes in ~6–10s
+// even when half the requests retry. Production: switch to Helius/Triton
+// (configurable via NEXT_PUBLIC_RPC_URL) and the cap can be raised.
+const MAX_SIGNATURES = 25;
+
+// Sequential fetch with delay between calls. Parallelism just generates
+// more 429s on public RPC and the client auto-retries them, doubling the
+// call count. Sequential keeps us under the rate limit.
+const TX_FETCH_DELAY_MS = 150;
+
+// Memo for the parsed leaderboard, keyed by gameSlug. Avoids re-fetching
+// the same 60 sigs every 30s when the polling component re-runs.
+const CACHE_TTL_MS = 60_000;
+type CachedResult = { at: number; entries: LeaderboardEntry[] };
+const memCache = new Map<string, CachedResult>();
+const SS_KEY_PREFIX = "gp.arcade.leaderboard.v2.";
+
+function readCache(gameSlug: string): LeaderboardEntry[] | null {
+  const m = memCache.get(gameSlug);
+  if (m && Date.now() - m.at < CACHE_TTL_MS) return m.entries;
+  if (typeof window !== "undefined") {
+    try {
+      const raw = window.sessionStorage.getItem(SS_KEY_PREFIX + gameSlug);
+      if (raw) {
+        const parsed = JSON.parse(raw) as CachedResult;
+        if (Date.now() - parsed.at < CACHE_TTL_MS) {
+          memCache.set(gameSlug, parsed);
+          return parsed.entries;
+        }
+      }
+    } catch {}
+  }
+  return null;
+}
+
+function writeCache(gameSlug: string, entries: LeaderboardEntry[]) {
+  const c = { at: Date.now(), entries };
+  memCache.set(gameSlug, c);
+  if (typeof window !== "undefined") {
+    try { window.sessionStorage.setItem(SS_KEY_PREFIX + gameSlug, JSON.stringify(c)); } catch {}
+  }
+}
+
+// Match `Program log: Memo (len 168): "GPX5|...|..."` lines from the SPL
+// memo program's CPI. Memo program logs the entire memo string verbatim.
+// Capture group 1 = the memo string itself.
+const MEMO_LOG_RE = /Program log: Memo \(len \d+\): "(.+)"$/;
+
+function extractMemosFromLogs(logs: readonly string[] | null | undefined): string[] {
+  if (!logs) return [];
+  const out: string[] = [];
+  for (const l of logs) {
+    const m = l.match(MEMO_LOG_RE);
+    if (m) out.push(m[1]);
+  }
+  return out;
+}
+
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 function parseGpx5(memo: string): Omit<LeaderboardEntry, "tx" | "blockTime" | "verified"> | null {
   // Memo strings in Solana RPC arrive prefixed with "[N] " where N is the
@@ -70,42 +135,61 @@ export async function fetchLeaderboard(
   gameSlug: string,
   limit: number = 10,
 ): Promise<LeaderboardEntry[]> {
-  let allSigs: ConfirmedSignatureInfo[] = [];
-  let before: string | undefined;
+  // Cache hit — return immediately. CACHE_TTL_MS bounds staleness.
+  const cached = readCache(gameSlug);
+  if (cached) return cached.slice(0, limit);
 
-  // Two pages max = 2000 signatures. Breaks out early if the RPC returns
-  // fewer than a page (end of history).
-  for (let page = 0; page < 2; page++) {
-    const sigs = await connection.getSignaturesForAddress(ARCADE_PROGRAM_ID, {
-      limit: Math.min(1000, MAX_SIGNATURES - allSigs.length),
-      before,
+  // Single page of recent signatures. MAX_SIGNATURES capped low (60)
+  // for public devnet RPC compatibility — see top-of-file comment.
+  let allSigs: ConfirmedSignatureInfo[];
+  try {
+    allSigs = await connection.getSignaturesForAddress(ARCADE_PROGRAM_ID, {
+      limit: MAX_SIGNATURES,
     });
-    if (sigs.length === 0) break;
-    allSigs = allSigs.concat(sigs);
-    if (allSigs.length >= MAX_SIGNATURES) break;
-    before = sigs[sigs.length - 1].signature;
+  } catch {
+    return cached ?? [];
+  }
+
+  const candidates = allSigs.filter((s) => !s.err);
+
+  // Sequential fetch with delay between calls. See top-of-file rationale.
+  type FetchedTx = { sig: ConfirmedSignatureInfo; memos: string[] };
+  const fetched: FetchedTx[] = [];
+  for (let i = 0; i < candidates.length; i++) {
+    const sig = candidates[i];
+    try {
+      const tx = await connection.getTransaction(sig.signature, {
+        maxSupportedTransactionVersion: 0,
+        commitment: "confirmed",
+      });
+      if (tx) {
+        const memos = extractMemosFromLogs(tx.meta?.logMessages);
+        if (memos.length > 0) fetched.push({ sig, memos });
+      }
+    } catch {
+      // Per-tx errors (429s, timeouts) are non-fatal — continue with what we have.
+    }
+    if (i < candidates.length - 1) await sleep(TX_FETCH_DELAY_MS);
   }
 
   const gameTag = `|${gameSlug}|`;
   const bestByPlayer = new Map<string, LeaderboardEntry>();
   const verifiedPlayers = new Set<string>();
 
-  // First pass: collect GPX5 (scores) and GPX5R (verifications) signals.
-  // GPX5R memos mark the player as verified for ANY of their submissions.
-  for (const sig of allSigs) {
-    if (!sig.memo) continue;
-    if (sig.err) continue;
-    // Fast-path filter: skip memos that don't contain the game slug at all.
-    if (!sig.memo.includes(gameTag)) continue;
-
-    const parsed = parseGpx5(sig.memo);
-    if (parsed) {
+  // First pass: collect GPX5 (scores). One tx may have multiple memos
+  // (defensive — current contract emits one per submit_score, but a bundled
+  // tx could have more).
+  for (const f of fetched) {
+    for (const memo of f.memos) {
+      if (!memo.includes(gameTag)) continue; // fast filter
+      const parsed = parseGpx5(memo);
+      if (!parsed) continue;
       const existing = bestByPlayer.get(parsed.player);
       if (!existing || parsed.score > existing.score) {
         bestByPlayer.set(parsed.player, {
           ...parsed,
-          tx: sig.signature,
-          blockTime: sig.blockTime ?? null,
+          tx: f.sig.signature,
+          blockTime: f.sig.blockTime ?? null,
           verified: false, // updated in second pass
         });
       }
@@ -113,15 +197,15 @@ export async function fetchLeaderboard(
   }
 
   // Second pass: mark verified players by checking for any GPX5R memo.
-  // GPX5R memos don't include game_slug in the header, so we scan all memos
-  // and cross-reference by player address.
+  // GPX5R memos don't include game_slug in the header, so we scan every
+  // memo we fetched and cross-reference by player address.
   const knownPlayers = new Set(bestByPlayer.keys());
-  for (const sig of allSigs) {
-    if (!sig.memo) continue;
-    if (sig.err) continue;
-    for (const player of knownPlayers) {
-      if (isGpx5rForPlayer(sig.memo, player)) {
-        verifiedPlayers.add(player);
+  for (const f of fetched) {
+    for (const memo of f.memos) {
+      for (const player of knownPlayers) {
+        if (isGpx5rForPlayer(memo, player)) {
+          verifiedPlayers.add(player);
+        }
       }
     }
   }
@@ -131,15 +215,63 @@ export async function fetchLeaderboard(
     entry.verified = verifiedPlayers.has(player);
   }
 
-  return Array.from(bestByPlayer.values())
+  const result = Array.from(bestByPlayer.values())
     .sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
       // Tiebreaker: fewer continues = more skill
       if (a.continues !== b.continues) return a.continues - b.continues;
       // Then: earlier blockTime wins
       return (a.blockTime ?? 0) - (b.blockTime ?? 0);
-    })
-    .slice(0, limit);
+    });
+
+  writeCache(gameSlug, result);
+  return result.slice(0, limit);
+}
+
+// ── Single-score fetch (challenge-link flow) ─────────────────────────
+// Resolver-backed: `GET /arcade/score/:sig`. Returns the parsed GPX5 memo
+// for one tx so the snake page can preload a challenger's score banner +
+// reuse the SAME deterministic seed, making "beat my run" a real apples-
+// to-apples skill comparison rather than a different RNG.
+
+export type ArcadeScoreDetail = {
+  tx: string;
+  blockTime: number | null;
+  gameSlug: string;
+  variant: string;
+  player: string;
+  score: number;
+  continues: number;
+  powerups: number;
+  duration: number;
+  seedB58: string;
+};
+
+const RESOLVER_URL =
+  process.env.NEXT_PUBLIC_RESOLVER_URL || "https://resolver.gamerplex.com";
+
+export async function fetchArcadeScore(sig: string): Promise<ArcadeScoreDetail | null> {
+  if (!sig || sig.length < 32 || sig.length > 128) return null;
+  try {
+    const r = await fetch(`${RESOLVER_URL}/arcade/score/${sig}`, { cache: "no-store" });
+    if (!r.ok) return null;
+    const j = await r.json();
+    if (!j?.ok) return null;
+    return {
+      tx: j.tx,
+      blockTime: j.blockTime ?? null,
+      gameSlug: j.gameSlug,
+      variant: j.variant,
+      player: j.player,
+      score: j.score,
+      continues: j.continues,
+      powerups: j.powerups,
+      duration: j.duration,
+      seedB58: j.seedB58,
+    };
+  } catch {
+    return null;
+  }
 }
 
 export function shortAddr(addr: string): string {

@@ -461,7 +461,7 @@ export function ProfileView({
               <div style={{ fontSize: 14, marginBottom: 6 }}>No on-chain activity yet</div>
               <div style={{ fontSize: 12, color: "#666" }}>
                 Play{" "}
-                <Link href="/arcade/cyber-snake" style={{ color: "#14F195" }}>
+                <Link href="/play/cyber-snake?mode=arcade" style={{ color: "#14F195" }}>
                   Cyber Snake
                 </Link>{" "}
                 and save a score to start your profile.

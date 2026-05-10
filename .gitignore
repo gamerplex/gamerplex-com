@@ -8,3 +8,11 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .vercel
+
+# ── Internal engineering docs — never push to public ────────────
+ENGINEERING/
+ENGINEERING_*/
+**/ENGINEERING/
+**/ENGINEERING_*/
+docs-internal/
+

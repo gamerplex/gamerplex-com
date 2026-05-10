@@ -1,13 +1,4 @@
-/**
- * Chess on-chain client — uses Gamerplex ER Pool for real MagicBlock gameplay.
- * Every move is a real Solana transaction on the Ephemeral Rollup.
- *
- * Flow:
- * 1. GET /game-pool/assign → get pre-delegated game + session key
- * 2. White moves: browser signs with session key → sends to ER RPC
- * 3. Black moves: POST /game-pool/ai-move → server signs → sends to ER
- * 4. Game over: POST /game-pool/finish → recycle game, optional SOAR save
- */
+// Battle-Mode-only — wraps Magic Chess Anchor program; Arcade uses lib/arcade/client.ts (game_id=3).
 
 import { Buffer } from "buffer";
 import {

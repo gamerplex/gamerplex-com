@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
 import { Connection, PublicKey } from "@solana/web3.js";
 
-const Chess3DBoard = dynamic(() => import("../../play/magic-chess/Chess3DBoard"), { ssr: false });
+const Chess3DBoard = dynamic(() => import("../../play/magic-chess/_shared/Chess3DBoard"), { ssr: false });
 
 // Piece encoding (matches Rust program)
 const W_PAWN = 2;  const B_PAWN = 3;

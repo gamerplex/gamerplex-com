@@ -55,7 +55,9 @@ export default function InterstellarSymphony({ onStatsUpdate, showJoystick = tru
       const limiter = ctx.createDynamicsCompressor();
       limiter.threshold.setValueAtTime(-24, ctx.currentTime);
       const masterGain = ctx.createGain();
-      masterGain.gain.setValueAtTime(0.5, ctx.currentTime); // INCREASED FROM 0.3
+      // Respect the current muted prop on initial creation — otherwise audio plays at 0.5
+      // for one frame after unlock before the [muted] effect runs.
+      masterGain.gain.setValueAtTime(muted ? 0 : 0.5, ctx.currentTime);
       masterGainRef.current = masterGain;
       masterGain.connect(limiter);
       limiter.connect(ctx.destination);
@@ -151,8 +153,9 @@ export default function InterstellarSymphony({ onStatsUpdate, showJoystick = tru
     rootRef.current = root;
     const throatRadius = 24;
 
-    const camera = new BABYLON.UniversalCamera("bgCamera", new BABYLON.Vector3(0, 0, -2000), scene);
-    camera.setTarget(new BABYLON.Vector3(0, 0, 0));
+    const camera = new BABYLON.UniversalCamera("bgCamera", new BABYLON.Vector3(0, 0, 500), scene);
+    camera.setTarget(new BABYLON.Vector3(0, 0, -10000));
+    camera.fov = 1.1;
 
     if (showJoystick) {
       // Full interactive mode — fly navigation + pointer lock
@@ -226,10 +229,13 @@ export default function InterstellarSymphony({ onStatsUpdate, showJoystick = tru
         if (isAutoFlyoverRef.current) {
             autoTimeRef.current += deltaTime;
             const t = autoTimeRef.current;
-            camera.position.x = Math.sin(t * 0.1) * 1500;
-            camera.position.y = Math.cos(t * 0.1) * 1500;
-            camera.position.z = -3500 + Math.sin(t * 0.2) * 500;
-            camera.setTarget(new BABYLON.Vector3(0, 0, 0));
+            // Continuous fly-in: camera starts near the rim and descends toward the throat, looping every 6s.
+            const FLY_PERIOD = 6;
+            const tFly = (t % FLY_PERIOD) / FLY_PERIOD;
+            camera.position.x = Math.sin(t * 0.4) * 80;
+            camera.position.y = Math.cos(t * 0.4) * 80;
+            camera.position.z = 800 - tFly * 1100;
+            camera.setTarget(new BABYLON.Vector3(0, 0, -10000));
         }
 
         if (onStatsUpdate && Math.floor(now / 1000 * 10) % 10 === 0) {

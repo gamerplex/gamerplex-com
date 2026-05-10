@@ -7,17 +7,17 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 export type SnakeView = "top" | "fpv-p1" | "fpv-p2" | "tps-p1";
 
 export interface SnakeSceneState {
-  bodyP1: number[];    // ring buffer of u16 positions (len 256)
+  bodyP1: number[];
   bodyP2: number[];
-  headIdxP1: number;   // ring write cursor
+  headIdxP1: number;
   headIdxP2: number;
   lenP1: number;
   lenP2: number;
-  dirP1: number;       // 0=N,1=E,2=S,3=W
+  dirP1: number;
   dirP2: number;
   foodPos: number;
-  status: number;      // 0=waiting,1=active,2=finished
-  winnerFlag: number;  // 0=draw,1=p1,2=p2
+  status: number;
+  winnerFlag: number;
   tick: number;
 }
 
@@ -29,24 +29,20 @@ interface Props {
 const GRID = 32;
 const MAX_LEN = 256;
 
-// Authentic Tron palette — Sam Flynn blue-white vs CLU red-orange.
-const COLOR_P1 = 0x4fc3f7;       // electric blue
-const COLOR_P1_HEAD = 0xd9f2ff;  // near-white glow
-const COLOR_P2 = 0xff5230;       // warm red-orange
-const COLOR_P2_HEAD = 0xffb07a;  // amber glow
-const COLOR_FOOD = 0xffd24a;     // gold
-const COLOR_GRID = 0x0f2a5c;     // subtle deep-blue grid lines
-const COLOR_GRID_MAJOR = 0x4fa0ff; // bright cyan major lines
-const COLOR_BG = 0x020614;       // deep midnight
-const COLOR_EDGE = 0x9945ff;     // Solana purple — matches Magic Chess aura.
+const COLOR_P1 = 0x4fc3f7;
+const COLOR_P1_HEAD = 0xd9f2ff;
+const COLOR_P2 = 0xff5230;
+const COLOR_P2_HEAD = 0xffb07a;
+const COLOR_FOOD = 0xffd24a;
+const COLOR_GRID = 0x0f2a5c;
+const COLOR_GRID_MAJOR = 0x4fa0ff;
+const COLOR_BG = 0x020614;
+const COLOR_EDGE = 0x9945ff;
 
-// Edge particle walls — rising-purple boundary markers so immersive cameras
-// (FPS / TPS) show where the grid ends before a wall-crash happens.
-const EDGE_PARTICLES_PER_SIDE = 48; // 4 sides × 48 = 192 total
-const EDGE_PARTICLE_HEIGHT = 3.8;   // how high a particle rises before recycling
-const EDGE_PARTICLE_PERIOD = 2.1;   // seconds per full rise cycle
+const EDGE_PARTICLES_PER_SIDE = 48;
+const EDGE_PARTICLE_HEIGHT = 3.8;
+const EDGE_PARTICLE_PERIOD = 2.1;
 
-// Cheap mobile detection so we can soften the visuals on low-end hardware.
 function isMobileLike(): boolean {
   if (typeof window === "undefined") return false;
   if (typeof navigator !== "undefined" && /Mobi|Android|iPad|iPhone/i.test(navigator.userAgent)) return true;
@@ -57,17 +53,15 @@ function isMobileLike(): boolean {
 function packToXZ(pos: number): { x: number; z: number } {
   const r = Math.floor(pos / GRID);
   const c = pos % GRID;
-  // Center grid on origin. Cell (r,c) → world (c - 15.5, 0, r - 15.5).
   return { x: c - (GRID - 1) / 2, z: r - (GRID - 1) / 2 };
 }
 
 function dirToAngle(d: number): number {
-  // Angle in radians around +Y. 0 rad = facing +Z (south on grid).
   switch (d) {
-    case 0: return Math.PI;       // N → -Z
-    case 1: return Math.PI / 2;   // E → +X
-    case 2: return 0;             // S → +Z
-    case 3: return -Math.PI / 2;  // W → -X
+    case 0: return Math.PI;
+    case 1: return Math.PI / 2;
+    case 2: return 0;
+    case 3: return -Math.PI / 2;
     default: return 0;
   }
 }
@@ -82,8 +76,6 @@ function dirUnit(d: number): { x: number; z: number } {
   }
 }
 
-// Read back the most recent N cells in a player's ring-buffer body.
-// Returns positions head-first (index 0 = head, index len-1 = tail tip).
 function bodyCells(body: number[], headIdx: number, len: number): number[] {
   const out: number[] = [];
   for (let i = 1; i <= len; i++) {
@@ -107,18 +99,14 @@ export default function CyberSnake3DScene({ state, view }: Props) {
     food: THREE.Mesh;
     edgeParticles: THREE.InstancedMesh;
     edgeParticleMat: THREE.MeshBasicMaterial;
-    edgePhases: Float32Array; // per-particle phase offset + side flag
+    edgePhases: Float32Array;
     clock: THREE.Clock;
-    // Sub-tick interpolation: snapshot cells at prev + curr tick and slide
-    // the whole snake smoothly across the 140ms tick window.
     prevCellsP1: number[];
     currCellsP1: number[];
     prevCellsP2: number[];
     currCellsP2: number[];
     lastTick: number;
     tickProgress: number;
-    // Smoothed facing direction — swings over ~300ms on 90° turns so the
-    // player doesn't lose orientation on a sudden camera snap.
     camDir: THREE.Vector3;
     camInitialised: boolean;
     time: number;
@@ -132,7 +120,6 @@ export default function CyberSnake3DScene({ state, view }: Props) {
   useEffect(() => { stateRef.current = state; }, [state]);
   useEffect(() => { viewRef.current = view; if (sceneRef.current) sceneRef.current.view = view; }, [view]);
 
-  // Init scene
   useEffect(() => {
     if (!mountRef.current || sceneRef.current) return;
     const mount = mountRef.current;
@@ -153,7 +140,6 @@ export default function CyberSnake3DScene({ state, view }: Props) {
     const mobile = isMobileLike();
     const renderer = new THREE.WebGLRenderer({ antialias: !mobile, powerPreference: "high-performance" });
     renderer.setSize(mount.clientWidth, mount.clientHeight);
-    // Cap pixel ratio harder on mobile — big fps win on high-DPI phones.
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, mobile ? 1.5 : 2));
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.3;
@@ -168,7 +154,6 @@ export default function CyberSnake3DScene({ state, view }: Props) {
     controls.maxPolarAngle = Math.PI * 0.48;
     controls.target.set(0, 0, 0);
 
-    // Ground plate (slightly translucent dark)
     const groundMat = new THREE.MeshBasicMaterial({ color: 0x070018 });
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(GRID + 2, GRID + 2),
@@ -178,7 +163,6 @@ export default function CyberSnake3DScene({ state, view }: Props) {
     ground.position.y = -0.01;
     scene.add(ground);
 
-    // Neon grid lines — 33 lines each direction (32 cells + bound)
     const gridLines = new THREE.Group();
     const minorMat = new THREE.LineBasicMaterial({ color: COLOR_GRID, transparent: true, opacity: 0.5 });
     const majorMat = new THREE.LineBasicMaterial({ color: COLOR_GRID_MAJOR, transparent: true, opacity: 0.9 });
@@ -186,13 +170,11 @@ export default function CyberSnake3DScene({ state, view }: Props) {
     for (let i = 0; i <= GRID; i++) {
       const t = i - half;
       const mat = i === 0 || i === GRID ? majorMat : (i % 8 === 0 ? majorMat : minorMat);
-      // Line along X (constant z=t)
       const gx = new THREE.BufferGeometry().setFromPoints([
         new THREE.Vector3(-half, 0.001, t),
         new THREE.Vector3(half, 0.001, t),
       ]);
       gridLines.add(new THREE.Line(gx, mat));
-      // Line along Z (constant x=t)
       const gz = new THREE.BufferGeometry().setFromPoints([
         new THREE.Vector3(t, 0.001, -half),
         new THREE.Vector3(t, 0.001, half),
@@ -201,7 +183,6 @@ export default function CyberSnake3DScene({ state, view }: Props) {
     }
     scene.add(gridLines);
 
-    // Neon glow bars under the edges (atmosphere)
     const edgeMat = new THREE.MeshBasicMaterial({ color: COLOR_GRID_MAJOR, transparent: true, opacity: 0.6 });
     for (const [x, z, lenX, lenZ] of [
       [0, -half, GRID, 0.2],
@@ -215,16 +196,11 @@ export default function CyberSnake3DScene({ state, view }: Props) {
       scene.add(m);
     }
 
-    // Lights — subtle, most lighting comes from emissive materials.
     scene.add(new THREE.AmbientLight(0x404080, 0.6));
     const dir = new THREE.DirectionalLight(0x8080ff, 0.4);
     dir.position.set(10, 20, 10);
     scene.add(dir);
 
-    // ── Edge particle walls (purple aura) ─────────────────────────────
-    // Four walls of rising particles on the grid boundary. Visible at full
-    // opacity in FPS / TPS so the player sees where the edge is; faded to
-    // 10% in TOP view so they don't obscure the board.
     const edgePerSide = mobile ? 24 : EDGE_PARTICLES_PER_SIDE;
     const edgeTotal = edgePerSide * 4;
     const edgeParticleGeom = new THREE.BoxGeometry(0.12, 0.22, 0.12);
@@ -235,18 +211,16 @@ export default function CyberSnake3DScene({ state, view }: Props) {
       depthWrite: false,
     });
     const edgeParticles = new THREE.InstancedMesh(edgeParticleGeom, edgeParticleMat, edgeTotal);
-    // Per-particle data: phase (0..1) + side index (0..3). Pack in Float32Array.
     const edgePhases = new Float32Array(edgeTotal * 2);
     for (let s = 0; s < 4; s++) {
       for (let p = 0; p < edgePerSide; p++) {
         const i = s * edgePerSide + p;
-        edgePhases[i * 2]     = Math.random(); // time phase
-        edgePhases[i * 2 + 1] = s;             // side
+        edgePhases[i * 2]     = Math.random();
+        edgePhases[i * 2 + 1] = s;
       }
     }
     scene.add(edgeParticles);
 
-    // InstancedMesh for bodies
     const bodyGeom = new THREE.BoxGeometry(0.85, 0.55, 0.85);
     const bodyMatP1 = new THREE.MeshStandardMaterial({
       color: COLOR_P1,
@@ -266,17 +240,12 @@ export default function CyberSnake3DScene({ state, view }: Props) {
     const instancedP2 = new THREE.InstancedMesh(bodyGeom, bodyMatP2, MAX_LEN);
     instancedP1.count = 0;
     instancedP2.count = 0;
-    // InstancedMesh frustum culling uses a bounding sphere computed from the
-    // *base* geometry, centred at origin. As instances spread across the grid
-    // the sphere doesn't follow, so Three.js culls the whole mesh when the
-    // origin-centred sphere drifts out of frame — tail disappears in TPS. Turn
-    // culling off; we've only got ~30 instances total, no perf hit.
+    // Disable frustum culling; origin-centred bounding sphere causes false culls in TPS.
     instancedP1.frustumCulled = false;
     instancedP2.frustumCulled = false;
     scene.add(instancedP1);
     scene.add(instancedP2);
 
-    // Heads — slightly taller, with "eye" light
     const headGeomP1 = new THREE.BoxGeometry(0.95, 0.75, 0.95);
     const headGeomP2 = new THREE.BoxGeometry(0.95, 0.75, 0.95);
     const headMatP1 = new THREE.MeshStandardMaterial({
@@ -298,7 +267,6 @@ export default function CyberSnake3DScene({ state, view }: Props) {
     scene.add(headP1);
     scene.add(headP2);
 
-    // Food — octahedron + point light
     const foodMat = new THREE.MeshStandardMaterial({
       color: COLOR_FOOD,
       emissive: COLOR_FOOD,
@@ -353,19 +321,12 @@ export default function CyberSnake3DScene({ state, view }: Props) {
 
     const tmpColor = new THREE.Color();
 
-    // TICK_MS from CyberSnakeSolo — keep in sync. Hardcoded here to avoid
-    // a cross-file import for one constant.
+    // Keep TICK_SEC in sync with CyberSnakeSolo TICK_MS.
     const TICK_SEC = 0.140;
 
-    // Linear progression across the tick — constant optical flow, which is
-    // what the inner ear expects for immersive cameras. Eased curves
-    // (ease-out-cubic etc.) subtly decelerate at tick boundaries and feel
-    // "spastic" in FPS where the camera IS the motion reference.
+    // Linear progression keeps optical flow constant in FPS/TPS.
     const easeProgress = (t: number) => t;
 
-    /** Render a body (InstancedMesh) interpolated between prev-tick and
-     *  curr-tick cell positions. Returns the rendered HEAD world XZ so the
-     *  caller can use it for camera tracking. */
     function applySmoothBody(
       instanced: THREE.InstancedMesh,
       prevCells: number[],
@@ -378,8 +339,6 @@ export default function CyberSnake3DScene({ state, view }: Props) {
       let headX = 0, headZ = 0;
       for (let i = 0; i < len; i++) {
         const currIdx = currCells[i];
-        // If there's no prev (snake grew — new tail cell) reuse curr so the
-        // new segment simply appears at its rest position without a glide.
         const prevIdx = i < prevCells.length ? prevCells[i] : currIdx;
         const cc = packToXZ(currIdx);
         const pc = packToXZ(prevIdx);
@@ -387,8 +346,7 @@ export default function CyberSnake3DScene({ state, view }: Props) {
         const z = pc.z + (cc.z - pc.z) * p;
         dummy.position.set(x, 0.3, z);
         dummy.rotation.set(0, 0, 0);
-        // body[0] is the head cell — hidden on the instanced mesh because
-        // the head is its own mesh drawn separately (scaled+taller).
+        // Hide body[0]; head is rendered as its own mesh.
         dummy.scale.setScalar(i === 0 ? 0.0 : 1.0);
         dummy.updateMatrix();
         instanced.setMatrixAt(i, dummy.matrix);
@@ -402,26 +360,19 @@ export default function CyberSnake3DScene({ state, view }: Props) {
       if (!sceneRef.current || sceneRef.current.disposed) return;
       const s = stateRef.current;
       const ctx = sceneRef.current;
-      // Real frame delta — snake moves in discrete ticks but the camera
-      // glides in continuous time between them. Clamp to avoid tab-resume
-      // spikes (if the tab was backgrounded for 20s, dt would be huge).
+      // Clamp dt to avoid tab-resume spikes.
       const rawDt = ctx.clock.getDelta();
       const dt = Math.min(rawDt, 0.05);
       ctx.time += dt;
 
-      // Food bob + pulse
       ctx.food.rotation.y = ctx.time * 1.2;
       ctx.food.rotation.x = ctx.time * 0.8;
       const pulse = 0.35 + Math.sin(ctx.time * 4) * 0.05;
       ctx.food.scale.setScalar(pulse / 0.35);
 
-      // Head world position (smoothed) — used for the head mesh itself and
-      // as the camera's follow target in TPS/FPS.
       let headP1World: { x: number; z: number } | null = null;
 
       if (s) {
-        // Sub-tick interpolation: on each tick boundary, snapshot curr→prev
-        // and reset progress. Between ticks, advance progress smoothly.
         if (s.tick !== ctx.lastTick) {
           ctx.prevCellsP1 = ctx.currCellsP1.length ? ctx.currCellsP1 : bodyCells(s.bodyP1, s.headIdxP1, s.lenP1);
           ctx.currCellsP1 = bodyCells(s.bodyP1, s.headIdxP1, s.lenP1);
@@ -465,9 +416,6 @@ export default function CyberSnake3DScene({ state, view }: Props) {
         ctx.currCellsP2 = [];
       }
 
-      // ── Edge particle animation (purple walls) ──────────────────────
-      // Particles rise from y=0 to EDGE_PARTICLE_HEIGHT, fade out, loop.
-      // Opacity also modulated by view — low in TOP, high in FPS/TPS.
       const halfGrid = GRID / 2;
       const phases = ctx.edgePhases;
       const totalParticles = ctx.edgeParticles.count || (phases.length / 2);
@@ -478,14 +426,13 @@ export default function CyberSnake3DScene({ state, view }: Props) {
         const t = ((ctx.time + phase * EDGE_PARTICLE_PERIOD) % EDGE_PARTICLE_PERIOD) / EDGE_PARTICLE_PERIOD;
         const y = t * EDGE_PARTICLE_HEIGHT;
         const sideLen = GRID;
-        // Distribute along the side using phase as a 2nd-dim param.
         const along = ((phase * 37 + i * 0.7) % 1) * sideLen - halfGrid;
         let px = 0, pz = 0;
         switch (side) {
-          case 0: px = along;      pz = -halfGrid; break; // north edge
-          case 1: px = halfGrid;   pz = along;     break; // east edge
-          case 2: px = along;      pz = halfGrid;  break; // south edge
-          default: px = -halfGrid; pz = along;     break; // west edge
+          case 0: px = along;      pz = -halfGrid; break;
+          case 1: px = halfGrid;   pz = along;     break;
+          case 2: px = along;      pz = halfGrid;  break;
+          default: px = -halfGrid; pz = along;     break;
         }
         const scale = 0.6 + (1 - t) * 0.8;
         dummy.position.set(px, y + 0.1, pz);
@@ -496,10 +443,7 @@ export default function CyberSnake3DScene({ state, view }: Props) {
       }
       ctx.edgeParticles.instanceMatrix.needsUpdate = true;
 
-      // View mode
       const v = ctx.view;
-      // Opacity-gate edge particles: full aura in immersive cameras, faded
-      // almost to nothing in top-down so they don't obscure the board.
       ctx.edgeParticleMat.opacity = v === "top" ? 0.1 : 0.9;
 
       if (v === "top") {
@@ -508,33 +452,24 @@ export default function CyberSnake3DScene({ state, view }: Props) {
           ctx.controls.update();
         }
       } else if (s && headP1World) {
-        // Immersive cameras — disable orbit controls, follow the already-
-        // smoothed head world position with an exponentially-lerped
-        // direction so 90° turns swing the view instead of snapping.
         if (ctx.controls) ctx.controls.enabled = false;
         const isTps = v === "tps-p1";
-        const dir = s.dirP1; // solo mode: always p1 (fpv-p2 unused for now)
+        const dir = s.dirP1;
         const du = dirUnit(dir);
         const tgtDir = new THREE.Vector3(du.x, 0, du.z);
 
-        // First frame with valid state — seed so we don't lerp from origin.
         if (!ctx.camInitialised) {
           ctx.camDir.copy(tgtDir);
           ctx.camInitialised = true;
         }
 
-        // Direction lerp: TPS gets a visible arc (~200-300ms) because the
-        // player can see the snake move, so lag is actually pleasant. FPS
-        // must feel tight — the camera IS the player's orientation, so a
-        // long lag between turn-input and view-rotation is disorienting
-        // ("spastic"). Use a crisp 60ms tau in FPS.
+        // FPS uses a tighter tau so view rotation tracks input without lag.
         const dirTau = isTps ? 0.14 : 0.06;
         const alphaDir = 1 - Math.exp(-dt / dirTau);
         ctx.camDir.lerp(tgtDir, alphaDir);
         const dirLen = ctx.camDir.length();
         if (dirLen > 0.001) ctx.camDir.multiplyScalar(1 / dirLen);
 
-        // Subtle bobble — additive Y sway for "living head" feel.
         const bobble = Math.sin(ctx.time * 9) * (isTps ? 0.08 : 0.06);
         const headX = headP1World.x;
         const headZ = headP1World.z;

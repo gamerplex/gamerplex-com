@@ -7,7 +7,7 @@ const InterstellarSymphony = dynamic(() => import("../components/InterstellarSym
   ssr: false,
   loading: () => null,
 });
-const Chess3DBoard = dynamic(() => import("./play/magic-chess/Chess3DBoard"), { ssr: false });
+const Chess3DBoard = dynamic(() => import("./play/magic-chess/_shared/Chess3DBoard"), { ssr: false });
 const OnchainPreview = dynamic(() => import("./_components/OnchainPreview"), { ssr: false });
 
 // ─── Agent Roster ───────────────────────────────────────────────────────────
@@ -70,16 +70,35 @@ function writeHomeCache(c: HomeCache) {
   } catch {}
 }
 
+const MUTE_KEY_HOME = "gp.home.muted.v1";
+
 // ─── Component ──────────────────────────────────────────────────────────────
 export default function Home() {
   const [mounted, setMounted] = useState(false);
-  const [muted, setMuted] = useState(true); // start muted by default
+  const [muted, setMuted] = useState(true); // SSR-safe default; hydrated from localStorage on mount
+
+  // Hydrate mute preference from localStorage on first mount
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(MUTE_KEY_HOME);
+      if (saved === "false") setMuted(false);
+      else if (saved === "true") setMuted(true);
+    } catch {}
+  }, []);
+
+  // Persist mute preference on change
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(MUTE_KEY_HOME, String(muted));
+    } catch {}
+  }, [muted]);
   const [stats, setStats] = useState({ fps: "0", meshes: 0, memory: "0" });
   const [realMatches, setRealMatches] = useState<any[]>([]);
   const [realLeaderboard, setRealLeaderboard] = useState<any[]>([]);
   const [liveGames, setLiveGames] = useState<any[]>([]);
   const [selectedGame, setSelectedGame] = useState<string | null>(null);
   const [agentLeaderboard, setAgentLeaderboard] = useState<any[]>([]);
+  const [coverMode, setCoverMode] = useState<"arcade" | "battle">("arcade");
 
   // Instant hydration from localStorage on first mount — before any network call.
   useEffect(() => {
@@ -212,17 +231,23 @@ export default function Home() {
         </div>
         <div className="hero-content">
           <h1 className="hero-title">GAMERPLEX</h1>
-          <p className="hero-sub">Fully On-Chain Games on Solana</p>
-          <p className="hero-desc">Every move a real transaction on MagicBlock Ephemeral Rollup &bull; Devnet</p>
+          <p className="hero-sub">Build · Play · Own · Compete · Onchain Forever</p>
+          <p className="hero-desc">Skill games on Solana. Practice free. Pay $0.05 to save your score forever. 1v1 matches for real prize pools — settled on-chain in seconds.</p>
 
-          <div className="stats-bar">
+          <div className="cta-row" style={{marginBottom:28}}>
+            <a href="#featured" className="btn-primary" style={{textDecoration:"none",display:"inline-flex",alignItems:"center",gap:8}}>
+              ▶ Play Now — 1 Free Credit
+            </a>
+          </div>
+
+          <div className="stats-bar" style={{marginBottom:0}}>
             <div className="stat-item">
-              <div className="stat-val" style={{ color: "var(--green)" }}>{liveGames.length}</div>
-              <div className="stat-label">Live Games</div>
+              <div className="stat-val" style={{ color: "var(--green)" }}>3</div>
+              <div className="stat-label">Games Live</div>
             </div>
             <div className="stat-item">
               <div className="stat-val" style={{ color: "var(--yellow)" }}>{agentLeaderboard.reduce((sum, a) => sum + (a.wins || 0) + (a.losses || 0) + (a.draws || 0), 0)}</div>
-              <div className="stat-label">Games Played</div>
+              <div className="stat-label">Matches Played</div>
             </div>
             <div className="stat-item">
               <div className="stat-val" style={{ color: "var(--cyan)" }}>9</div>
@@ -230,62 +255,146 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="cta-row">
-            <a href="#featured" className="btn-primary" style={{textDecoration:"none",display:"inline-flex",alignItems:"center",gap:8}}>
-              🧙‍♂️ Play Magic Chess
-            </a>
-            <a href="#arena" className="btn-outline" style={{textDecoration:"none"}}>
-              Watch Live Agents
-            </a>
+          <div className="hero-activity">
+            <div className="hero-activity-col">
+              <div className="hero-activity-head"><span style={{color:"var(--yellow)"}}>🏆</span> TOP PLAYERS</div>
+              {agentLeaderboard.slice(0, 3).map((a: any, i: number) => (
+                <div className="hero-activity-row" key={a.name || i}>
+                  <span className="rank">#{i + 1}</span>
+                  <span className="who">{a.name || a.player || "anon"}</span>
+                  <span className="val" style={{color:"var(--green)"}}>{(a.elo ?? a.score ?? a.wins ?? 0).toLocaleString()}</span>
+                </div>
+              ))}
+              {agentLeaderboard.length === 0 && <div className="hero-activity-empty">loading…</div>}
+            </div>
+            <div className="hero-activity-col">
+              <div className="hero-activity-head"><span style={{color:"var(--green)"}}>●</span> LIVE NOW</div>
+              {liveGames.slice(0, 3).map((g: any, i: number) => (
+                <div className="hero-activity-row" key={g.gamePda || i}>
+                  <span className="rank">{g.game === "chess" ? "♟" : "🐍"}</span>
+                  <span className="who">{(g.white || g.p1 || "anon").slice(0, 4)}…  vs  {(g.black || g.p2 || "anon").slice(0, 4)}…</span>
+                  <span className="val" style={{color:"var(--cyan)"}}>{g.status || "in play"}</span>
+                </div>
+              ))}
+              {liveGames.length === 0 && <div className="hero-activity-empty">no live games right now</div>}
+            </div>
           </div>
         </div>
 
         <div className="scroll-hint">
-          <span>LIVE ARENA</span>
+          <span>MORE GAMES</span>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12l7 7 7-7" /></svg>
         </div>
       </section>
 
-      {/* FEATURED GAME */}
-      <section style={{padding:"40px 20px 30px",maxWidth:900,margin:"0 auto"}} id="featured">
-        <div className="arena-header" style={{marginBottom:20}}>
-          <h2>🧙‍♂️ Featured: Magic Chess</h2>
+      {/* GAME COVERFLOW — chess front-center, snake recessed left, blockwords recessed right */}
+      <section className="coverflow-section" id="featured">
+        <div className="arena-header" style={{marginBottom:18,maxWidth:1100,margin:"0 auto 18px",padding:"0 20px"}}>
+          <h2 style={{fontSize:14}}>🎮 PICK YOUR GAME</h2>
           <span style={{ fontSize: 10, color: "var(--dim)", letterSpacing: 2 }}>
-            LIVE ON MAGICBLOCK ER (DEVNET)
+            3 GAMES · ARCADE OR BATTLE · ALL ON-CHAIN
           </span>
         </div>
 
-        <a href="/play/magic-chess" style={{textDecoration:"none",color:"inherit",display:"block"}}>
-          <div style={{
-            position:"relative",borderRadius:16,overflow:"hidden",
-            border:"1px solid rgba(153,69,255,0.3)",
-            boxShadow:"0 0 40px rgba(153,69,255,0.15), 0 8px 32px rgba(0,0,0,0.4)",
-            cursor:"pointer",
-          }}>
-            <img src="/magic-chess-banner.jpg" alt="Magic Chess" style={{width:"100%",display:"block"}}/>
-            <div style={{
-              padding:"20px 24px",
-              background:"linear-gradient(135deg, rgba(26,10,48,0.95), rgba(12,12,20,0.95))",
-              display:"flex",justifyContent:"space-between",alignItems:"center",gap:16,flexWrap:"wrap",
-            }}>
-              <div>
-                <div style={{fontSize:11,color:"#9945FF",fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:4}}>
-                  3D Fully On-Chain Chess
-                </div>
-                <div style={{fontSize:13,color:"#aaa"}}>
-                  Every move on MagicBlock ER &bull; AI opponent &bull; SOAR leaderboard &bull; Free to play
-                </div>
-              </div>
-              <div style={{
-                background:"linear-gradient(90deg, #9945ff, #00f0ff)",
-                color:"#050508",padding:"10px 28px",borderRadius:8,
-                fontSize:14,fontWeight:700,
-              }}>
-                Play Now →
+        <div className="mode-switcher">
+          <div className="mode-pill" data-active={coverMode}>
+            <button
+              className={`mode-opt ${coverMode === "arcade" ? "active" : ""}`}
+              onClick={() => setCoverMode("arcade")}
+              aria-pressed={coverMode === "arcade"}
+            >
+              🕹 ARCADE
+            </button>
+            <button
+              className={`mode-opt ${coverMode === "battle" ? "active" : ""}`}
+              onClick={() => setCoverMode("battle")}
+              aria-pressed={coverMode === "battle"}
+            >
+              ⚔ BATTLE
+            </button>
+          </div>
+          <div className="mode-explain">
+            {coverMode === "arcade" ? (
+              <>
+                <span className="mode-explain-tag">SOLO</span>
+                <span>Play free. Pay <b>$0.05</b> to save your score forever on Solana. Climb the on-chain leaderboard.</span>
+              </>
+            ) : (
+              <>
+                <span className="mode-explain-tag mode-explain-tag-battle">1v1</span>
+                <span>Heads-up match. Both stake <b>$0.50–$10 USDF</b>. Winner takes <b>98%</b> of the pot — settled on-chain by CM v2.1 escrow.</span>
+              </>
+            )}
+          </div>
+        </div>
+
+        <div className="coverflow">
+          {/* LEFT — Cyber Snake (recessed) */}
+          <a href={`/play/cyber-snake?mode=${coverMode}`} className="cf-card cf-left" aria-label={`Play Cyber Snake — ${coverMode}`}>
+            <div className="cf-art cf-snake-art">
+              <span className="cf-emoji">🐍</span>
+              <div className="cf-grid"></div>
+            </div>
+            <div className="cf-meta">
+              <div className="cf-name">Cyber Snake</div>
+              <div className="cf-tag">{coverMode === "arcade" ? "Eat. Grow. Don't crash." : "Tron lightcycle 1v1 on MagicBlock ER"}</div>
+              <div className="cf-cta">{coverMode === "arcade" ? "PLAY FREE →" : "STAKE & PLAY →"}</div>
+            </div>
+          </a>
+
+          {/* CENTER — Magic Chess (front, biggest) */}
+          <a href={`/play/magic-chess?mode=${coverMode}`} className="cf-card cf-center" aria-label={`Play Magic Chess — ${coverMode}`}>
+            <div className="cf-art cf-chess-art">
+              <img src="/magic-chess-banner.jpg" alt="" />
+              <div className="cf-art-overlay"></div>
+              <span className="cf-badge cf-badge-live">● LIVE 3D</span>
+            </div>
+            <div className="cf-meta">
+              <div className="cf-name">Magic Chess</div>
+              <div className="cf-tag">{coverMode === "arcade" ? "vs ELO bot · every move on-chain" : "1v1 wagered match · CM v2.1 settled"}</div>
+              <div className="cf-cta cf-cta-primary">{coverMode === "arcade" ? "PLAY FREE →" : "STAKE & PLAY →"}</div>
+            </div>
+          </a>
+
+          {/* RIGHT — Blockwords (recessed) */}
+          <a href={`/play/blockwords?mode=${coverMode}`} className="cf-card cf-right" aria-label={`Play Blockwords — ${coverMode}`}>
+            <div className="cf-art cf-words-art">
+              <span className="cf-emoji">🔮</span>
+              <div className="cf-letters">
+                <span>S</span><span>O</span><span>L</span><span>A</span><span>N</span>
               </div>
             </div>
+            <div className="cf-meta">
+              <div className="cf-name">Blockwords</div>
+              <div className="cf-tag">{coverMode === "arcade" ? "Daily word puzzle · saved on-chain" : "Hidden-info word duel · 1v1"}</div>
+              <div className="cf-cta">{coverMode === "arcade" ? "PLAY FREE →" : "STAKE & PLAY →"}</div>
+            </div>
+          </a>
+        </div>
+
+        <div className="mode-compare">
+          <div className="mode-compare-col">
+            <div className="mode-compare-head">
+              🕹 ARCADE
+              <span className="net-badge net-badge-devnet">DEVNET</span>
+              <span className="net-badge net-badge-soon">MAINNET SOON</span>
+            </div>
+            <div className="mode-compare-row"><span>Players</span><b>Solo</b></div>
+            <div className="mode-compare-row"><span>Cost</span><b>Free · $0.05 to save</b></div>
+            <div className="mode-compare-row"><span>Goal</span><b>Beat the leaderboard</b></div>
+            <div className="mode-compare-row"><span>Settles via</span><b>GPX5 memo on Solana</b></div>
           </div>
-        </a>
+          <div className="mode-compare-col">
+            <div className="mode-compare-head" style={{color:"var(--cyan)"}}>
+              ⚔ BATTLE
+              <span className="net-badge net-badge-devnet">DEVNET</span>
+            </div>
+            <div className="mode-compare-row"><span>Players</span><b>2-player heads-up</b></div>
+            <div className="mode-compare-row"><span>Cost</span><b>$0.50–$10 USDF / side</b></div>
+            <div className="mode-compare-row"><span>Goal</span><b>Winner takes 98% pot</b></div>
+            <div className="mode-compare-row"><span>Settles via</span><b>CM v2.1 escrow on-chain</b></div>
+          </div>
+        </div>
       </section>
 
       {/* LIVE ARENA — full width 3D viewer */}
@@ -443,9 +552,9 @@ export default function Home() {
         </div>
 
         <div style={{fontSize:14,color:"#aaa",lineHeight:1.7,marginBottom:24}}>
-          Gamerplex is a Solana protocol where every game move is a real transaction on MagicBlock Ephemeral Rollup. Players challenge each other for real money, game tokens are USD-backed via Flipcash bonding curves, and rankings live permanently on SOAR.
+          Gamerplex is a Solana arcade for simple, addictive games — Cyber Snake, Magic Chess, Blockwords. Play free in your browser, no wallet needed. When you set a high score, save it on-chain so it lives forever — anyone can verify it, no one can erase it.
           <br/><br/>
-          <span style={{color:"#e0b3ff"}}>Think &quot;Uniswap for games&quot;</span> — a shared protocol layer for wagering, tokens, and portable player ratings that any game can plug into.
+          <span style={{color:"#a0f0c8"}}>The leaderboard is the game.</span> Rankings live permanently on SOAR. Your scores belong to your wallet, not a platform.
         </div>
 
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(250px, 1fr))",gap:16,marginBottom:32}}>

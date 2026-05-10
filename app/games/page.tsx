@@ -18,7 +18,7 @@ const LAUNCH_GAMES = [
     id: "cyber-snake",
     name: "Cyber Snake",
     description: "Tron-style 2-player snake. Solo version playable now in the Arcade; tournament duel mode ships with CM v2.2.",
-    path: "/arcade/cyber-snake",
+    path: "/play/cyber-snake?mode=arcade",
     color: "#4fc3f7",
     emoji: "🐍",
     status: "building",

@@ -1,13 +1,3 @@
-/**
- * Blockwords on-chain client — calls the Words program on MagicBlock ER.
- * Every guess is a real Solana transaction. Hidden word verified by hash.
- *
- * Flow:
- * 1. POST /game-pool/challenge-words → create ephemeral game on ER
- * 2. Each guess: browser signs guess_letter → sends to ER RPC
- * 3. Game over: POST /game-pool/finish → SOAR + GPX1
- */
-
 import { Buffer } from "buffer";
 import {
   Connection,
@@ -26,7 +16,6 @@ const GAME_SEED = Buffer.from("magic_words");
 const HIDDEN_SEED = Buffer.from("hidden_word");
 const MAX_WORD_LEN = 20;
 
-// Anchor discriminators
 function disc(name: string): Buffer {
   const hash = crypto.createHash("sha256").update(`global:${name}`).digest();
   return Buffer.from(hash.subarray(0, 8));
@@ -56,10 +45,6 @@ export class BlockwordsOnChain {
   ready: boolean = false;
   word: string = "";
 
-  /**
-   * Create a new Blockwords game on ER.
-   * Host picks the word, game created as ephemeral account.
-   */
   async createGame(word: string, maxWrong: number = 6, mode: number = 0): Promise<boolean> {
     try {
       this.word = word.toLowerCase();
@@ -80,9 +65,6 @@ export class BlockwordsOnChain {
       this.gamePda = gamePda;
       this.hiddenPda = hiddenPda;
 
-      // Fund host key from resolver (or use PoolSponsor for ephemeral)
-      // For now, create game on L1 devnet first, then delegate
-      // TODO: switch to ephemeral create when words PoolSponsor is set up
       const res = await fetch(`${RESOLVER}/game-pool/create-words`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -96,7 +78,6 @@ export class BlockwordsOnChain {
       });
 
       if (!res.ok) {
-        // Resolver not ready — create locally and send to ER
         console.warn("[BLOCKWORDS] Resolver not available, playing locally");
         this.ready = false;
         return false;
@@ -126,15 +107,11 @@ export class BlockwordsOnChain {
     }
   }
 
-  /**
-   * Send a letter guess to the ER.
-   * Returns true if the tx was sent (doesn't mean correct guess).
-   */
   async guessLetter(letter: string): Promise<string | null> {
     if (!this.ready || !this.erConnection || !this.guesserKey || !this.gamePda || !this.hiddenPda) return null;
 
     try {
-      const letterIdx = letter.charCodeAt(0) - 97; // a=0, b=1, ...z=25
+      const letterIdx = letter.charCodeAt(0) - 97;
       if (letterIdx < 0 || letterIdx > 25) return null;
 
       const data = Buffer.alloc(8 + 8 + 1);
@@ -167,9 +144,6 @@ export class BlockwordsOnChain {
     }
   }
 
-  /**
-   * Finish the game — save to SOAR + GPX1.
-   */
   async finish(playerWallet?: string, result?: { won: boolean; wrongGuesses: number; word: string }): Promise<boolean> {
     if (!this.gamePda) return false;
 

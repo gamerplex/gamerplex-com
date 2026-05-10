@@ -66,6 +66,13 @@ export function adminDeadline(secondsFromNow: number = 3600): BN {
 }
 
 export const CYBER_SNAKE_GAME_ID = 1;
+// Magic Chess Arcade — solo vs Stockfish ELO bots; on-chain slug stays as registered "chess-puzzles".
+export const MAGIC_CHESS_GAME_ID = 3;
+// Blockwords Arcade — daily Wordle-style word guess. Pick the secret 5-letter
+// word in ≤6 guesses against a 90s timer. Registered as game_id=4 on the
+// shared arcade contract. Admin must run register_game(4, "blockwords-arcade",
+// "Blockwords", deadline) on devnet before saves succeed.
+export const BLOCKWORDS_ARCADE_GAME_ID = 4;
 
 // Category codes matching on-chain CATEGORY_*.
 export const CATEGORY = {
@@ -168,7 +175,9 @@ export async function buildOpenProfileIx(
     .instruction();
 }
 
-/** Submit a session score. Emits GPX5 memo via CPI. */
+/** Submit a session score. Emits GPX5 memo via CPI.
+ *  `gameId` defaults to Cyber Snake (1) for backwards compat — pass 3 for
+ *  Magic Chess Puzzles, etc. */
 export async function buildSubmitScoreIx(
   program: Program,
   player: PublicKey,
@@ -182,10 +191,11 @@ export async function buildSubmitScoreIx(
     moveHash: Uint8Array; // 32 bytes (SHA-256 of compact move log)
     meta: string;
     vsChallenger: PublicKey; // PublicKey.default if none
+    gameId?: number;
   }
 ): Promise<TransactionInstruction> {
   const [cfg] = configPda();
-  const [game] = gamePda(CYBER_SNAKE_GAME_ID);
+  const [game] = gamePda(params.gameId ?? CYBER_SNAKE_GAME_ID);
   const [profile] = profilePda(player);
   return await program.methods
     .submitScore(
@@ -223,11 +233,12 @@ export async function buildRecordPaymentIx(
     gamerPaid: boolean;
     externalRef: string;
     referrerProfile?: PublicKey; // only if player has an active referrer
+    gameId?: number;
   }
 ): Promise<TransactionInstruction> {
   const [cfg] = configPda();
   const [stablecoinConfig] = stablecoinConfigPda();
-  const [game] = gamePda(CYBER_SNAKE_GAME_ID);
+  const [game] = gamePda(params.gameId ?? CYBER_SNAKE_GAME_ID);
   const [profile] = profilePda(player);
   const accounts: any = {
     config: cfg,
@@ -427,10 +438,11 @@ export async function buildMintReceiptIx(
     moveHash: Uint8Array;
     durationSec: number;
     gpx5rMemoTx: Uint8Array; // 64 bytes — the commit_session_replay tx signature
+    gameId?: number;
   }
 ): Promise<TransactionInstruction> {
   const [cfg] = configPda();
-  const [game] = gamePda(CYBER_SNAKE_GAME_ID);
+  const [game] = gamePda(params.gameId ?? CYBER_SNAKE_GAME_ID);
   const [receipt] = receiptPda(player, params.nonce);
   return await program.methods
     .mintReplayReceipt(

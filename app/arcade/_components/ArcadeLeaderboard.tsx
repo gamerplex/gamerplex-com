@@ -2,9 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useConnection } from "@solana/wallet-adapter-react";
 import {
-  fetchLeaderboard,
   formatDuration,
   shortAddr,
   type LeaderboardEntry,
@@ -12,6 +10,12 @@ import {
 import { ARCADE_NETWORK } from "../../../lib/arcade/client";
 
 const REFRESH_MS = 30_000;
+
+// Resolver hosts the arcade leaderboard endpoint server-side. Helius API key
+// stays in Cloud Run env vars; the browser never sees it. See
+// gamerplex-resolver/src/routes/arcade-leaderboard.ts.
+const RESOLVER_URL =
+  process.env.NEXT_PUBLIC_RESOLVER_URL || "https://resolver.gamerplex.com";
 
 export function ArcadeLeaderboard({
   gameSlug,
@@ -22,7 +26,6 @@ export function ArcadeLeaderboard({
   limit?: number;
   highlightWallet?: string | null;
 }) {
-  const { connection } = useConnection();
   const [entries, setEntries] = useState<LeaderboardEntry[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +36,14 @@ export function ArcadeLeaderboard({
 
     const load = async () => {
       try {
-        const rows = await fetchLeaderboard(connection, gameSlug, limit);
+        const r = await fetch(
+          `${RESOLVER_URL}/arcade/leaderboard/${encodeURIComponent(gameSlug)}`,
+          { cache: "no-store" }
+        );
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const data = (await r.json()) as { ok: boolean; entries?: LeaderboardEntry[]; error?: string };
+        if (!data.ok) throw new Error(data.error || "fetch failed");
+        const rows = (data.entries || []).slice(0, limit);
         if (!cancelled) {
           setEntries(rows);
           setError(null);
@@ -54,7 +64,7 @@ export function ArcadeLeaderboard({
       cancelled = true;
       clearInterval(t);
     };
-  }, [connection, gameSlug, limit]);
+  }, [gameSlug, limit]);
 
   const explorerUrl = (sig: string) => {
     const cluster = ARCADE_NETWORK === "mainnet" ? "" : `?cluster=${ARCADE_NETWORK}`;

@@ -12,11 +12,34 @@ const ARCADE_GAMES = [
     id: "cyber-snake",
     slug: "cyber-snake",
     name: "Cyber Snake",
-    tagline: "Classic Snake with a Tron aesthetic. Eat, grow, don't crash.",
+    tagline: "Classic Snake with a Tron aesthetic. Eat, grow, don't crash. Battle Mode (1v1, devnet) also live.",
     emoji: "🐍",
     color: "#4fc3f7",
     status: "playable",
     controls: "arrow keys · WASD · V for view",
+    battleHref: "/play/cyber-snake?mode=battle",
+  },
+  {
+    id: "magic-chess",
+    slug: "magic-chess",
+    name: "Magic Chess",
+    tagline: "Full chess vs ELO bots. Free to play, save score on-chain. Battle Mode (1v1 wagered, devnet) also live.",
+    emoji: "♟️",
+    color: "#c99aff",
+    status: "playable",
+    controls: "click piece · click destination",
+    battleHref: "/play/magic-chess",
+  },
+  {
+    id: "blockwords",
+    slug: "blockwords",
+    name: "Blockwords",
+    tagline: "Pick the secret 5-letter word in 6 guesses, against a 90s timer. Wordle-style word sprint.",
+    emoji: "📝",
+    color: "#ffd24a",
+    status: "playable",
+    controls: "A–Z to type · ENTER submit · BACKSPACE erase",
+    battleHref: "/play/blockwords?mode=battle",
   },
   {
     id: "beeline",
@@ -95,7 +118,7 @@ export default function ArcadePage() {
           {ARCADE_GAMES.map(game => {
             const isPlayable = game.status === "playable";
             const Card = isPlayable ? Link : "div";
-            const cardProps = isPlayable ? { href: `/arcade/${game.slug}` } : {};
+            const cardProps = isPlayable ? { href: `/play/${game.slug}?mode=arcade` } : {};
             return (
               <Card
                 key={game.id}
@@ -129,7 +152,14 @@ export default function ArcadePage() {
                   </div>
                   <div>
                     <div style={{ fontSize: 20, fontWeight: 800, color: "#f0f0ff" }}>{game.name}</div>
-                    <div style={{ fontSize: 10, color: game.color, letterSpacing: 1, textTransform: "uppercase", marginTop: 2 }}>Arcade · Solo</div>
+                    <div style={{ fontSize: 10, color: game.color, letterSpacing: 1, textTransform: "uppercase", marginTop: 2 }}>
+                      Arcade · Solo
+                      {(game as any).battleHref && (
+                        <span style={{ marginLeft: 6, color: "#9945FF", fontWeight: 700 }}>
+                          + Battle (devnet)
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div style={{ fontSize: 13, color: "#a8a8c0", lineHeight: 1.5, marginBottom: 10 }}>
