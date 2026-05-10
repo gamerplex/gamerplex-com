@@ -382,7 +382,7 @@ export default function Home() {
             <div className="coming-soon-meta">
               <div className="coming-soon-eyebrow">GAME #4 · IN STEALTH</div>
               <div className="coming-soon-name">Pet Legends Arena</div>
-              <div className="coming-soon-tag">A different breed. Voxel pets. On-chain duels.</div>
+              <div className="coming-soon-tag">A different breed. Battle pets. On-chain duels.</div>
             </div>
           </div>
           <div className="coming-soon-side">
