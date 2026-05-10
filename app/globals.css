@@ -3,15 +3,15 @@
 @tailwind utilities;
 
 :root {
-  --bg: #14052e;
-  --s1: #1c0840;
-  --s2: #240b52;
-  --s3: #2e0e64;
-  --border: #4a1d8f;
-  --border2: #6a2db8;
+  --bg: #0d001a;
+  --s1: #14052e;
+  --s2: #1c0840;
+  --s3: #240b52;
+  --border: #3d1875;
+  --border2: #5a249d;
   --text: #f5f5fb;
-  --dim: #a89cc4;
-  --dim2: #6a4d99;
+  --dim: #9c8fb8;
+  --dim2: #5a4080;
   --green: #14F195;
   --purple: #9945FF;
   --cyan: #00f2ff;
@@ -19,8 +19,8 @@
   --orange: #ff6b2c;
   --yellow: #ffd740;
   --red: #ff1744;
-  --card-bg: rgba(255, 255, 255, 0.04);
-  --card-bg-hi: rgba(255, 255, 255, 0.08);
+  --card-bg: rgba(255, 255, 255, 0.05);
+  --card-bg-hi: rgba(255, 255, 255, 0.09);
   --glow-purple: 0 0 32px rgba(153, 69, 255, 0.4);
   --glow-green: 0 0 32px rgba(20, 241, 149, 0.4);
 }
@@ -284,6 +284,111 @@ html, body {
   border: 1px solid rgba(20, 241, 149, 0.4);
 }
 .mode-explain-tag-battle { background: rgba(0, 242, 255, 0.15); color: var(--cyan); border-color: rgba(0, 242, 255, 0.4); }
+
+/* ---- COMING SOON STRIP (Pet Legends teaser, between coverflow + compare) ---- */
+.coming-soon-strip {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 16px;
+  max-width: 720px;
+  margin: 40px auto 0;
+  padding: 0 20px;
+}
+.coming-soon-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: linear-gradient(135deg, rgba(255, 215, 64, 0.08), rgba(153, 69, 255, 0.12));
+  border: 1px solid rgba(255, 215, 64, 0.35);
+  border-radius: 12px;
+  padding: 14px 16px;
+  overflow: hidden;
+  cursor: default;
+}
+.coming-soon-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    45deg,
+    transparent 0,
+    transparent 16px,
+    rgba(255, 215, 64, 0.04) 16px,
+    rgba(255, 215, 64, 0.04) 18px
+  );
+  pointer-events: none;
+}
+.coming-soon-art {
+  position: relative;
+  flex-shrink: 0;
+  width: 92px;
+  height: 92px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: radial-gradient(ellipse at center, rgba(255, 215, 64, 0.25), rgba(20, 5, 46, 0.95) 70%);
+}
+.coming-soon-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: blur(2px) saturate(1.4) brightness(0.85);
+  transform: scale(1.15);
+}
+.coming-soon-fog {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(20, 5, 46, 0.3) 0%, rgba(20, 5, 46, 0.65) 100%);
+}
+.coming-soon-lock {
+  position: absolute;
+  bottom: 5px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  color: var(--yellow);
+  background: rgba(0, 0, 0, 0.65);
+  padding: 2px 6px;
+  border-radius: 3px;
+  white-space: nowrap;
+  border: 1px solid rgba(255, 215, 64, 0.4);
+}
+.coming-soon-meta { flex: 1; min-width: 0; position: relative; }
+.coming-soon-eyebrow { font-size: 9px; font-weight: 800; letter-spacing: 2px; color: var(--yellow); margin-bottom: 4px; }
+.coming-soon-name { font-size: 16px; font-weight: 900; color: var(--text); letter-spacing: -0.2px; margin-bottom: 3px; }
+.coming-soon-tag { font-size: 11px; color: var(--dim); line-height: 1.4; }
+.coming-soon-side {
+  background: var(--card-bg);
+  border: 1px solid rgba(153, 69, 255, 0.25);
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.coming-soon-side-head { font-size: 11px; font-weight: 800; letter-spacing: 2px; color: var(--green); text-transform: uppercase; }
+.coming-soon-side-body { font-size: 11px; color: var(--dim); line-height: 1.5; }
+.cs-mono { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text); padding: 1px 5px; background: rgba(20, 241, 149, 0.12); border-radius: 3px; border: 1px solid rgba(20, 241, 149, 0.25); }
+.coming-soon-cta {
+  align-self: flex-start;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--cyan);
+  text-decoration: none;
+  border: 1px solid rgba(0, 242, 255, 0.45);
+  padding: 6px 12px;
+  border-radius: 5px;
+  background: rgba(0, 242, 255, 0.08);
+  margin-top: 4px;
+  transition: background 0.2s;
+}
+.coming-soon-cta:hover { background: rgba(0, 242, 255, 0.18); }
+@media (max-width: 700px) {
+  .coming-soon-strip { grid-template-columns: 1fr; }
+}
 
 /* ---- MODE COMPARE TABLE (below coverflow) ---- */
 .mode-compare {

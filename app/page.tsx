@@ -372,6 +372,30 @@ export default function Home() {
           </a>
         </div>
 
+        <div className="coming-soon-strip">
+          <div className="coming-soon-card" aria-label="Pet Legends Arena — coming soon">
+            <div className="coming-soon-art">
+              <img src="/pet-legends-teaser.png" alt="" />
+              <div className="coming-soon-fog"></div>
+              <span className="coming-soon-lock">🔒 COMING SOON</span>
+            </div>
+            <div className="coming-soon-meta">
+              <div className="coming-soon-eyebrow">GAME #4 · IN STEALTH</div>
+              <div className="coming-soon-name">Pet Legends Arena</div>
+              <div className="coming-soon-tag">A different breed. Voxel pets. On-chain duels.</div>
+            </div>
+          </div>
+          <div className="coming-soon-side">
+            <div className="coming-soon-side-head">More games shipping</div>
+            <div className="coming-soon-side-body">
+              The shared <span className="cs-mono">gamerplex-arcade</span> + <span className="cs-mono">CM&nbsp;v2.1</span> contracts let new games plug in for ~$60 each. Pet Legends is next — sign up to be first in.
+            </div>
+            <a className="coming-soon-cta" href="https://x.com/gamerplex_com" target="_blank" rel="noopener noreferrer">
+              Follow @gamerplex_com →
+            </a>
+          </div>
+        </div>
+
         <div className="mode-compare">
           <div className="mode-compare-col">
             <div className="mode-compare-head">
