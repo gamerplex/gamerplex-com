@@ -288,7 +288,7 @@ html, body {
 /* ---- COMING SOON STRIP (Pet Legends teaser, between coverflow + compare) ---- */
 .coming-soon-strip {
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  grid-template-columns: 1fr 1fr;
   gap: 16px;
   max-width: 720px;
   margin: 40px auto 0;
@@ -301,8 +301,8 @@ html, body {
   gap: 14px;
   background: linear-gradient(135deg, rgba(255, 215, 64, 0.08), rgba(153, 69, 255, 0.12));
   border: 1px solid rgba(255, 215, 64, 0.35);
-  border-radius: 12px;
-  padding: 14px 16px;
+  border-radius: 10px;
+  padding: 18px 20px;
   overflow: hidden;
   cursor: default;
 }
@@ -361,9 +361,9 @@ html, body {
 .coming-soon-tag { font-size: 11px; color: var(--dim); line-height: 1.4; }
 .coming-soon-side {
   background: var(--card-bg);
-  border: 1px solid rgba(153, 69, 255, 0.25);
-  border-radius: 12px;
-  padding: 14px 16px;
+  border: 1px solid rgba(153, 69, 255, 0.3);
+  border-radius: 10px;
+  padding: 18px 20px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -404,6 +404,8 @@ html, body {
   border: 1px solid rgba(153, 69, 255, 0.3);
   border-radius: 10px;
   padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
 }
 .mode-compare-head {
   font-size: 12px;
