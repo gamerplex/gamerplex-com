@@ -8,7 +8,7 @@ import {
   useConnection,
   useWallet,
 } from "@solana/wallet-adapter-react";
-import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+import { WalletMultiButton, useWalletModal } from "@solana/wallet-adapter-react-ui";
 import ModeToggle from "../../../../components/games/ModeToggle";
 import { ArcadeLeaderboard } from "../../../arcade/_components/ArcadeLeaderboard";
 import {
@@ -137,6 +137,7 @@ export default function ArcadeMode() {
   const { connection } = useConnection();
   const anchorWallet = useAnchorWallet();
   const { publicKey, connected } = useWallet();
+  const { setVisible: setWalletModalVisible } = useWalletModal();
   const [profileExists, setProfileExists] = useState<boolean | null>(null);
   const [busy, setBusy] = useState<null | "save" | "verify" | "receipt">(null);
   const [lastSaveSig, setLastSaveSig] = useState<string | null>(null);
@@ -587,15 +588,35 @@ export default function ArcadeMode() {
                     onRestart={startNewRun}
                   />
                 ) : (
-                  <div style={{ display: "flex", gap: 14, marginTop: 6, flexDirection: "column", alignItems: "center", zIndex: 1 }}>
-                    <div style={{ fontSize: 12, color: "#8a8aa0" }}>
-                      Connect wallet to save your score on-chain
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, marginTop: 4, width: "100%", maxWidth: 420, zIndex: 1 }}>
+                    <button
+                      onClick={() => setWalletModalVisible(true)}
+                      style={{
+                        background: "linear-gradient(90deg, #9945FF, #14F195)",
+                        color: "#000",
+                        padding: "16px 28px",
+                        border: "none",
+                        borderRadius: 10,
+                        fontSize: 16,
+                        fontWeight: 900,
+                        letterSpacing: 0.5,
+                        cursor: "pointer",
+                        fontFamily: "inherit",
+                        boxShadow: "0 0 32px rgba(20,241,149,0.55), 0 0 64px rgba(153,69,255,0.35)",
+                        width: "100%",
+                        maxWidth: 360,
+                      }}
+                    >
+                      💾 SAVE SCORE — CONNECT WALLET
+                    </button>
+                    <div style={{ fontSize: 11, color: "#8a8aa0", textAlign: "center", lineHeight: 1.5 }}>
+                      First save free on devnet · GPX5 memo on Solana, permanent
                     </div>
-                    <div style={{ display: "flex", gap: 14 }}>
-                      <a href="/arcade" style={{ ...btnSecondary, textDecoration: "none", display: "inline-flex", alignItems: "center" }}>
-                        ← Back to arcade
+                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center", marginTop: 4 }}>
+                      <button onClick={startNewRun} style={{ ...btnSecondary, minHeight: 40 }}>↻ Play Again</button>
+                      <a href="/arcade" style={{ ...btnSecondary, textDecoration: "none", display: "inline-flex", alignItems: "center", minHeight: 40 }}>
+                        ← Back
                       </a>
-                      <button onClick={startNewRun} style={btnPrimary}>🔄 Play Again</button>
                     </div>
                   </div>
                 )}

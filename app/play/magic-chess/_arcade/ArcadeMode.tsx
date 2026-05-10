@@ -6,7 +6,7 @@ import Link from "next/link";
 import { BN } from "@coral-xyz/anchor";
 import { PublicKey, Transaction } from "@solana/web3.js";
 import { useAnchorWallet, useConnection, useWallet } from "@solana/wallet-adapter-react";
-import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+import { WalletMultiButton, useWalletModal } from "@solana/wallet-adapter-react-ui";
 import ModeToggle from "../../../../components/games/ModeToggle";
 import {
   PIECES, isW, isB, pt, initBoard, getValid, isAttacked, execMove,
@@ -30,6 +30,7 @@ const MOVE_TIME = 120;
 
 export default function ArcadeMode() {
   const { publicKey } = useWallet();
+  const { setVisible: setWalletModalVisible } = useWalletModal();
   const { connection } = useConnection();
   const anchorWallet = useAnchorWallet();
 
@@ -507,9 +508,28 @@ export default function ArcadeMode() {
                   <div style={{ marginTop: 16, padding: 12, background: "rgba(153,69,255,0.06)", borderRadius: 8, border: "1px solid rgba(153,69,255,0.2)" }}>
                     {!publicKey ? (
                       <>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: "#14F195", marginBottom: 6 }}>Save your score on-chain</div>
-                        <div style={{ fontSize: 10, color: "#888", marginBottom: 8 }}>Connect a wallet to save permanently to Solana.</div>
-                        <WalletMultiButton style={{ fontSize: 11, height: 32, width: "100%", justifyContent: "center" }} />
+                        <button
+                          onClick={() => setWalletModalVisible(true)}
+                          style={{
+                            background: "linear-gradient(90deg, #9945FF, #14F195)",
+                            color: "#000",
+                            padding: "14px 20px",
+                            border: "none",
+                            borderRadius: 10,
+                            fontSize: 14,
+                            fontWeight: 900,
+                            letterSpacing: 0.5,
+                            cursor: "pointer",
+                            fontFamily: "inherit",
+                            boxShadow: "0 0 28px rgba(20,241,149,0.5), 0 0 56px rgba(153,69,255,0.3)",
+                            width: "100%",
+                          }}
+                        >
+                          💾 SAVE SCORE — CONNECT WALLET
+                        </button>
+                        <div style={{ fontSize: 10, color: "#8a8aa0", textAlign: "center", marginTop: 8, lineHeight: 1.5 }}>
+                          First save free on devnet · GPX5 memo on Solana, permanent
+                        </div>
                       </>
                     ) : (
                       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
