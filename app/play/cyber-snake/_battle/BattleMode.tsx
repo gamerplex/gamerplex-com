@@ -373,7 +373,7 @@ export default function CyberSnakeBattle() {
       // Joiner triggers the wagered market init (best-effort — both pubkeys
       // are now known, eventId = gameId so derivation matches across wallets).
       // We re-fetch state to get p1 from chain (the joiner doesn't have it yet).
-      setBusy("creating wagered market on CM v2.1…");
+      setBusy("creating skill-contest market on CM v2.1…");
       try {
         const fresh = await pollState(l1Conn, erConnRef.current, r.game);
         if (fresh) {
@@ -384,10 +384,10 @@ export default function CyberSnakeBattle() {
             gameStatePda: r.game,
             eventId: gameId,
           });
-          log(`wagered market created`, "tx", m.sig, false);
+          log(`market created`, "tx", m.sig, false);
         }
       } catch (mErr: any) {
-        log(`wagered market init skipped: ${mErr.message?.slice(0, 80)}`, "error");
+        log(`market init skipped: ${mErr.message?.slice(0, 80)}`, "error");
       }
       setBusy("delegating to MagicBlock ER…");
       const dsig = await delegateToEr(l1Conn, wallet, r.game);
@@ -464,7 +464,7 @@ export default function CyberSnakeBattle() {
       log("nothing to settle", "error");
       return;
     }
-    setBusy("settling wagered match…");
+    setBusy("settling match…");
     try {
       const sig = await resolveWageredMarket({
         conn: l1Conn,
@@ -545,48 +545,11 @@ export default function CyberSnakeBattle() {
         flexDirection: "column",
       }}
     >
-      {/* Top bar */}
-      <div
-        style={{
-          padding: "14px 24px",
-          borderBottom: "1px solid #252540",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 12,
-          flexWrap: "wrap",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Link
-            href="/"
-            style={{
-              textDecoration: "none",
-              fontSize: 22,
-              fontWeight: 900,
-              fontStyle: "italic",
-              background: "linear-gradient(135deg, #9945FF, #14F195)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-            }}
-          >
-            GAMERPLEX
-          </Link>
-          <span
-            style={{
-              fontSize: 10,
-              fontWeight: 800,
-              padding: "3px 8px",
-              borderRadius: 4,
-              background: "rgba(153,69,255,0.15)",
-              border: "1px solid rgba(153,69,255,0.4)",
-              color: "#c99aff",
-              letterSpacing: 1.5,
-              textTransform: "uppercase",
-            }}
-          >
-            Battle · Devnet
-          </span>
+      {/* 2026 minimalist top nav — matches home */}
+      <nav className="top-nav" style={{ padding: "14px 24px", flexWrap: "wrap", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <Link href="/" className="nav-logo" style={{ textDecoration: "none" }}>GAMERPLEX</Link>
+          <span className="devnet-badge">Devnet</span>
         </div>
         <ModeToggle
           gameLabel="Cyber Snake"
@@ -594,7 +557,7 @@ export default function CyberSnakeBattle() {
           arcade={{ status: "live-mainnet-soon", href: "/play/cyber-snake?mode=arcade" }}
           battle={{ status: "live-devnet", href: "/play/cyber-snake?mode=battle", programId: CYBER_SNAKE_PROGRAM_ID.toBase58() }}
         />
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div className="nav-links">
           <button
             onClick={() => {
               const m = !muted;
@@ -603,12 +566,24 @@ export default function CyberSnakeBattle() {
             }}
             style={iconBtn}
             title={muted ? "unmute" : "mute"}
+            aria-label={muted ? "Unmute" : "Mute"}
           >
             {muted ? "🔇" : "🔊"}
           </button>
-          <WalletMultiButton />
+          <WalletMultiButton
+            style={{
+              background: "rgba(153,69,255,0.12)",
+              color: "#e8e8f0",
+              fontSize: 11,
+              height: 32,
+              padding: "0 12px",
+              borderRadius: 99,
+              border: "1px solid rgba(153,69,255,0.4)",
+              fontWeight: 700,
+            }}
+          />
         </div>
-      </div>
+      </nav>
 
       {/* Main grid: board on the left, info panel on the right */}
       <div
@@ -774,8 +749,8 @@ export default function CyberSnakeBattle() {
             <Row k="Side">{localSide}</Row>
           </Card>
 
-          {/* Wagered escrow — CM v2.1. Stake $X each, winner takes 98% of pot. */}
-          <Card title={`Wagered escrow · CM v2.1`}>
+          {/* Skill-contest escrow — CM v2.1. Equal entry, winner takes 98% of the prize pool. */}
+          <Card title={`Escrow · CM v2.1`}>
             <Row k="Stake">${stake.toFixed(2)} USDF / side</Row>
             <Row k="Pot">${(stake * 2).toFixed(2)} USDF · 98% to winner</Row>
             <Row k="Market">
@@ -953,7 +928,7 @@ export default function CyberSnakeBattle() {
           </Card>
 
           {/* Settlement — honest scaffold */}
-          <Card title="Wagering · CM v2.1">
+          <Card title="Settlement · CM v2.1">
             <div style={{ fontSize: 12, color: "#a8a8c0", lineHeight: 1.5 }}>
               This match runs <strong>free on devnet</strong>. The real-money
               path requires a market PDA bound to this game state via Contention

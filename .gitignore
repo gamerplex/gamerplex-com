@@ -16,3 +16,12 @@ ENGINEERING_*/
 **/ENGINEERING_*/
 docs-internal/
 
+
+# ── Defensive: secrets + build artifacts ─────────────────────────
+keys/
+*.pem
+*-keypair.json
+target/
+*.tsbuildinfo
+.env.local
+.env*.local

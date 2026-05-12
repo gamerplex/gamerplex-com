@@ -52,35 +52,22 @@ export default function GamesPortal() {
       minHeight: "100vh", background: "#050508", color: "#e8e8f0",
       fontFamily: "'Space Grotesk', sans-serif",
     }}>
-      {/* Header */}
-      <div style={{
-        padding: "20px 24px", borderBottom: "1px solid #252540",
-        display: "flex", justifyContent: "space-between", alignItems: "center",
-        position: "relative",
-      }}>
+      {/* 2026 minimalist top nav — matches home */}
+      <nav className="top-nav" style={{ padding: "20px 24px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <Link href="/" style={{ textDecoration: "none" }}>
-            <span style={{
-              fontSize: 22, fontWeight: 700, fontStyle: "italic",
-              background: "linear-gradient(135deg, #9945FF, #14F195)",
-              WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-              paddingRight: 8, display: "inline-block",
-            }}>GAMERPLEX</span>
-          </Link>
-          <span style={{fontSize:9,fontWeight:700,padding:"2px 6px",borderRadius:4,background:"rgba(255,170,0,0.15)",border:"1px solid rgba(255,170,0,0.4)",color:"#ffaa00",letterSpacing:1,textTransform:"uppercase"}}>Devnet</span>
+          <Link href="/" className="nav-logo" style={{ textDecoration: "none" }}>GAMERPLEX</Link>
+          <span className="devnet-badge">Devnet</span>
         </div>
         <SiteNav
           links={[
-            { href: "/", label: "Arena" },
-            { href: "/arcade", label: "Arcade" },
-            { href: "/games", label: "Tournaments", active: true },
+            { href: "/#featured", label: "Play", active: true },
+            { href: "/docs", label: "Build" },
             { href: "/leaderboard", label: "Leaderboard" },
-            { href: "/activity", label: "Activity" },
-            { href: "/docs", label: "Docs" },
+            { href: "/profile", label: "Profile" },
             { href: "https://x.com/gamerplex_com", label: "𝕏", external: true },
           ]}
         />
-      </div>
+      </nav>
 
       <div style={{ maxWidth: 960, margin: "0 auto", padding: "32px 20px" }}>
         {/* Page title */}
@@ -205,7 +192,7 @@ export default function GamesPortal() {
             <div style={{ fontSize: 32, marginBottom: 8 }}>🎮</div>
             <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>Build Your Game</div>
             <div style={{ fontSize: 12, color: "#555570", marginBottom: 16 }}>
-              Deploy on-chain games with built-in wagering, leaderboards, and token economics.
+              Deploy on-chain games with built-in skill-contest settlement, leaderboards, and token economics.
             </div>
             <a href="https://github.com/gamerplex" target="_blank" style={{
               background: "#14141f", border: "1px solid #252540",

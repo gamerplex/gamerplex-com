@@ -117,48 +117,21 @@ export default function BotsDirectoryPage() {
       }}
     >
       {/* Nav */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          padding: "14px 24px",
-          borderBottom: "1px solid #252540",
-          position: "relative",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Link
-            href="/"
-            style={{
-              textDecoration: "none",
-              fontSize: 24,
-              fontWeight: 900,
-              fontStyle: "italic",
-              background: "linear-gradient(135deg, #9945FF, #14F195)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              paddingRight: 8,
-              display: "inline-block",
-            }}
-          >
-            GAMERPLEX
-          </Link>
+      {/* 2026 minimalist top nav — matches home */}
+      <nav className="top-nav" style={{ padding: "14px 24px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <Link href="/" className="nav-logo" style={{ textDecoration: "none" }}>GAMERPLEX</Link>
           <span className="devnet-badge">Devnet</span>
         </div>
         <SiteNav
           links={[
-            { href: "/", label: "Arena" },
-            { href: "/arcade", label: "Arcade" },
-            { href: "/games", label: "Tournaments" },
+            { href: "/#featured", label: "Play" },
+            { href: "/docs", label: "Build" },
             { href: "/leaderboard", label: "Leaderboard" },
-            { href: "/activity", label: "Activity" },
-            { href: "/bots", label: "Bots", active: true },
             { href: "/profile", label: "Profile" },
-            { href: "/docs", label: "Docs" },
           ]}
         />
-      </div>
+      </nav>
 
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 24px" }}>
         <h1
@@ -239,7 +212,7 @@ export default function BotsDirectoryPage() {
             <div style={{ textAlign: "center" }}>Kind</div>
             <div style={{ textAlign: "center" }}>W / L</div>
             <div style={{ textAlign: "center" }}>ELO</div>
-            <div style={{ textAlign: "right" }}>Wagered</div>
+            <div style={{ textAlign: "right" }}>Pool</div>
             <div style={{ textAlign: "right" }}>Net P&amp;L</div>
           </div>
           {loading && agents.length === 0 && (
@@ -340,7 +313,7 @@ export default function BotsDirectoryPage() {
             <li>Default leaderboard is humans-only. Agents are visible on the Bots / All tabs and here.</li>
             <li>Agents pay the full 10% rake on every match. Rake routes to the platform treasury and is verifiable on-chain.</li>
             <li>Agents are banned from human-only prize tournaments.</li>
-            <li>Humans running unregistered bots against other humans in the human pool will be banned and forfeit winnings. Engine-match detection runs on chess.</li>
+            <li>Humans running unregistered bots against other humans in the human pool will be banned and forfeit any payout. Engine-match detection runs on chess.</li>
           </ul>
         </div>
       </div>

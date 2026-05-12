@@ -771,35 +771,37 @@ export default function CyberSnakeSolo() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#050508", color: "#e8e8f0", fontFamily: "'Space Grotesk', sans-serif" }}>
-      <div style={{ padding: "14px 24px", borderBottom: "1px solid #252540", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <a href="/" style={{ textDecoration: "none", fontSize: 24, fontWeight: 900, fontStyle: "italic", background: "linear-gradient(135deg, #9945FF, #14F195)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", paddingRight: 8 }}>GAMERPLEX</a>
-          <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 4, background: "rgba(79,195,247,0.15)", border: "1px solid rgba(79,195,247,0.4)", color: "#4fc3f7", letterSpacing: 1, textTransform: "uppercase" }}>Arcade · Cyber Snake</span>
+      {/* 2026 minimalist top nav — matches home page */}
+      <nav className="top-nav" style={{ padding: "14px 24px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <a href="/" className="nav-logo" style={{ textDecoration: "none" }}>GAMERPLEX</a>
+          <span className="devnet-badge">Devnet</span>
         </div>
-        <div style={{ display: "flex", gap: 14, fontSize: 13, alignItems: "center" }}>
-          <a href="/arcade" style={{ color: "#8a8aa0", textDecoration: "none" }}>Arcade</a>
-          <a href="/leaderboard" style={{ color: "#8a8aa0", textDecoration: "none" }}>Leaderboard</a>
-          <a href="/docs" style={{ color: "#8a8aa0", textDecoration: "none" }}>Docs</a>
+        <div className="nav-links">
+          <a href="/#featured">Play</a>
+          <a href="/docs">Build</a>
+          <a href="/leaderboard">Leaderboard</a>
+          <a href="/profile">Profile</a>
           <WalletMultiButton
             style={{
-              background: "#14141f",
+              background: "rgba(153,69,255,0.12)",
               color: "#e8e8f0",
-              fontSize: 12,
-              height: 36,
-              padding: "0 14px",
-              borderRadius: 8,
-              border: "1px solid #252540",
-              fontFamily: "'Space Grotesk', sans-serif",
+              fontSize: 11,
+              height: 32,
+              padding: "0 12px",
+              borderRadius: 99,
+              border: "1px solid rgba(153,69,255,0.4)",
               fontWeight: 700,
             }}
           />
         </div>
-      </div>
+      </nav>
 
       <div className="arcade-layout" style={{ maxWidth: 1400, margin: "0 auto", padding: "16px 16px 24px", gap: 16 }}>
         <div>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
-            <div style={{ display: "inline-flex", padding: 3, background: "#0c0c14", border: "1px solid #252540", borderRadius: 10, flexWrap: "wrap" }}>
+          {/* 2026: camera toggles hidden on mobile (3D views useless on small screens) — also tightens above-fold */}
+          <div className="arcade-toolbar" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
+            <div className="arcade-cam-toggle" style={{ display: "inline-flex", padding: 3, background: "#0c0c14", border: "1px solid #252540", borderRadius: 10, flexWrap: "wrap" }}>
               {([
                 { key: "top",    label: "🗺️ TV" },
                 { key: "tps-p1", label: "🎥 TPS" },
@@ -907,12 +909,13 @@ export default function CyberSnakeSolo() {
                   }}
                 />
 
+                {/* 2026: clamp keeps title tight on mobile, full glory on desktop */}
                 <div
                   style={{
-                    fontSize: 56,
+                    fontSize: "clamp(28px, 6vw, 56px)",
                     fontWeight: 900,
                     color: "#4fc3f7",
-                    letterSpacing: 6,
+                    letterSpacing: "clamp(2px, 0.5vw, 6px)",
                     textShadow:
                       "0 0 22px rgba(79,195,247,0.5), 0 0 48px rgba(79,195,247,0.25)",
                     animation: "csTitleGlow 2.6s ease-in-out infinite",
@@ -1074,17 +1077,28 @@ export default function CyberSnakeSolo() {
             )}
 
             {g && g.status === "crashed" && (
-              <div style={{ position: "absolute", inset: 0, background: "rgba(5,5,20,0.88)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, padding: 20 }}>
+              <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at center, rgba(13,0,26,0.7), rgba(5,5,20,0.96))", backdropFilter: "blur(6px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, padding: 20 }}>
+                {/* 2026: status eyebrow (tiny), score (hero), then action */}
                 {g.ticksSinceLastFood >= FOOD_STARVATION_TICKS ? (
-                  <>
-                    <div style={{ fontSize: 54, fontWeight: 900, color: "#ff9a40", letterSpacing: 4, textShadow: "0 0 20px rgba(255,154,64,0.6)" }}>STARVED</div>
-                    <div style={{ fontSize: 12, color: "#8a8aa0" }}>Eat food within 30 seconds or the snake dies of hunger.</div>
-                  </>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: "#ff9a40", letterSpacing: 3, textTransform: "uppercase" }}>● Starved</div>
                 ) : (
-                  <div style={{ fontSize: 54, fontWeight: 900, color: "#ff5230", letterSpacing: 4, textShadow: "0 0 20px rgba(255,82,48,0.6)" }}>CRASHED</div>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: "#ff5230", letterSpacing: 3, textTransform: "uppercase" }}>● Game Over</div>
                 )}
-                <div style={{ fontSize: 14, color: "#8a8aa0" }}>
-                  Score <span style={{ color: "#ffd24a", fontWeight: 700, fontSize: 18 }}>{g.score}</span>
+                {/* SCORE is the hero — huge gradient italic */}
+                <div style={{
+                  fontSize: "clamp(56px, 11vw, 96px)",
+                  fontWeight: 900,
+                  fontStyle: "italic",
+                  lineHeight: 1,
+                  background: "linear-gradient(135deg, #14F195, #00f2ff)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  textShadow: "0 0 40px rgba(20,241,149,0.35)",
+                  margin: "4px 0 2px",
+                }}>{g.score.toLocaleString()}</div>
+                <div style={{ fontSize: 11, color: "#8a8aa0", letterSpacing: 1.5, textTransform: "uppercase", fontWeight: 700, marginBottom: 8 }}>
+                  Your score
+                  {g.ticksSinceLastFood >= FOOD_STARVATION_TICKS && <span style={{ marginLeft: 8, color: "#ff9a40" }}>· hunger killed you</span>}
                 </div>
 
                 {connected ? (
@@ -1167,9 +1181,6 @@ export default function CyberSnakeSolo() {
                     score={g.score}
                   />
                 )}
-                <div style={{ fontSize: 10, color: "#555", marginTop: 2 }}>
-                  local leaderboard updated · program <code>{ARCADE_PROGRAM_ID.toBase58().slice(0, 8)}…</code> on devnet
-                </div>
               </div>
             )}
           </div>
@@ -1297,18 +1308,26 @@ export default function CyberSnakeSolo() {
               animation: viewToast 900ms ease-out forwards;
             }
           `}</style>
-          <div style={{ marginTop: 14, padding: "12px 14px", background: "#0c0c14", border: "1px solid #252540", borderRadius: 10, fontSize: 12, color: "#8a8aa0", lineHeight: 1.6 }}>
-            <strong style={{ color: "#4fc3f7" }}>Controls:</strong> arrow keys / WASD · swipe on mobile · <kbd style={{ padding: "1px 6px", background: "#14141f", border: "1px solid #2a3f55", borderRadius: 3, fontSize: 10 }}>V</kbd> cycle view · <kbd style={{ padding: "1px 6px", background: "#14141f", border: "1px solid #2a3f55", borderRadius: 3, fontSize: 10 }}>M</kbd> mute · eat gold food to grow · avoid walls + yourself<br />
-            <strong style={{ color: "#ff9a40" }}>Hunger:</strong> eat food within 30s or snake starves · <strong style={{ color: "#ff9a40" }}>Moves:</strong> max 130 direction changes per session (keep replay compact)
-          </div>
+          {/* 2026 minimalist controls — single line, expandable details */}
+          <details style={{ marginTop: 12, padding: "10px 14px", background: "#0c0c14", border: "1px solid #252540", borderRadius: 10, fontSize: 11, color: "#8a8aa0" }}>
+            <summary style={{ cursor: "pointer", listStyle: "none", display: "flex", alignItems: "center", gap: 6, userSelect: "none" }}>
+              <span style={{ color: "#4fc3f7", fontWeight: 700 }}>Controls</span>
+              <span>arrow keys / WASD · swipe on mobile · <kbd style={{ padding: "1px 5px", background: "#14141f", border: "1px solid #2a3f55", borderRadius: 3, fontSize: 9 }}>M</kbd> mute</span>
+              <span style={{ marginLeft: "auto", fontSize: 10, color: "#5a5a70" }}>more</span>
+            </summary>
+            <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid #1a1a28", lineHeight: 1.6 }}>
+              <strong style={{ color: "#ff9a40" }}>Hunger:</strong> eat within 30s or snake starves · <strong style={{ color: "#ff9a40" }}>Moves:</strong> max 130 direction changes per session
+            </div>
+          </details>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <div style={{ background: "#0c0c14", border: "1px solid #252540", borderRadius: 12, padding: "18px 20px" }}>
+          {/* 2026: hide entirely when empty — no fake empty-state cards */}
+          {board.length > 0 && <div style={{ background: "#0c0c14", border: "1px solid #252540", borderRadius: 12, padding: "18px 20px" }}>
             <div style={{ fontSize: 11, fontWeight: 800, color: "#14F195", letterSpacing: 2, textTransform: "uppercase", marginBottom: 12 }}>
               🏆 Local top 10
             </div>
-            {board.length === 0 ? (
+            {false ? (
               <div style={{ color: "#6a6a80", fontSize: 13, textAlign: "center", padding: "20px 0" }}>
                 No scores yet — play to appear here.
               </div>
@@ -1349,7 +1368,7 @@ export default function CyberSnakeSolo() {
                 ))}
               </div>
             )}
-          </div>
+          </div>}
 
           <ArcadeLeaderboard
             gameSlug="cyber-snake"

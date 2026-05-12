@@ -61,7 +61,7 @@ export default function ModeExplainerModal({
     : `${gameLabel} — Battle Mode`;
   const subline = isArcade
     ? "Solo skill run. Pay-to-save microtxn. Score lives on chain forever."
-    : "Wagered head-to-head match. Real-time on MagicBlock ER. Settled trustlessly via Contention Markets v2.1.";
+    : "1v1 head-to-head match. Real-time on MagicBlock ER. Settled trustlessly via Contention Markets v2.1.";
 
   return (
     <div
@@ -174,7 +174,7 @@ export default function ModeExplainerModal({
               lineHeight: 1.5,
             }}
           >
-            Wagered Battle and pari-mutuel skill contests are operated by a <strong style={{color:"#c99aff"}}>separate
+            Battle Mode and pari-mutuel skill contests are operated by a <strong style={{color:"#c99aff"}}>separate
             offshore entity</strong> (not the AU-based gamerplex.com operator). Mainnet for this surface is gated on
             entity formation and an independent audit. See <Link href="/docs#two-surfaces" style={{ color: "#c99aff" }}>two surfaces, two entities</Link>.
           </div>

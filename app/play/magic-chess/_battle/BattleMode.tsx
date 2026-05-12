@@ -188,12 +188,12 @@ export default function BattleMode() {
 
   const startMatch = useCallback(async () => {
     reset();
-    if (!publicKey) { addTx("⚠ Connect a wallet to wager", "system"); return; }
+    if (!publicKey) { addTx("⚠ Connect a wallet to enter the match", "system"); return; }
     addTx("🧙‍♂️ Connecting to MagicBlock ER...", "system");
     const eventId = `chess-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     setMatchEventId(eventId);
-    addTx(`Match created: ${eventId}`, "bet");
-    addTx(`⚠ Two-wallet wagered escrow: pending two-wallet QA. Match plays out unwagered.`, "system");
+    addTx(`Match created: ${eventId}`, "system");
+    addTx(`⚠ Two-wallet escrow: pending two-wallet QA. Match plays out unstaked for now.`, "system");
     const chain = new ChessOnChain();
     chainRef.current = chain;
     const ok = await chain.requestGame("medium");
@@ -212,22 +212,33 @@ export default function BattleMode() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#050508", color: "#e8e8f0", fontFamily: "'Space Grotesk', sans-serif" }}>
-      {/* HEADER */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderBottom: "1px solid #252540" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Link href="/" style={{ textDecoration: "none", fontSize: 16, fontWeight: 700, fontStyle: "italic", background: "linear-gradient(135deg, #9945FF, #14F195)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", paddingRight: 6 }}>GAMERPLEX</Link>
-          <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 6px", borderRadius: 4, background: "rgba(153,69,255,0.15)", border: "1px solid rgba(153,69,255,0.4)", color: "#9945FF", letterSpacing: 1, textTransform: "uppercase" }}>Battle</span>
-          <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 6px", borderRadius: 4, background: "rgba(255,170,0,0.15)", border: "1px solid rgba(255,170,0,0.4)", color: "#ffaa00", letterSpacing: 1, textTransform: "uppercase" }}>Devnet</span>
+      {/* 2026 minimalist top nav — matches home */}
+      <nav className="top-nav" style={{ padding: "12px 16px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <Link href="/" className="nav-logo" style={{ textDecoration: "none" }}>GAMERPLEX</Link>
+          <span className="devnet-badge">Devnet</span>
         </div>
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+        <div className="nav-links">
           {!isMobile && <>
-            <Link href="/games" style={{ color: "#555", textDecoration: "none", fontSize: 12 }}>Tournaments</Link>
-            <Link href="/leaderboard" style={{ color: "#555", textDecoration: "none", fontSize: 12 }}>Leaderboard</Link>
-            <Link href="/docs" style={{ color: "#555", textDecoration: "none", fontSize: 12 }}>Docs</Link>
+            <Link href="/#featured">Play</Link>
+            <Link href="/docs">Build</Link>
+            <Link href="/leaderboard">Leaderboard</Link>
+            <Link href="/profile">Profile</Link>
           </>}
-          <WalletMultiButton style={{ fontSize: 12, height: 32 }} />
+          <WalletMultiButton
+            style={{
+              background: "rgba(153,69,255,0.12)",
+              color: "#e8e8f0",
+              fontSize: 11,
+              height: 32,
+              padding: "0 12px",
+              borderRadius: 99,
+              border: "1px solid rgba(153,69,255,0.4)",
+              fontWeight: 700,
+            }}
+          />
         </div>
-      </div>
+      </nav>
 
       {/* LOBBY */}
       {phase === "lobby" && (
@@ -235,7 +246,7 @@ export default function BattleMode() {
           <div style={{ textAlign: "center", maxWidth: 460, padding: 16 }}>
             <div style={{ fontSize: 64, marginBottom: 8 }}>⚔️</div>
             <h1 className="magic-chess-title magic-pulse" style={{ fontSize: 38, fontWeight: 700, marginBottom: 8 }}>✨ MAGIC CHESS 🪄</h1>
-            <p className="magic-chess-text" style={{ fontSize: 13, marginBottom: 4 }}>Wagered 1v1 chess. Winner takes 98% of the pot.</p>
+            <p className="magic-chess-text" style={{ fontSize: 13, marginBottom: 4 }}>1v1 chess skill contest. Winner takes 98% of the prize pool.</p>
 
             <div style={{ display: "flex", justifyContent: "center", margin: "12px 0 14px" }}>
               <ModeToggle
@@ -470,7 +481,7 @@ export default function BattleMode() {
                 <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Settlement</div>
                 <div style={{ fontSize: 9, color: "#444", lineHeight: 2 }}>
                   <div style={{ display: "flex", justifyContent: "space-between" }}><span>Game State</span><span style={{ color: "#18ffff" }}>MagicBlock ER</span></div>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}><span>Wager Protocol</span><span style={{ color: "#ff6b2c" }}>Contention Markets</span></div>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}><span>Settlement Protocol</span><span style={{ color: "#ff6b2c" }}>Contention Markets</span></div>
                   <div style={{ display: "flex", justifyContent: "space-between" }}><span>Status</span><span style={{ color: "#ffaa00" }}>2-wallet QA pending</span></div>
                 </div>
               </div>

@@ -335,21 +335,33 @@ export default function ArcadeMode() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#050508", color: "#e8e8f0", fontFamily: "'Space Grotesk', sans-serif" }}>
-      {/* HEADER */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderBottom: "1px solid #252540" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Link href="/" style={{ textDecoration: "none", fontSize: 16, fontWeight: 700, fontStyle: "italic", background: "linear-gradient(135deg, #9945FF, #14F195)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", paddingRight: 6 }}>GAMERPLEX</Link>
-          <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 6px", borderRadius: 4, background: "rgba(20,241,149,0.15)", border: "1px solid rgba(20,241,149,0.4)", color: "#14F195", letterSpacing: 1, textTransform: "uppercase" }}>Arcade</span>
+      {/* 2026 minimalist top nav — matches home page */}
+      <nav className="top-nav" style={{ padding: "12px 16px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <Link href="/" className="nav-logo" style={{ textDecoration: "none" }}>GAMERPLEX</Link>
+          <span className="devnet-badge">Devnet</span>
         </div>
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+        <div className="nav-links">
           {!isMobile && <>
-            <Link href="/arcade" style={{ color: "#555", textDecoration: "none", fontSize: 12 }}>Arcade</Link>
-            <Link href="/leaderboard" style={{ color: "#555", textDecoration: "none", fontSize: 12 }}>Leaderboard</Link>
-            <Link href="/docs" style={{ color: "#555", textDecoration: "none", fontSize: 12 }}>Docs</Link>
+            <Link href="/#featured">Play</Link>
+            <Link href="/docs">Build</Link>
+            <Link href="/leaderboard">Leaderboard</Link>
+            <Link href="/profile">Profile</Link>
           </>}
-          <WalletMultiButton style={{ fontSize: 12, height: 32 }} />
+          <WalletMultiButton
+            style={{
+              background: "rgba(153,69,255,0.12)",
+              color: "#e8e8f0",
+              fontSize: 11,
+              height: 32,
+              padding: "0 12px",
+              borderRadius: 99,
+              border: "1px solid rgba(153,69,255,0.4)",
+              fontWeight: 700,
+            }}
+          />
         </div>
-      </div>
+      </nav>
 
       {/* READY */}
       {phase === "ready" && (

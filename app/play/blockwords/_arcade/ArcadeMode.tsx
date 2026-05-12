@@ -472,30 +472,31 @@ export default function ArcadeMode() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#050508", color: "#e8e8f0", fontFamily: "'Space Grotesk', sans-serif" }}>
-      <div style={{ padding: "14px 24px", borderBottom: "1px solid #252540", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <a href="/" style={{ textDecoration: "none", fontSize: 24, fontWeight: 900, fontStyle: "italic", background: "linear-gradient(135deg, #9945FF, #14F195)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", paddingRight: 8 }}>GAMERPLEX</a>
-          <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 4, background: "rgba(255,210,74,0.15)", border: "1px solid rgba(255,210,74,0.4)", color: "#ffd24a", letterSpacing: 1, textTransform: "uppercase" }}>Arcade · Blockwords</span>
+      {/* 2026 minimalist top nav — matches home page */}
+      <nav className="top-nav" style={{ padding: "14px 24px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <a href="/" className="nav-logo" style={{ textDecoration: "none" }}>GAMERPLEX</a>
+          <span className="devnet-badge">Devnet</span>
         </div>
-        <div style={{ display: "flex", gap: 14, fontSize: 13, alignItems: "center" }}>
-          <a href="/arcade" style={{ color: "#8a8aa0", textDecoration: "none" }}>Arcade</a>
-          <a href="/leaderboard" style={{ color: "#8a8aa0", textDecoration: "none" }}>Leaderboard</a>
-          <a href="/docs" style={{ color: "#8a8aa0", textDecoration: "none" }}>Docs</a>
+        <div className="nav-links">
+          <a href="/#featured">Play</a>
+          <a href="/docs">Build</a>
+          <a href="/leaderboard">Leaderboard</a>
+          <a href="/profile">Profile</a>
           <WalletMultiButton
             style={{
-              background: "#14141f",
+              background: "rgba(153,69,255,0.12)",
               color: "#e8e8f0",
-              fontSize: 12,
-              height: 36,
-              padding: "0 14px",
-              borderRadius: 8,
-              border: "1px solid #252540",
-              fontFamily: "'Space Grotesk', sans-serif",
+              fontSize: 11,
+              height: 32,
+              padding: "0 12px",
+              borderRadius: 99,
+              border: "1px solid rgba(153,69,255,0.4)",
               fontWeight: 700,
             }}
           />
         </div>
-      </div>
+      </nav>
 
       <div className="bw-layout" style={{ maxWidth: 1400, margin: "0 auto", padding: "16px 16px 24px", gap: 16 }}>
         <div>
@@ -540,36 +541,37 @@ export default function ArcadeMode() {
             )}
 
             {r && r.status === "ended" && (
-              <div style={{ position: "absolute", inset: 0, background: "rgba(5,5,20,0.94)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, padding: 20, overflowY: "auto" }}>
+              <div style={{ position: "absolute", inset: 0, background: "rgba(5,5,20,0.94)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, padding: 20, overflowY: "auto" }}>
                 {r.solved && (
                   <Confetti />
                 )}
-                <div className="bw-title" style={{ fontSize: 48, fontWeight: 900, color: r.solved ? "#14F195" : "#ff5230", letterSpacing: 4, textShadow: r.solved ? "0 0 24px rgba(20,241,149,0.6)" : "0 0 24px rgba(255,82,48,0.5)", zIndex: 1 }}>
-                  {r.solved ? "SOLVED!" : "TIME&apos;S UP"}
+                {/* 2026: status eyebrow (tiny), score (hero), then action — matches Cyber Snake */}
+                <div style={{ fontSize: 11, fontWeight: 800, color: r.solved ? "#14F195" : "#ff5230", letterSpacing: 3, textTransform: "uppercase", zIndex: 1 }}>
+                  {r.solved ? "● Solved" : "● Time's up"}
                 </div>
-                <div style={{ fontSize: 14, color: "#8a8aa0", display: "flex", flexDirection: "column", gap: 4, alignItems: "center", zIndex: 1 }}>
-                  <div>
-                    Word was{" "}
-                    <span style={{ color: "#ffd24a", fontFamily: "monospace", fontWeight: 800, letterSpacing: 4, fontSize: 22 }}>
-                      {r.answer}
-                    </span>
-                  </div>
-                  {r.solved ? (
-                    <div>
-                      Solved in <strong style={{ color: "#e8e8f0" }}>{r.guesses.length}</strong>{" "}
-                      {r.guesses.length === 1 ? "guess" : "guesses"} ·{" "}
-                      <strong style={{ color: "#e8e8f0" }}>{secondsUsed(r)}s</strong>
-                    </div>
-                  ) : (
-                    <div>
-                      Used <strong style={{ color: "#e8e8f0" }}>{r.guesses.length}</strong>{" "}
-                      {r.guesses.length === 1 ? "guess" : "guesses"} ·{" "}
-                      ran out of {r.guesses.length >= MAX_GUESSES ? "guesses" : "time"}
-                    </div>
-                  )}
-                  <div style={{ fontSize: 30, fontWeight: 900, color: r.solved ? "#ffd24a" : "#6a6a80", fontFamily: "monospace", marginTop: 6 }}>
-                    {finalScore.toLocaleString()} <span style={{ fontSize: 12, color: "#8a8aa0", fontWeight: 600 }}>pts</span>
-                  </div>
+                {/* SCORE is the hero — huge gradient italic */}
+                <div style={{
+                  fontSize: "clamp(56px, 11vw, 96px)",
+                  fontWeight: 900,
+                  fontStyle: "italic",
+                  lineHeight: 1,
+                  background: "linear-gradient(135deg, #14F195, #00f2ff)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  textShadow: "0 0 40px rgba(20,241,149,0.35)",
+                  margin: "4px 0 2px",
+                  zIndex: 1,
+                }}>{finalScore.toLocaleString()}</div>
+                <div style={{ fontSize: 11, color: "#8a8aa0", letterSpacing: 1.5, textTransform: "uppercase", fontWeight: 700, marginBottom: 4, zIndex: 1 }}>
+                  Your score
+                </div>
+                <div style={{ fontSize: 13, color: "#a8a8c0", display: "flex", gap: 8, alignItems: "center", zIndex: 1, flexWrap: "wrap", justifyContent: "center" }}>
+                  <span>Word:</span>
+                  <span style={{ color: "#ffd24a", fontFamily: "monospace", fontWeight: 800, letterSpacing: 3, fontSize: 18 }}>
+                    {r.answer}
+                  </span>
+                  <span style={{ color: "#555" }}>·</span>
+                  <span>{r.guesses.length} {r.guesses.length === 1 ? "guess" : "guesses"} · {secondsUsed(r)}s</span>
                 </div>
 
                 {connected ? (
@@ -645,20 +647,24 @@ export default function ArcadeMode() {
                     )}
                   </div>
                 )}
-                <div style={{ fontSize: 10, color: "#555", marginTop: 2, zIndex: 1 }}>
-                  program <code>{ARCADE_PROGRAM_ID.toBase58().slice(0, 8)}…</code> on devnet · game_id 4
-                </div>
               </div>
             )}
           </div>
 
-          <div style={{ marginTop: 14, padding: "12px 14px", background: "#0c0c14", border: "1px solid #252540", borderRadius: 10, fontSize: 12, color: "#8a8aa0", lineHeight: 1.6 }}>
-            <strong style={{ color: "#ffd24a" }}>How to play:</strong> guess the secret 5-letter word in 6 tries. After each guess, tiles flip:
-            <span style={{ color: TILE_GREEN, fontWeight: 700 }}> green</span> = right letter, right spot ·{" "}
-            <span style={{ color: TILE_YELLOW, fontWeight: 700 }}>yellow</span> = right letter, wrong spot ·{" "}
-            <span style={{ color: "#9a9aaf", fontWeight: 700 }}>grey</span> = not in the word. Beat the 90s timer for a bonus.<br />
-            <strong style={{ color: "#ffd24a" }}>Hotkeys:</strong> <kbd style={kbdStyle}>A–Z</kbd> letter · <kbd style={kbdStyle}>ENTER</kbd> submit · <kbd style={kbdStyle}>BACKSPACE</kbd> erase · <kbd style={kbdStyle}>SPACE</kbd> start
-          </div>
+          {/* 2026 minimalist how-to — single line, expandable details */}
+          <details style={{ marginTop: 12, padding: "10px 14px", background: "#0c0c14", border: "1px solid #252540", borderRadius: 10, fontSize: 11, color: "#8a8aa0" }}>
+            <summary style={{ cursor: "pointer", listStyle: "none", display: "flex", alignItems: "center", gap: 6, userSelect: "none", flexWrap: "wrap" }}>
+              <span style={{ color: "#ffd24a", fontWeight: 700 }}>How to play</span>
+              <span>guess the 5-letter word in 6 tries · <kbd style={kbdStyle}>A–Z</kbd> letter · <kbd style={kbdStyle}>↵</kbd> submit · <kbd style={kbdStyle}>⌫</kbd> erase</span>
+              <span style={{ marginLeft: "auto", fontSize: 10, color: "#5a5a70" }}>more</span>
+            </summary>
+            <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid #1a1a28", lineHeight: 1.6 }}>
+              After each guess, tiles flip:
+              <span style={{ color: TILE_GREEN, fontWeight: 700 }}> green</span> = right letter, right spot ·{" "}
+              <span style={{ color: TILE_YELLOW, fontWeight: 700 }}>yellow</span> = right letter, wrong spot ·{" "}
+              <span style={{ color: "#9a9aaf", fontWeight: 700 }}>grey</span> = not in the word. Beat the 90s timer for a bonus.
+            </div>
+          </details>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -668,45 +674,25 @@ export default function ArcadeMode() {
             highlightWallet={publicKey?.toBase58() ?? null}
           />
 
-          <div style={{ background: "#0c0c14", border: "1px solid #252540", borderRadius: 12, padding: "16px 20px" }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: "#ffd24a", letterSpacing: 2, textTransform: "uppercase", marginBottom: 10 }}>
-              On-chain actions
+          {/* 2026: collapse verbose info panels into a single expandable */}
+          <details style={{ background: "#0c0c14", border: "1px solid #252540", borderRadius: 12, padding: "12px 16px" }}>
+            <summary style={{ cursor: "pointer", fontSize: 11, fontWeight: 800, color: "#ffd24a", letterSpacing: 2, textTransform: "uppercase", listStyle: "none", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span>💸 Save options · pricing</span>
+              <span style={{ fontSize: 14, color: "#6a6a80" }}>+</span>
+            </summary>
+            <div style={{ marginTop: 10, fontSize: 12, color: "#a8a8c0", lineHeight: 1.7 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}><span style={{ color: "#4fc3f7" }}>💾 Save score</span><b>$0.05</b></div>
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}><span style={{ color: "#ffd740" }}>🏆 Save replay (verified)</span><b>$0.15</b></div>
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}><span style={{ color: "#c99aff" }}>🎴 Claim ownership</span><b>$0.25</b></div>
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}><span style={{ color: "#9945FF" }}>✨ Wrap as cNFT (v1.3)</span><b>$0.50</b></div>
+              <div style={{ fontSize: 10, color: "#666", marginTop: 8, lineHeight: 1.5 }}>
+                Paid in USDC. ~$0.001/tx Solana gas. PlayerProfile setup ~$0.41 refundable rent (one-time per wallet).
+              </div>
+              <div style={{ fontSize: 10, color: "#555", marginTop: 6, lineHeight: 1.5 }}>
+                {WORDS.length} answer words · word deterministic from session seed · score = 1000 − (guesses × 100) + max(0, 300 − seconds).
+              </div>
             </div>
-            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: "#a8a8c0", lineHeight: 1.7 }}>
-              <li><strong style={{ color: "#4fc3f7" }}>Save score — $0.05</strong> · GPX5 memo, permanent</li>
-              <li><strong style={{ color: "#ffd740" }}>Save replay — $0.15</strong> · 3× base · full guess log → 🏆</li>
-              <li><strong style={{ color: "#c99aff" }}>Claim ownership — $0.25</strong> · 5× base · transferable ReplayReceipt PDA</li>
-              <li><strong style={{ color: "#9945FF" }}>Wrap as cNFT — $0.50</strong> · 10× base · Magic Eden tradeable (v1.3)</li>
-            </ul>
-            <div style={{ fontSize: 11, color: "#6a6a80", marginTop: 12, marginBottom: 4, letterSpacing: 1, textTransform: "uppercase", fontWeight: 700 }}>One-time (per wallet)</div>
-            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: "#a8a8c0", lineHeight: 1.7 }}>
-              <li>PlayerProfile verification — <strong style={{ color: "#e8e8f0" }}>~$0.41 refundable Solana rent</strong></li>
-            </ul>
-            <div style={{ fontSize: 10, color: "#555", marginTop: 10, lineHeight: 1.5 }}>
-              Plus Solana network gas ~$0.001/tx. Word reproducible from seed — anyone can verify.
-            </div>
-          </div>
-
-          <div style={{ background: "#0c0c14", border: "1px solid #252540", borderRadius: 12, padding: "14px 18px", fontSize: 12, color: "#a8a8c0", lineHeight: 1.6 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: "#ffd24a", letterSpacing: 2, textTransform: "uppercase", marginBottom: 8 }}>
-              Library
-            </div>
-            <div>
-              {WORDS.length} answer words · 5 letters each. The secret word is deterministic from your session seed — share a challenge link to play the same word.
-            </div>
-          </div>
-
-          <div style={{ background: "#0c0c14", border: "1px solid #252540", borderRadius: 12, padding: "14px 18px", fontSize: 12, color: "#a8a8c0", lineHeight: 1.6 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: "#ffd24a", letterSpacing: 2, textTransform: "uppercase", marginBottom: 8 }}>
-              Score formula
-            </div>
-            <div style={{ fontFamily: "monospace", fontSize: 11, color: "#e8e8f0", marginBottom: 6 }}>
-              1000 − (guesses × 100) + max(0, 300 − seconds)
-            </div>
-            <div style={{ fontSize: 11, color: "#6a6a80" }}>
-              1 guess in 0s → 1200 pts · 6 guesses in 90s → 610 pts · failure → 0
-            </div>
-          </div>
+          </details>
         </div>
       </div>
 
@@ -756,7 +742,7 @@ export default function ArcadeMode() {
 
 function IntroOverlay({ onStart }: { onStart: () => void }) {
   return (
-    <div style={{ position: "relative", height: 600, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 22, padding: 24, overflow: "hidden" }}>
+    <div className="bw-intro-overlay" style={{ position: "relative", minHeight: 420, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 18, padding: 20, overflow: "hidden" }}>
       <div
         aria-hidden
         style={{
@@ -767,10 +753,10 @@ function IntroOverlay({ onStart }: { onStart: () => void }) {
           pointerEvents: "none",
         }}
       />
-      <div style={{ fontSize: 64, zIndex: 1 }}>🔤</div>
-      <div className="bw-title" style={{ fontSize: 48, fontWeight: 900, color: "#ffd24a", letterSpacing: 4, textAlign: "center", textShadow: "0 0 22px rgba(255,210,74,0.6), 0 0 48px rgba(255,107,44,0.3)", animation: "bwTitleGlow 3s ease-in-out infinite", zIndex: 1, lineHeight: 1.1 }}>
+      <div className="bw-intro-emoji" style={{ fontSize: 56, zIndex: 1 }}>🔤</div>
+      <div className="bw-title" style={{ fontSize: 44, fontWeight: 900, color: "#ffd24a", letterSpacing: 4, textAlign: "center", textShadow: "0 0 22px rgba(255,210,74,0.6), 0 0 48px rgba(255,107,44,0.3)", animation: "bwTitleGlow 3s ease-in-out infinite", zIndex: 1, lineHeight: 1.1 }}>
         BLOCKWORDS<br />
-        <span style={{ fontSize: 28, color: "#ff8a40", letterSpacing: 6 }}>· ARCADE ·</span>
+        <span style={{ fontSize: 24, color: "#ff8a40", letterSpacing: 6 }}>· ARCADE ·</span>
       </div>
       <div style={{ fontSize: 14, color: "#a8a8c0", textAlign: "center", maxWidth: 420, zIndex: 1, lineHeight: 1.5 }}>
         Pick the secret 5-letter word in <strong style={{ color: "#ffd24a" }}>6 guesses</strong>, against a{" "}

@@ -37,60 +37,136 @@ export default async function UnavailablePage({
   const label = regionLabel(region);
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-100 flex flex-col">
-      <header className="border-b border-neutral-800 px-6 py-4">
-        <Link href="/" className="text-lg font-bold tracking-tight">
-          Gamerplex
-        </Link>
-      </header>
+    <>
+      {/* Minimalist top nav — matches home */}
+      <nav className="top-nav">
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <Link href="/" className="nav-logo" style={{ textDecoration: "none" }}>GAMERPLEX</Link>
+          <span className="devnet-badge">Devnet</span>
+        </div>
+        <div className="nav-links">
+          <Link href="/#featured">Play</Link>
+          <Link href="/docs">Build</Link>
+          <Link href="/leaderboard">Leaderboard</Link>
+        </div>
+      </nav>
 
-      <div className="flex-1 flex items-center justify-center px-6">
-        <div className="max-w-xl text-center">
-          <div className="text-6xl mb-6">🌏</div>
-          <h1 className="text-3xl font-bold mb-4">
-            Not available in {label}
-          </h1>
-          <p className="text-neutral-300 mb-4">
-            Gamerplex Arcade isn&rsquo;t available to players in {label} due
-            to local laws about skill-based contests with monetary entry
-            fees.
-          </p>
-          <p className="text-neutral-400 text-sm mb-8">
-            We&rsquo;re working on expanding availability. In the meantime, you
-            can still read about what we&rsquo;re building.
-          </p>
+      <section style={{
+        minHeight: "calc(100vh - 56px)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "40px 20px",
+        position: "relative",
+        background: "radial-gradient(ellipse at 30% 10%, rgba(255,82,48,0.10), transparent 60%), radial-gradient(ellipse at 70% 90%, rgba(153,69,255,0.10), transparent 55%)",
+      }}>
+        {/* Tron grid mesh, dimmed for blocked-state */}
+        <div style={{
+          position: "absolute", inset: 0, pointerEvents: "none",
+          backgroundImage: "linear-gradient(rgba(255,82,48,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,82,48,0.04) 1px, transparent 1px)",
+          backgroundSize: "48px 48px",
+          maskImage: "radial-gradient(ellipse at center, black 30%, transparent 80%)",
+          WebkitMaskImage: "radial-gradient(ellipse at center, black 30%, transparent 80%)",
+        }} />
 
-          <div className="flex flex-wrap gap-3 justify-center">
-            <Link
-              href="/"
-              className="px-4 py-2 rounded-md bg-neutral-800 text-neutral-100 hover:bg-neutral-700 text-sm"
-            >
-              About Gamerplex
-            </Link>
-            <Link
-              href="/docs"
-              className="px-4 py-2 rounded-md bg-neutral-800 text-neutral-100 hover:bg-neutral-700 text-sm"
-            >
-              Read the docs
-            </Link>
-            <Link
-              href="/terms"
-              className="px-4 py-2 rounded-md bg-neutral-800 text-neutral-100 hover:bg-neutral-700 text-sm"
-            >
-              Terms
-            </Link>
+        <div style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 520, textAlign: "center" }}>
+          <div style={{ fontSize: 96, lineHeight: 1, marginBottom: 16, filter: "drop-shadow(0 0 32px rgba(255,82,48,0.4))" }}>
+            🌏
           </div>
 
-          <p className="text-xs text-neutral-500 mt-10">
-            Region detected via IP geolocation. If you believe this is an
-            error, contact{" "}
-            <a href="mailto:support@gamerplex.com" className="underline">
-              support@gamerplex.com
-            </a>
-            .
+          <div style={{
+            fontSize: 11,
+            letterSpacing: 3,
+            color: "var(--orange, #ff6b2c)",
+            fontWeight: 800,
+            textTransform: "uppercase",
+            marginBottom: 10,
+          }}>
+            ● Region restricted
+          </div>
+
+          <h1 style={{
+            fontSize: "clamp(32px, 6vw, 48px)",
+            fontWeight: 900,
+            fontStyle: "italic",
+            lineHeight: 1.05,
+            letterSpacing: -1,
+            background: "linear-gradient(135deg, #9945FF 0%, #14F195 100%)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            marginBottom: 14,
+          }}>
+            Not available in {label}
+          </h1>
+
+          <p style={{
+            color: "var(--text)",
+            fontSize: 15,
+            lineHeight: 1.6,
+            marginBottom: 8,
+            maxWidth: 440,
+            margin: "0 auto 8px",
+          }}>
+            Gamerplex Arcade isn&rsquo;t available to players in {label} due to local rules about paid skill-contest entry.
           </p>
+          <p style={{
+            color: "var(--dim)",
+            fontSize: 13,
+            lineHeight: 1.6,
+            marginBottom: 28,
+            maxWidth: 440,
+            margin: "0 auto 28px",
+          }}>
+            We&rsquo;re expanding availability — keep an eye on{" "}
+            <a href="https://x.com/gamerplex_com" target="_blank" rel="noopener noreferrer" style={{ color: "var(--cyan)", textDecoration: "none" }}>@gamerplex_com</a> for region updates.
+          </p>
+
+          <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", marginBottom: 28 }}>
+            <Link href="/" style={{
+              padding: "12px 24px",
+              borderRadius: 10,
+              background: "linear-gradient(90deg, #9945FF, #14F195)",
+              color: "#000",
+              fontSize: 13,
+              fontWeight: 900,
+              fontStyle: "italic",
+              textDecoration: "none",
+              boxShadow: "0 0 24px rgba(20,241,149,0.4)",
+            }}>About Gamerplex</Link>
+            <Link href="/docs" style={{
+              padding: "12px 24px",
+              borderRadius: 10,
+              background: "transparent",
+              border: "1px solid rgba(153,69,255,0.4)",
+              color: "var(--text)",
+              fontSize: 13,
+              fontWeight: 700,
+              textDecoration: "none",
+            }}>Read the docs</Link>
+            <Link href="/terms" style={{
+              padding: "12px 24px",
+              borderRadius: 10,
+              background: "transparent",
+              border: "1px solid rgba(153,69,255,0.2)",
+              color: "var(--dim)",
+              fontSize: 13,
+              fontWeight: 600,
+              textDecoration: "none",
+            }}>Terms</Link>
+          </div>
+
+          <div style={{
+            fontSize: 11,
+            color: "var(--dim2, #5a4080)",
+            maxWidth: 380,
+            margin: "0 auto",
+            lineHeight: 1.5,
+          }}>
+            Region detected via IP geolocation. If you believe this is an error, email{" "}
+            <a href="mailto:support@gamerplex.com" style={{ color: "var(--cyan)", textDecoration: "none" }}>support@gamerplex.com</a>.
+          </div>
         </div>
-      </div>
-    </div>
+      </section>
+    </>
   );
 }

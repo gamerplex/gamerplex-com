@@ -12,7 +12,7 @@ const PROGRAMS: { name: string; addr: string; tag: string; accent: string }[] = 
   {
     name: "Contention Markets v2.1",
     addr: "69YfcveAbLbJ5LNERjq6k5wnszfZbXMYVzx2j8Ca1Xo8",
-    tag: "wagering",
+    tag: "settlement",
     accent: "#9945FF",
   },
   {
@@ -288,12 +288,10 @@ export default function ActivityPage() {
         </div>
         <SiteNav
           links={[
-            { href: "/", label: "Arena" },
-            { href: "/arcade", label: "Arcade" },
-            { href: "/games", label: "Tournaments" },
+            { href: "/#featured", label: "Play" },
+            { href: "/docs", label: "Build" },
             { href: "/leaderboard", label: "Leaderboard" },
-            { href: "/activity", label: "Activity", active: true },
-            { href: "/docs", label: "Docs" },
+            { href: "/profile", label: "Profile" },
           ]}
         />
       </div>
@@ -397,7 +395,7 @@ export default function ActivityPage() {
             loading={showSkeleton}
           />
           <StatCard
-            label="Volume wagered"
+            label="Pool volume"
             value={(() => {
               if (!totalsByKind) {
                 return onchainTotals ? fmtUsdf(onchainTotals.volumeRaw) : null;
@@ -555,9 +553,9 @@ export default function ActivityPage() {
           </>
         )}
 
-        {/* Wagered Matches */}
+        {/* Settled Skill-Contest Matches */}
         <SectionHeader
-          title="💰 Wagered matches"
+          title="💰 Settled matches"
           subtitle={`Every CM v2.1 MarketResolvedV2 event — newest first${
             onchain.length ? ` · showing ${onchain.length}` : ""
           }`}
@@ -597,8 +595,8 @@ export default function ActivityPage() {
           >
             {onchain.map((a) => {
               const winnerPayoutRaw = BigInt(a.winnerPayoutRaw);
-              const wager = BigInt(a.totalPotRaw) / BigInt(2);
-              const winnerGain = winnerPayoutRaw - wager;
+              const entry = BigInt(a.totalPotRaw) / BigInt(2);
+              const winnerGain = winnerPayoutRaw - entry;
               const isDraw =
                 a.winningOutcome === 255 || a.winningOutcome === null;
               return (
@@ -840,7 +838,7 @@ export default function ActivityPage() {
           </strong>
           <br />
           The <strong style={{ color: "#e8e8f0" }}>
-            Wagered matches
+            Settled matches
           </strong>{" "}
           feed reads{" "}
           <code style={{ color: "#c99aff" }}>MarketResolvedV2</code> events
@@ -849,7 +847,7 @@ export default function ActivityPage() {
           <strong style={{ color: "#e8e8f0" }}>ER live games</strong> reads
           the resolver&apos;s cache of active chess-pool slots (UX
           convenience, not authoritative). If the resolver disappears,
-          wagered matches keep resolving; only the free-play UI goes dark
+          skill-contest matches keep resolving on-chain; only the free-play UI goes dark
           until re-hosted. See{" "}
           <Link
             href="/docs#decentralization"

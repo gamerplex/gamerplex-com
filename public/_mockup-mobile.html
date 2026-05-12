@@ -1,0 +1,1625 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
+<title>Gamerplex · Mobile Mockup</title>
+<style>
+  /* ── tokens (synced with gamerplex.com globals.css) ─────────── */
+  :root {
+    --bg: #0d001a;
+    --s1: #14052e;
+    --s2: #1c0840;
+    --s3: #240b52;
+    --border: #3d1875;
+    --text: #f5f5fb;
+    --dim: #9c8fb8;
+    --green: #14F195;
+    --purple: #9945FF;
+    --cyan: #00f2ff;
+    --pink: #ff007a;
+    --yellow: #ffd740;
+    --orange: #ff6b2c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background:
+      radial-gradient(ellipse at 30% 10%, rgba(153,69,255,0.18), transparent 60%),
+      radial-gradient(ellipse at 80% 90%, rgba(0,242,255,0.10), transparent 55%),
+      var(--bg);
+    color: var(--text);
+    font-family: 'Inter', -apple-system, system-ui, sans-serif;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+  body::before {
+    content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background-image:
+      linear-gradient(rgba(153,69,255,0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(153,69,255,0.05) 1px, transparent 1px);
+    background-size: 40px 40px;
+    mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
+  }
+
+  .header {
+    position: relative; z-index: 2;
+    text-align: center; padding: 32px 20px 16px; max-width: 1400px; margin: 0 auto;
+  }
+  .header h1 {
+    font-size: clamp(28px, 4vw, 48px); font-weight: 900; letter-spacing: -1px;
+    background: linear-gradient(135deg, #9945FF 0%, #14F195 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    margin-bottom: 6px; font-style: italic;
+  }
+  .header .sub { font-size: 13px; color: var(--dim); letter-spacing: 1px; text-transform: uppercase; font-weight: 600; }
+  .header .note { font-size: 12px; color: var(--dim); margin-top: 8px; max-width: 640px; margin-left: auto; margin-right: auto; line-height: 1.5; }
+
+  .stage {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, 380px);
+    gap: 32px; justify-content: center; padding: 32px 20px 80px;
+    position: relative; z-index: 2;
+  }
+
+  /* ── phone frame ─────────────────────────────────────────────── */
+  .phone {
+    width: 380px; height: 800px;
+    background: #050010; border-radius: 44px;
+    border: 8px solid #1a0a30;
+    box-shadow:
+      0 30px 80px rgba(0,0,0,0.6),
+      0 0 0 1px rgba(153,69,255,0.4),
+      0 0 60px rgba(153,69,255,0.25);
+    position: relative; overflow: hidden;
+  }
+  .phone::after {
+    content: ""; position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    width: 130px; height: 28px; background: #050010;
+    border-radius: 0 0 18px 18px; z-index: 99;
+  }
+  .phone-label {
+    position: absolute; top: -28px; left: 0; right: 0; text-align: center;
+    font-size: 11px; color: var(--dim); letter-spacing: 2px; text-transform: uppercase; font-weight: 700;
+  }
+  .screen {
+    width: 100%; height: 100%; overflow: hidden; position: relative;
+    background:
+      radial-gradient(ellipse at 30% 0%, rgba(153,69,255,0.35), transparent 65%),
+      radial-gradient(ellipse at 80% 100%, rgba(0,242,255,0.18), transparent 50%),
+      linear-gradient(180deg, #0a0418 0%, #0d001a 100%);
+    color: var(--text);
+    font-family: 'Inter', -apple-system, system-ui, sans-serif;
+  }
+  .screen::before {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background-image:
+      linear-gradient(rgba(153,69,255,0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(153,69,255,0.06) 1px, transparent 1px);
+    background-size: 32px 32px;
+    mask-image: radial-gradient(ellipse at 50% 50%, black 40%, transparent 90%);
+  }
+
+  /* ── status bar ──────────────────────────────────────────────── */
+  .status-bar {
+    height: 48px; padding: 0 24px; display: flex; align-items: flex-end; justify-content: space-between;
+    font-size: 12px; font-weight: 700; padding-bottom: 6px;
+  }
+
+  /* ── top app bar ─────────────────────────────────────────────── */
+  .topbar {
+    padding: 12px 20px 0; display: flex; align-items: center; justify-content: space-between;
+  }
+  .icon-btn {
+    width: 40px; height: 40px; border-radius: 12px;
+    background: rgba(153,69,255,0.2);
+    border: 1px solid rgba(153,69,255,0.4);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text); cursor: pointer;
+  }
+  .icon-btn.gradient {
+    background: linear-gradient(135deg, #9945FF, #6a2db8);
+    border: none;
+    box-shadow: 0 0 20px rgba(153,69,255,0.5);
+  }
+  .topbar-icons { display: flex; gap: 8px; }
+  .topbar-icons .icon-btn { background: transparent; border: 1px solid rgba(255,255,255,0.08); }
+
+  /* ── hero text ──────────────────────────────────────────────── */
+  .hero-h1 {
+    padding: 18px 20px 8px;
+    font-size: 32px; font-weight: 800; line-height: 1.1; letter-spacing: -0.5px;
+  }
+  .hero-h1 .accent { color: var(--green); }
+  .hero-sub { padding: 0 20px 16px; font-size: 13px; color: var(--dim); letter-spacing: 0.5px; }
+
+  /* ── game cards (Discover screen) ───────────────────────────── */
+  .grid-2 {
+    padding: 8px 20px 100px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+    position: relative; z-index: 1;
+  }
+  .game-card {
+    aspect-ratio: 3/4; border-radius: 18px; overflow: hidden;
+    background: linear-gradient(180deg, rgba(153,69,255,0.4) 0%, rgba(20,5,46,0.95) 100%);
+    border: 1px solid rgba(153,69,255,0.5);
+    display: flex; flex-direction: column; justify-content: flex-end;
+    padding: 12px; position: relative;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5), 0 0 0 1px rgba(153,69,255,0.15) inset;
+    cursor: pointer; transition: transform 0.2s;
+    overflow: hidden;
+  }
+  .game-card:active { transform: scale(0.97); }
+  .game-card .art {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    pointer-events: none;
+  }
+  .game-card .art .emoji { font-size: 96px; filter: drop-shadow(0 6px 24px currentColor); transform: translateY(-12px); }
+  .game-card .art img { width: 100%; height: 100%; object-fit: cover; }
+  .game-card .art-overlay {
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, transparent 0%, rgba(20,5,46,0.6) 60%, rgba(13,0,26,0.95) 100%);
+  }
+  .game-card .meta { position: relative; z-index: 1; }
+  .game-card .name { font-size: 16px; font-weight: 800; letter-spacing: -0.3px; }
+  .game-card .stat { font-size: 11px; color: var(--dim); margin-top: 2px; }
+  .game-card .progress {
+    height: 4px; border-radius: 99px; margin-top: 8px; overflow: hidden;
+    background: rgba(255,255,255,0.08);
+  }
+  .game-card .progress > div { height: 100%; border-radius: 99px; }
+
+  .game-card.snake { background: linear-gradient(180deg, rgba(20,241,149,0.35) 0%, rgba(20,5,46,0.95) 100%); border-color: rgba(20,241,149,0.5); }
+  .game-card.snake .emoji { color: var(--green); }
+  .game-card.snake .progress > div { background: linear-gradient(90deg, var(--green), #00f2ff); width: 75%; }
+  .game-card.snake .name { color: #fff; }
+  .game-card.snake .stat .live { color: var(--green); font-weight: 700; }
+
+  .game-card.chess { background: linear-gradient(180deg, rgba(153,69,255,0.4) 0%, rgba(20,5,46,0.95) 100%); border-color: rgba(153,69,255,0.6); }
+  .game-card.chess .progress > div { background: linear-gradient(90deg, var(--purple), var(--cyan)); width: 60%; }
+
+  .game-card.words { background: linear-gradient(180deg, rgba(255,215,64,0.30) 0%, rgba(20,5,46,0.95) 100%); border-color: rgba(255,215,64,0.5); }
+  .game-card.words .emoji { color: var(--yellow); font-size: 84px; }
+  .game-card.words .progress > div { background: linear-gradient(90deg, var(--yellow), var(--orange)); width: 45%; }
+
+  .game-card.locked {
+    background: linear-gradient(180deg, rgba(60,30,100,0.5) 0%, rgba(20,5,46,0.95) 100%);
+    border-color: rgba(255,215,64,0.35);
+    background-image: repeating-linear-gradient(45deg, transparent 0, transparent 10px, rgba(255,215,64,0.04) 10px, rgba(255,215,64,0.04) 12px);
+  }
+  .game-card.locked .emoji { color: rgba(255,215,64,0.7); filter: blur(2px) drop-shadow(0 6px 24px currentColor); }
+  .game-card.locked .progress > div { background: rgba(255,215,64,0.4); width: 8%; }
+  .game-card.locked .stat { color: var(--yellow); font-weight: 700; letter-spacing: 1px; text-transform: uppercase; font-size: 10px; }
+
+  .game-card .badge {
+    position: absolute; top: 10px; right: 10px;
+    font-size: 9px; font-weight: 800; letter-spacing: 1.2px; padding: 3px 7px;
+    border-radius: 4px; background: rgba(0,0,0,0.55); color: var(--green); border: 1px solid rgba(20,241,149,0.4); z-index: 2;
+  }
+  .game-card.locked .badge { color: var(--yellow); border-color: rgba(255,215,64,0.4); }
+
+  /* ── bottom nav ──────────────────────────────────────────────── */
+  .bottom-nav {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    height: 84px; padding: 0 20px 18px;
+    display: flex; align-items: center; justify-content: space-between;
+    backdrop-filter: blur(20px);
+    background: linear-gradient(180deg, rgba(13,0,26,0) 0%, rgba(13,0,26,0.85) 30%);
+    z-index: 10;
+  }
+  .nav-btn {
+    width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
+    color: var(--dim); cursor: pointer;
+  }
+  .nav-btn.active { color: var(--text); }
+  .nav-btn svg { width: 22px; height: 22px; }
+  .nav-center {
+    width: 64px; height: 64px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--purple), var(--green));
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 32px rgba(20,241,149,0.6), 0 0 64px rgba(153,69,255,0.4);
+    margin-top: -22px;
+  }
+  .nav-center svg { width: 28px; height: 28px; color: #000; }
+
+  /* ── DETAIL screen — big hero art + stats ────────────────────── */
+  .detail-art {
+    height: 56%; position: relative;
+    display: flex; align-items: flex-end; justify-content: center;
+    overflow: hidden;
+  }
+  .detail-art .bg-glow {
+    position: absolute; width: 90%; height: 65%; bottom: 5%;
+    background: radial-gradient(ellipse at center, rgba(20,241,149,0.4), transparent 70%);
+    filter: blur(40px);
+  }
+  .detail-art .character {
+    font-size: 220px; line-height: 1; position: relative; z-index: 1;
+    filter: drop-shadow(0 20px 50px rgba(20,241,149,0.6));
+    transform: translateY(20px);
+  }
+  .detail-meta {
+    padding: 24px 24px 0; position: relative; z-index: 2;
+  }
+  .detail-eyebrow { font-size: 14px; color: var(--orange); font-weight: 700; }
+  .detail-title { font-size: 30px; font-weight: 800; line-height: 1.1; letter-spacing: -0.5px; margin-top: 4px; }
+  .detail-rating-label { font-size: 13px; color: var(--dim); margin-top: 14px; }
+  .detail-rating { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+  .detail-rating .stars { color: var(--orange); font-size: 14px; letter-spacing: 1px; }
+  .detail-rating .num { font-size: 14px; font-weight: 700; }
+  .detail-rating .count { font-size: 11px; color: var(--dim); margin-top: 2px; }
+  .stat-row {
+    margin-top: 18px;
+    display: flex; align-items: center; gap: 14px;
+    border-top: 1px solid rgba(255,255,255,0.06); padding-top: 14px;
+  }
+  .stat-label { font-size: 14px; color: var(--text); flex: 1; }
+  .stat-label .num { color: var(--orange); font-weight: 700; margin-left: 4px; }
+  .stat-bar { flex: 1.5; height: 6px; border-radius: 99px; background: rgba(255,255,255,0.08); overflow: hidden; }
+  .stat-bar > div { height: 100%; background: linear-gradient(90deg, var(--green), var(--purple)); border-radius: 99px; }
+
+  .detail-cta-row {
+    position: absolute; bottom: 100px; left: 20px; right: 20px; z-index: 5;
+    display: flex; gap: 10px;
+  }
+  .cta-primary {
+    flex: 1; padding: 14px; border-radius: 14px; text-align: center;
+    font-size: 14px; font-weight: 800; letter-spacing: 0.5px;
+    background: linear-gradient(135deg, var(--green), var(--cyan));
+    color: #000; cursor: pointer;
+    box-shadow: 0 0 32px rgba(20,241,149,0.5);
+  }
+  .cta-secondary {
+    padding: 14px 18px; border-radius: 14px; text-align: center;
+    font-size: 14px; font-weight: 800; letter-spacing: 0.5px;
+    background: rgba(153,69,255,0.2); color: var(--text);
+    border: 1px solid rgba(153,69,255,0.5); cursor: pointer;
+  }
+
+  /* ── PLAYING screen — actual gameplay ────────────────────────── */
+  .play-hud {
+    padding: 12px 20px 0; display: flex; align-items: center; justify-content: space-between;
+  }
+  .play-score { font-size: 32px; font-weight: 900; line-height: 1; color: var(--green); }
+  .play-score-sub { font-size: 10px; color: var(--dim); letter-spacing: 1.5px; text-transform: uppercase; }
+  .play-timer { font-size: 18px; font-weight: 700; }
+  .play-rank-pill {
+    padding: 4px 10px; background: rgba(20,241,149,0.15); border: 1px solid rgba(20,241,149,0.4);
+    border-radius: 99px; font-size: 11px; font-weight: 700; color: var(--green);
+  }
+  .play-canvas {
+    margin: 16px 20px; aspect-ratio: 1; border-radius: 18px;
+    background: radial-gradient(ellipse at center, rgba(20,241,149,0.15), rgba(13,0,26,0.95) 80%);
+    border: 1px solid rgba(20,241,149,0.3);
+    position: relative; overflow: hidden;
+    box-shadow: 0 0 32px rgba(20,241,149,0.15) inset;
+  }
+  .play-canvas::before {
+    content: ""; position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(20,241,149,0.12) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(20,241,149,0.12) 1px, transparent 1px);
+    background-size: 16px 16px;
+  }
+  .snake-emoji { position: absolute; font-size: 64px; filter: drop-shadow(0 0 16px var(--green)); }
+  .snake-food { position: absolute; font-size: 24px; }
+  .play-controls {
+    margin: 0 20px; padding: 12px 16px;
+    background: rgba(20,5,46,0.6); border-radius: 16px;
+    border: 1px solid rgba(153,69,255,0.25); backdrop-filter: blur(10px);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .play-controls-text { font-size: 11px; color: var(--dim); letter-spacing: 0.5px; }
+  .dpad {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px;
+    width: 130px;
+  }
+  .dpad button {
+    aspect-ratio: 1;
+    background: rgba(153,69,255,0.2); border: 1px solid rgba(153,69,255,0.4);
+    border-radius: 8px; color: var(--text); font-size: 14px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+  }
+  .dpad button.empty { visibility: hidden; }
+  .play-pause {
+    position: absolute; top: 70px; right: 20px;
+    width: 36px; height: 36px; border-radius: 50%;
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+  }
+
+  /* ── live activity strip (under coverflow on home) ─────────── */
+  .live-strip {
+    margin: 0 20px 20px; padding: 12px 14px;
+    background: rgba(20,5,46,0.6); border: 1px solid rgba(153,69,255,0.3);
+    border-radius: 14px; backdrop-filter: blur(20px);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); animation: blink 1.5s infinite; flex-shrink: 0; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .live-strip .text { font-size: 12px; color: var(--text); flex: 1; }
+  .live-strip .text b { color: var(--green); }
+  .live-strip .stat { font-size: 11px; color: var(--dim); }
+
+  /* ── notes column ────────────────────────────────────────────── */
+  .notes {
+    grid-column: 1 / -1; margin-top: 24px;
+    max-width: 720px; margin-left: auto; margin-right: auto;
+    padding: 24px 32px; background: rgba(20,5,46,0.4); border: 1px solid rgba(153,69,255,0.25); border-radius: 16px;
+    backdrop-filter: blur(10px);
+  }
+  .notes h2 { font-size: 14px; letter-spacing: 2px; color: var(--green); text-transform: uppercase; margin-bottom: 14px; }
+  .notes ul { list-style: none; padding: 0; }
+  .notes li { font-size: 13px; color: var(--text); margin: 8px 0; line-height: 1.6; padding-left: 18px; position: relative; }
+  .notes li::before { content: "→"; position: absolute; left: 0; color: var(--green); }
+  .notes code { background: rgba(0,0,0,0.4); padding: 2px 6px; border-radius: 4px; font-size: 12px; color: var(--cyan); }
+
+  /* ── section banner between phone groups ──────────────────── */
+  .section-banner {
+    grid-column: 1 / -1;
+    display: flex; align-items: center; gap: 14px;
+    padding: 18px 24px; margin: 16px 0 -8px;
+    background: rgba(20,5,46,0.4); border: 1px solid rgba(153,69,255,0.25);
+    border-radius: 12px; backdrop-filter: blur(8px);
+    max-width: 800px; margin-left: auto; margin-right: auto;
+  }
+  .section-banner .num {
+    font-size: 11px; font-weight: 800; letter-spacing: 2px;
+    background: rgba(153,69,255,0.2); border: 1px solid rgba(153,69,255,0.5);
+    padding: 4px 10px; border-radius: 4px; color: var(--purple);
+  }
+  .section-banner h3 { font-size: 16px; font-weight: 800; }
+  .section-banner .desc { font-size: 12px; color: var(--dim); flex: 1; }
+
+  /* ── shared mini-header on inner screens ──────────────────── */
+  .mini-header {
+    padding: 14px 20px 10px; display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid rgba(153,69,255,0.12);
+  }
+  .mini-header .back {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+  }
+  .mini-header .title {
+    font-size: 13px; font-weight: 800; letter-spacing: 0.5px;
+  }
+  .mini-header .net-badge {
+    font-size: 8px; font-weight: 800; letter-spacing: 1.5px; padding: 3px 6px;
+    border-radius: 4px; background: rgba(255,107,44,0.15); color: var(--orange);
+    border: 1px solid rgba(255,107,44,0.4);
+  }
+
+  /* ── crash modal (mobile) ─────────────────────────────────── */
+  .crash-overlay {
+    position: absolute; inset: 0; backdrop-filter: blur(8px);
+    background: radial-gradient(ellipse at center, rgba(13,0,26,0.5), rgba(13,0,26,0.94));
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 5; padding: 0 20px;
+  }
+  .crash-card-m {
+    width: 100%; padding: 22px 22px 18px; border-radius: 18px;
+    background: rgba(20,5,46,0.85); border: 1px solid rgba(153,69,255,0.6);
+    box-shadow: 0 24px 60px rgba(0,0,0,0.6), 0 0 60px rgba(153,69,255,0.25);
+    text-align: center;
+  }
+  .crash-card-m .gameover { font-size: 10px; letter-spacing: 2.5px; color: var(--red); font-weight: 800; }
+  .crash-card-m .score-big {
+    font-size: 64px; font-weight: 900; font-style: italic; line-height: 1;
+    background: linear-gradient(135deg, var(--green), var(--cyan));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 6px 0 4px;
+  }
+  .crash-card-m .rank-line { font-size: 11px; color: var(--dim); }
+  .crash-card-m .rank-line b { color: var(--orange); }
+  .save-btn-m {
+    display: block; width: 100%; margin: 18px 0 6px;
+    background: linear-gradient(90deg, #9945FF, #14F195); color: #000;
+    padding: 16px; border-radius: 12px; font-weight: 900; font-style: italic; font-size: 14px;
+    box-shadow: 0 0 28px rgba(20,241,149,0.5), 0 0 56px rgba(153,69,255,0.3);
+    cursor: pointer; border: none;
+  }
+  .crash-card-m .free-note { font-size: 10px; color: var(--green); letter-spacing: 1.5px; }
+  .crash-secondary-m {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px;
+  }
+  .btn-outline-m {
+    padding: 10px; border-radius: 8px; background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(153,69,255,0.4); color: var(--text);
+    font-weight: 700; font-size: 11px; cursor: pointer;
+  }
+  .pricing-toggle-m {
+    margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.06);
+    font-size: 10px; color: var(--dim); letter-spacing: 0.5px;
+  }
+  .pricing-toggle-m b { color: var(--cyan); }
+
+  /* ── tier cards (stacked on mobile) ───────────────────────── */
+  .tier-card-m {
+    padding: 14px; border-radius: 12px; margin-bottom: 10px;
+    background: rgba(20,5,46,0.6); border: 1px solid rgba(153,69,255,0.3);
+    display: grid; grid-template-columns: 64px 1fr auto; gap: 12px; align-items: center;
+  }
+  .tier-card-m.featured { border-color: var(--green); box-shadow: 0 0 20px rgba(20,241,149,0.18); }
+  .tier-card-m .tier-price-m {
+    font-size: 22px; font-weight: 900; font-style: italic; color: var(--green);
+  }
+  .tier-card-m .tier-meta .tier-name-m { font-size: 9px; letter-spacing: 1.5px; color: var(--cyan); font-weight: 800; }
+  .tier-card-m .tier-meta .tier-desc-m { font-size: 11px; color: var(--dim); margin-top: 2px; line-height: 1.4; }
+  .tier-card-m button {
+    padding: 8px 12px; border-radius: 8px; background: rgba(20,241,149,0.1);
+    border: 1px solid var(--green); color: var(--green); font-weight: 800; font-size: 10px; cursor: pointer;
+    letter-spacing: 0.5px; white-space: nowrap;
+  }
+  .tier-card-m.featured button { background: linear-gradient(90deg, var(--purple), var(--green)); color: #000; border: none; }
+
+  /* ── battle lobby (mobile) ───────────────────────────────── */
+  .lobby-hero {
+    padding: 18px 20px 12px; text-align: left;
+  }
+  .lobby-hero .eyebrow { font-size: 10px; letter-spacing: 2px; color: var(--purple); font-weight: 800; }
+  .lobby-hero h2 { font-size: 22px; font-weight: 800; margin-top: 4px; }
+  .lobby-hero .sub { font-size: 11px; color: var(--dim); margin-top: 4px; line-height: 1.5; }
+  .opp-card-m {
+    margin: 0 20px 8px; padding: 12px;
+    display: flex; align-items: center; gap: 12px;
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(153,69,255,0.25); border-radius: 10px;
+  }
+  .opp-card-m .avatar-m {
+    width: 44px; height: 44px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--purple), var(--cyan));
+    display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 800; color: #000;
+  }
+  .opp-card-m .name-m { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; }
+  .opp-card-m .elo-m { font-size: 10px; color: var(--dim); margin-top: 2px; }
+  .opp-card-m .badge-m { margin-left: auto; font-size: 9px; padding: 3px 6px; border-radius: 4px; }
+  .vs-divider {
+    text-align: center; font-size: 14px; font-weight: 900; font-style: italic;
+    color: var(--purple); letter-spacing: 4px; padding: 4px 0;
+  }
+  .stake-card-m {
+    margin: 12px 20px; padding: 14px;
+    background: rgba(0,0,0,0.3); border: 1px solid rgba(153,69,255,0.25); border-radius: 10px;
+  }
+  .stake-card-m .label-m { font-size: 10px; color: var(--dim); letter-spacing: 1.5px; text-transform: uppercase; }
+  .stake-card-m .amount-m {
+    font-size: 32px; font-weight: 900; font-style: italic; color: var(--green); margin: 4px 0;
+  }
+  .stake-card-m .amount-m .unit-m { font-size: 12px; color: var(--dim); font-style: normal; margin-left: 4px; }
+  .stake-card-m .track-m {
+    height: 5px; background: rgba(255,255,255,0.08); border-radius: 99px; position: relative; margin-top: 8px;
+  }
+  .stake-card-m .track-m::after {
+    content: ""; position: absolute; left: 0; top: 0; height: 100%; width: 35%;
+    background: linear-gradient(90deg, var(--purple), var(--green)); border-radius: 99px;
+  }
+  .stake-card-m .marks-m { display: flex; justify-content: space-between; font-size: 9px; color: var(--dim); margin-top: 4px; }
+  .escrow-grid-m {
+    margin: 8px 20px 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  }
+  .escrow-cell-m {
+    padding: 10px; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.06);
+  }
+  .escrow-cell-m .lab-m { font-size: 8px; color: var(--dim); letter-spacing: 1.5px; text-transform: uppercase; }
+  .escrow-cell-m .v-m { font-size: 13px; font-weight: 800; margin-top: 3px; font-family: 'JetBrains Mono', monospace; color: var(--cyan); }
+  .escrow-cell-m .v-m.green { color: var(--green); }
+  .escrow-cell-m .v-m.orange { color: var(--orange); }
+  .lobby-cta-m {
+    position: absolute; left: 20px; right: 20px; bottom: 100px;
+    background: linear-gradient(90deg, #9945FF, #14F195); color: #000;
+    padding: 16px; border-radius: 12px; font-weight: 900; font-style: italic; font-size: 14px;
+    text-align: center;
+    box-shadow: 0 0 28px rgba(20,241,149,0.45);
+  }
+
+  /* ── battle play (mobile) ─────────────────────────────────── */
+  .battle-hud-m {
+    padding: 12px 20px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  }
+  .battle-hud-m .player-m {
+    padding: 8px 10px; background: rgba(255,255,255,0.04); border: 1px solid rgba(153,69,255,0.25);
+    border-radius: 10px;
+  }
+  .battle-hud-m .player-m .name-m { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--dim); }
+  .battle-hud-m .player-m .score-m { font-size: 22px; font-weight: 900; color: var(--green); margin-top: 2px; line-height: 1; }
+  .battle-hud-m .player-m.them .score-m { color: var(--orange); }
+  .escrow-pill-m {
+    margin: 8px 20px 0; padding: 8px 14px; border-radius: 99px;
+    background: linear-gradient(90deg, rgba(153,69,255,0.2), rgba(20,241,149,0.15));
+    border: 1px solid rgba(153,69,255,0.5);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .escrow-pill-m .lab { font-size: 9px; letter-spacing: 1.5px; color: var(--dim); }
+  .escrow-pill-m .v { font-size: 13px; font-weight: 900; color: var(--green); font-style: italic; }
+  .battle-canvas-m {
+    margin: 12px 20px 0; aspect-ratio: 1.05; border-radius: 14px;
+    background: radial-gradient(ellipse at center, rgba(20,241,149,0.15), rgba(13,0,26,0.95));
+    border: 1px solid rgba(20,241,149,0.3); position: relative; overflow: hidden;
+  }
+  .battle-canvas-m::before {
+    content: ""; position: absolute; inset: 0;
+    background-image: linear-gradient(rgba(20,241,149,0.10) 1px, transparent 1px), linear-gradient(90deg, rgba(20,241,149,0.10) 1px, transparent 1px);
+    background-size: 16px 16px;
+  }
+  .battle-canvas-m .label { position: absolute; top: 8px; left: 12px; font-size: 9px; letter-spacing: 1.5px; color: var(--green); font-weight: 700; }
+  .battle-canvas-m .timer-m { position: absolute; bottom: 8px; right: 12px; font-size: 11px; font-family: 'JetBrains Mono', monospace; color: var(--cyan); }
+  .battle-canvas-m .snake-m { position: absolute; font-size: 48px; filter: drop-shadow(0 0 14px var(--green)); top: 38%; left: 28%; }
+  .opp-mini-m {
+    margin: 10px 20px 0; padding: 8px 12px; border-radius: 10px;
+    background: rgba(255,107,44,0.06); border: 1px solid rgba(255,107,44,0.25);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .opp-mini-m .mini-canvas {
+    width: 64px; aspect-ratio: 1; border-radius: 6px;
+    background: radial-gradient(ellipse at center, rgba(255,107,44,0.15), rgba(13,0,26,0.95));
+    border: 1px solid rgba(255,107,44,0.3); position: relative;
+  }
+  .opp-mini-m .mini-canvas::before {
+    content: "🐍"; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    font-size: 22px; filter: drop-shadow(0 0 8px var(--orange)); color: var(--orange);
+  }
+  .opp-mini-m .text { flex: 1; font-size: 11px; color: var(--text); }
+  .opp-mini-m .text b { color: var(--orange); font-family: 'JetBrains Mono', monospace; }
+  .opp-mini-m .dim { color: var(--dim); }
+
+  /* ── settle screen (mobile) ───────────────────────────────── */
+  .settle-m {
+    padding: 32px 20px 20px; text-align: center; height: calc(100% - 96px);
+    display: flex; flex-direction: column; align-items: center; gap: 12px; overflow: hidden;
+  }
+  .settle-trophy-m { font-size: 80px; filter: drop-shadow(0 0 36px var(--yellow)); margin-top: 12px; }
+  .settle-m h1 {
+    font-size: 36px; font-weight: 900; font-style: italic; line-height: 1;
+    background: linear-gradient(135deg, var(--yellow), var(--orange));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .settle-m .you-won { font-size: 10px; letter-spacing: 2.5px; color: var(--green); font-weight: 800; }
+  .settle-m .payout-m {
+    font-size: 48px; font-weight: 900; font-style: italic; color: var(--green); line-height: 1;
+  }
+  .settle-m .payout-m .unit { font-size: 18px; color: var(--dim); margin-left: 4px; }
+  .settle-m .breakdown-m {
+    width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px;
+  }
+  .settle-m .breakdown-m .cell {
+    padding: 8px; background: rgba(255,255,255,0.04); border: 1px solid rgba(153,69,255,0.18);
+    border-radius: 8px;
+  }
+  .settle-m .breakdown-m .cell .lab { font-size: 8px; letter-spacing: 1.5px; color: var(--dim); text-transform: uppercase; }
+  .settle-m .breakdown-m .cell .v { font-size: 14px; font-weight: 800; color: var(--text); margin-top: 3px; font-family: 'JetBrains Mono', monospace; }
+  .settle-m .breakdown-m .cell .v.green { color: var(--green); }
+  .settle-m .tx-pill-m {
+    width: 100%;
+    display: flex; align-items: center; gap: 8px; padding: 8px 14px;
+    background: rgba(0,242,255,0.06); border: 1px solid rgba(0,242,255,0.3); border-radius: 99px;
+    font-family: 'JetBrains Mono', monospace; font-size: 10px; justify-content: center;
+  }
+  .settle-m .tx-pill-m a { color: var(--cyan); text-decoration: none; }
+
+  /* ── leaderboard (mobile) ─────────────────────────────────── */
+  .lb-tabs-m {
+    padding: 12px 20px 0; display: flex; gap: 6px; overflow-x: auto;
+  }
+  .lb-tabs-m .tab-m {
+    padding: 6px 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(153,69,255,0.25);
+    border-radius: 8px; font-size: 10px; font-weight: 700; color: var(--dim); cursor: pointer;
+    white-space: nowrap;
+  }
+  .lb-tabs-m .tab-m.on { color: var(--text); border-color: var(--green); background: rgba(20,241,149,0.08); }
+  .lb-time-m {
+    padding: 8px 20px 0; display: flex; gap: 4px;
+  }
+  .lb-time-m .pill {
+    padding: 4px 10px; background: rgba(255,255,255,0.04); border: 1px solid rgba(153,69,255,0.18);
+    border-radius: 99px; font-size: 9px; font-weight: 700; color: var(--dim); cursor: pointer;
+  }
+  .lb-time-m .pill.on { color: var(--cyan); border-color: var(--cyan); background: rgba(0,242,255,0.08); }
+  .lb-rows-m {
+    padding: 12px 20px 90px; display: flex; flex-direction: column; gap: 6px;
+    overflow: auto;
+  }
+  .lb-row-m {
+    display: grid; grid-template-columns: 28px 1fr auto; gap: 8px; align-items: center;
+    padding: 8px 12px; background: rgba(255,255,255,0.04); border: 1px solid rgba(153,69,255,0.15);
+    border-radius: 8px; font-size: 11px;
+  }
+  .lb-row-m.you { border-color: rgba(20,241,149,0.5); background: rgba(20,241,149,0.08); }
+  .lb-row-m .rank-m { font-weight: 900; font-size: 13px; }
+  .lb-row-m .rank-m.gold { color: var(--yellow); }
+  .lb-row-m .rank-m.silver { color: var(--dim); }
+  .lb-row-m .rank-m.bronze { color: var(--orange); }
+  .lb-row-m .pubkey-m { font-family: 'JetBrains Mono', monospace; color: var(--text); font-size: 11px; }
+  .lb-row-m .saves-m { font-size: 9px; color: var(--dim); margin-top: 1px; }
+  .lb-row-m .score-m { font-weight: 800; color: var(--green); font-family: 'JetBrains Mono', monospace; }
+
+  /* ── profile (mobile) ─────────────────────────────────────── */
+  .profile-hero-m {
+    padding: 24px 20px 20px; text-align: center;
+    background: radial-gradient(ellipse at center top, rgba(153,69,255,0.3), transparent 60%);
+  }
+  .profile-hero-m .avatar-m {
+    width: 88px; height: 88px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--purple), var(--green));
+    display: flex; align-items: center; justify-content: center; font-size: 38px;
+    box-shadow: 0 0 32px rgba(153,69,255,0.5);
+    margin: 0 auto 8px;
+  }
+  .profile-hero-m .name-m { font-size: 18px; font-weight: 800; }
+  .profile-hero-m .pubkey-m { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text); margin-top: 4px; }
+  .profile-hero-m .level-m {
+    margin-top: 10px; padding: 5px 10px; display: inline-block;
+    background: rgba(20,241,149,0.1); border: 1px solid var(--green); border-radius: 99px;
+    font-size: 10px; font-weight: 800; color: var(--green); letter-spacing: 1px;
+  }
+  .profile-stats-m {
+    margin: 0 20px; padding: 12px;
+    background: rgba(20,5,46,0.6); border: 1px solid rgba(153,69,255,0.25); border-radius: 12px;
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+  }
+  .profile-stats-m .cell {
+    text-align: center;
+  }
+  .profile-stats-m .cell .lab { font-size: 8px; color: var(--dim); letter-spacing: 1px; text-transform: uppercase; }
+  .profile-stats-m .cell .v { font-size: 16px; font-weight: 900; color: var(--green); font-family: 'JetBrains Mono', monospace; margin-top: 2px; }
+  .profile-section-m {
+    padding: 14px 20px 0;
+  }
+  .profile-section-m h3 { font-size: 9px; letter-spacing: 2px; color: var(--dim); margin-bottom: 8px; font-weight: 700; text-transform: uppercase; }
+  .badges-grid-m { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .badge-m {
+    aspect-ratio: 1; border-radius: 10px;
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(153,69,255,0.2);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  }
+  .badge-m.unlocked { background: linear-gradient(180deg, rgba(20,241,149,0.18), rgba(20,5,46,0.85)); border-color: rgba(20,241,149,0.5); }
+  .badge-m .ic { font-size: 22px; }
+  .badge-m .lab { font-size: 7px; color: var(--dim); letter-spacing: 0.3px; text-align: center; line-height: 1.2; }
+  .badge-m.unlocked .lab { color: var(--green); }
+  .nft-grid-m { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .nft-card-m {
+    border-radius: 10px; aspect-ratio: 1.3;
+    background: linear-gradient(135deg, var(--s2), var(--s3));
+    border: 1px solid rgba(153,69,255,0.4);
+    padding: 10px; display: flex; flex-direction: column; justify-content: space-between;
+    position: relative; overflow: hidden;
+  }
+  .nft-card-m::before {
+    content: ""; position: absolute; inset: 0;
+    background-image: linear-gradient(rgba(20,241,149,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(20,241,149,0.05) 1px, transparent 1px);
+    background-size: 12px 12px; opacity: 0.5;
+  }
+  .nft-card-m .top { font-size: 8px; color: var(--cyan); font-family: 'JetBrains Mono', monospace; position: relative; z-index: 1; }
+  .nft-card-m .score { font-size: 22px; font-weight: 900; color: var(--green); position: relative; z-index: 1; font-style: italic; line-height: 1; }
+  .nft-card-m .bottom { font-size: 8px; color: var(--dim); position: relative; z-index: 1; }
+
+  /* ── docs (mobile) ────────────────────────────────────────── */
+  .docs-m { padding: 16px 20px 90px; overflow-y: auto; height: calc(100% - 96px); }
+  .docs-m h1 {
+    font-size: 22px; font-weight: 900; letter-spacing: -0.5px; font-style: italic;
+    background: linear-gradient(135deg, #9945FF, #14F195);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    margin-bottom: 8px;
+  }
+  .docs-m h2 { font-size: 13px; font-weight: 800; margin-top: 14px; margin-bottom: 4px; }
+  .docs-m p { font-size: 11px; color: var(--dim); line-height: 1.6; }
+  .docs-m pre {
+    background: rgba(0,0,0,0.5); padding: 10px 12px; border-radius: 8px; margin: 8px 0;
+    font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--green);
+    border: 1px solid rgba(20,241,149,0.2); line-height: 1.5; overflow-x: auto;
+  }
+  .docs-m pre .k { color: var(--purple); }
+  .docs-m pre .s { color: var(--yellow); }
+  .docs-m pre .c { color: var(--dim); }
+  .docs-cta-m {
+    display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap;
+  }
+  .docs-cta-m a {
+    padding: 8px 12px; background: rgba(20,241,149,0.1); border: 1px solid var(--green);
+    color: var(--green); font-weight: 800; font-size: 10px; border-radius: 8px; text-decoration: none;
+  }
+  .docs-section-tabs-m {
+    padding: 12px 20px 0; display: flex; gap: 4px; overflow-x: auto;
+  }
+  .docs-section-tabs-m .tab {
+    padding: 6px 10px; background: rgba(255,255,255,0.05); border: 1px solid rgba(153,69,255,0.2);
+    border-radius: 8px; font-size: 10px; font-weight: 700; color: var(--dim); cursor: pointer; white-space: nowrap;
+  }
+  .docs-section-tabs-m .tab.on { color: var(--green); border-color: var(--green); background: rgba(20,241,149,0.08); }
+
+  /* ── markets list (mobile) ────────────────────────────────── */
+  .markets-filters-m {
+    padding: 10px 20px 0; display: flex; gap: 6px; overflow-x: auto;
+  }
+  .markets-filters-m .pill {
+    padding: 5px 10px; background: rgba(255,255,255,0.05); border: 1px solid rgba(153,69,255,0.2);
+    border-radius: 99px; font-size: 9px; font-weight: 700; color: var(--dim); cursor: pointer; white-space: nowrap;
+  }
+  .markets-filters-m .pill.on { color: var(--text); border-color: var(--green); background: rgba(20,241,149,0.08); }
+  .markets-list-m { padding: 12px 20px 90px; display: flex; flex-direction: column; gap: 10px; }
+  .market-card-m {
+    background: rgba(20,5,46,0.5); border: 1px solid rgba(153,69,255,0.3); border-radius: 12px;
+    padding: 12px; backdrop-filter: blur(8px);
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .market-card-m .game-row { font-size: 9px; letter-spacing: 1px; color: var(--cyan); font-weight: 700; }
+  .market-card-m .title { font-size: 12px; font-weight: 800; line-height: 1.3; }
+  .market-card-m .matchup-m { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text); }
+  .market-card-m .matchup-m .vs { color: var(--dim); margin: 0 4px; }
+  .market-card-m .pool-row {
+    display: flex; align-items: center; justify-content: space-between; font-size: 10px;
+  }
+  .market-card-m .pool-row .lab { color: var(--dim); letter-spacing: 1px; }
+  .market-card-m .pool-row .v { color: var(--green); font-weight: 900; font-family: 'JetBrains Mono', monospace; font-size: 13px; }
+  .market-card-m .progress {
+    height: 5px; border-radius: 99px; background: rgba(255,255,255,0.08); overflow: hidden;
+    position: relative;
+  }
+  .market-card-m .progress .p1 {
+    position: absolute; left: 0; top: 0; height: 100%;
+    background: linear-gradient(90deg, var(--green), var(--cyan));
+  }
+  .market-card-m .progress .p2 {
+    position: absolute; right: 0; top: 0; height: 100%;
+    background: linear-gradient(90deg, var(--orange), var(--pink));
+  }
+  .market-card-m .meta { display: flex; justify-content: space-between; font-size: 9px; color: var(--dim); }
+
+  /* ── market detail (mobile) ───────────────────────────────── */
+  .md-m { padding: 12px 20px 0; overflow-y: auto; height: calc(100% - 96px); }
+  .md-m .eyebrow-m { font-size: 9px; letter-spacing: 2px; color: var(--cyan); font-weight: 800; }
+  .md-m h1 { font-size: 18px; font-weight: 900; line-height: 1.2; letter-spacing: -0.3px; margin-top: 4px; }
+  .md-pool-m {
+    height: 48px; border-radius: 10px; overflow: hidden; margin-top: 12px;
+    background: rgba(0,0,0,0.4); border: 1px solid rgba(153,69,255,0.2);
+    display: grid; grid-template-columns: 62% 38%;
+  }
+  .md-pool-m .side {
+    display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .md-pool-m .side.p1 { background: linear-gradient(90deg, rgba(20,241,149,0.5), rgba(0,242,255,0.4)); color: #000; }
+  .md-pool-m .side.p2 { background: linear-gradient(90deg, rgba(255,107,44,0.5), rgba(255,0,122,0.4)); color: #000; }
+  .md-line-m {
+    margin-top: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+  }
+  .md-line-m .cell {
+    padding: 8px; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.06);
+  }
+  .md-line-m .cell .lab { font-size: 8px; color: var(--dim); letter-spacing: 1.5px; text-transform: uppercase; }
+  .md-line-m .cell .v { font-size: 13px; font-weight: 800; margin-top: 3px; font-family: 'JetBrains Mono', monospace; }
+  .md-line-m .cell .v.green { color: var(--green); }
+  .md-line-m .cell .v.orange { color: var(--orange); }
+  .md-stake-m {
+    position: absolute; left: 0; right: 0; bottom: 84px;
+    background: rgba(13,0,26,0.96); border-top: 1px solid rgba(153,69,255,0.4);
+    padding: 14px 20px;
+    box-shadow: 0 -16px 40px rgba(0,0,0,0.5);
+  }
+  .md-stake-m .head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .md-stake-m .head .lab { font-size: 9px; letter-spacing: 1.5px; color: var(--dim); }
+  .md-stake-m .head .v { font-size: 11px; color: var(--green); font-family: 'JetBrains Mono', monospace; }
+  .md-side-toggle-m {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px;
+  }
+  .md-side-toggle-m button {
+    padding: 8px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(0,0,0,0.3); color: var(--dim); font-weight: 800; font-size: 10px; cursor: pointer; font-family: 'JetBrains Mono', monospace;
+  }
+  .md-side-toggle-m button.on.green { border-color: var(--green); color: var(--green); background: rgba(20,241,149,0.1); }
+  .md-amount-m {
+    padding: 10px; border-radius: 8px; background: rgba(0,0,0,0.4); border: 1px solid rgba(153,69,255,0.3);
+    margin-bottom: 8px;
+    display: flex; align-items: baseline; gap: 4px;
+  }
+  .md-amount-m .num { font-size: 22px; font-weight: 900; font-style: italic; color: var(--text); }
+  .md-amount-m .unit { font-size: 11px; color: var(--dim); }
+  .md-amount-m .max { margin-left: auto; font-size: 9px; color: var(--cyan); letter-spacing: 1px; cursor: pointer; }
+  .md-stake-btn-m {
+    width: 100%; padding: 12px; border-radius: 10px; border: none; cursor: pointer;
+    background: linear-gradient(90deg, #9945FF, #14F195); color: #000; font-weight: 900; font-style: italic;
+    font-size: 12px;
+    box-shadow: 0 0 24px rgba(20,241,149,0.4);
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>GAMERPLEX MOBILE</h1>
+  <div class="sub">Native-Feeling App-Style Redesign · 13 Screens</div>
+  <div class="note">
+    Full mobile design map covering every page + feature. Glassy purple cards over Tron grid, native bottom nav with gradient center action button.<br>
+    <b style="color:var(--green)">Discover flow</b> 1–3 · <b style="color:var(--green)">Arcade flow</b> 4–5 · <b style="color:var(--green)">Battle flow</b> 6–8 · <b style="color:var(--green)">Meta pages</b> 9–11 · <b style="color:var(--green)">Backer surface</b> 12–13.
+    Desktop expansion at <code style="background:rgba(0,0,0,0.4);padding:2px 6px;border-radius:4px;font-size:11px;color:var(--cyan)">/_mockup-desktop.html</code>.
+  </div>
+</div>
+
+<div class="stage">
+
+<!-- ─────────────── SECTION: DISCOVER FLOW ─────────────── -->
+<div class="section-banner">
+  <span class="num">01 — 03</span>
+  <h3>Discover flow</h3>
+  <span class="desc">Home grid → tap card → Game Detail → tap play → In-Game canvas</span>
+</div>
+
+<!-- ─────────────── PHONE 1: HOME / DISCOVERY ─────────────── -->
+<div class="phone">
+  <div class="phone-label">1. Home · Discover</div>
+  <div class="screen">
+    <div class="status-bar">
+      <span>9:41</span>
+      <span>● ● ● 100%</span>
+    </div>
+
+    <div class="topbar">
+      <div class="icon-btn gradient">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </div>
+      <div class="topbar-icons">
+        <div class="icon-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+        <div class="icon-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
+      </div>
+    </div>
+
+    <h1 class="hero-h1">Discover<br><span class="accent">New Skill Arenas</span></h1>
+    <div class="hero-sub">Free to play · save your best on Solana</div>
+
+    <div class="grid-2">
+      <div class="game-card snake">
+        <span class="badge">● LIVE</span>
+        <div class="art"><span class="emoji">🐍</span></div>
+        <div class="art-overlay"></div>
+        <div class="meta">
+          <div class="name">Cyber Snake</div>
+          <div class="stat"><span class="live">● 47 playing</span></div>
+          <div class="progress"><div></div></div>
+        </div>
+      </div>
+      <div class="game-card chess">
+        <span class="badge">3D LIVE</span>
+        <div class="art"><img src="/magic-chess-banner.jpg" alt=""></div>
+        <div class="art-overlay"></div>
+        <div class="meta">
+          <div class="name">Magic Chess</div>
+          <div class="stat">vs ELO bot · 1v1</div>
+          <div class="progress"><div></div></div>
+        </div>
+      </div>
+      <div class="game-card words">
+        <div class="art"><span class="emoji">🔮</span></div>
+        <div class="art-overlay"></div>
+        <div class="meta">
+          <div class="name">Blockwords</div>
+          <div class="stat">Daily puzzle · 5 letters</div>
+          <div class="progress"><div></div></div>
+        </div>
+      </div>
+      <div class="game-card locked">
+        <span class="badge">🔒 SOON</span>
+        <div class="art"><span class="emoji">⚔️</span></div>
+        <div class="art-overlay"></div>
+        <div class="meta">
+          <div class="name">Pet Legends</div>
+          <div class="stat">In stealth</div>
+          <div class="progress"><div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bottom-nav">
+      <div class="nav-btn active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
+      <div class="nav-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></div>
+      <div class="nav-center"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20"/></svg></div>
+      <div class="nav-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>
+      <div class="nav-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────── PHONE 2: GAME DETAIL ─────────────── -->
+<div class="phone">
+  <div class="phone-label">2. Tap → Detail</div>
+  <div class="screen">
+    <div class="status-bar">
+      <span>9:41</span>
+      <span>● ● ● 100%</span>
+    </div>
+
+    <div class="detail-art">
+      <div class="bg-glow"></div>
+      <div class="character">🐍</div>
+      <div class="play-pause">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      </div>
+    </div>
+
+    <div class="detail-meta">
+      <div class="detail-eyebrow">Cyber Snake · Arcade</div>
+      <div class="detail-title">Beat the<br>On-Chain Leaderboard</div>
+      <div class="detail-rating-label">Top Score Today</div>
+      <div class="detail-rating">
+        <span class="stars">★ ★ ★ ★ ★</span>
+        <span class="num">9,937</span>
+      </div>
+      <div class="detail-rating count">BEzD…2rtA · 28,907 plays · 47 live</div>
+
+      <div class="stat-row">
+        <div class="stat-label">Score <span class="num">8,459</span></div>
+        <div class="stat-bar"><div style="width:75%"></div></div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-label">Saves <span class="num" style="color:var(--green)">12</span></div>
+        <div class="stat-bar"><div style="width:55%; background:linear-gradient(90deg,var(--green),var(--cyan))"></div></div>
+      </div>
+    </div>
+
+    <div class="detail-cta-row">
+      <div class="cta-primary">▶ PLAY FREE</div>
+      <div class="cta-secondary">⚔ 1v1</div>
+    </div>
+
+    <div class="bottom-nav">
+      <div class="nav-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+      <div class="nav-btn active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></div>
+      <div class="nav-center"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20"/></svg></div>
+      <div class="nav-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>
+      <div class="nav-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────── PHONE 3: IN-GAME / PLAYING ─────────────── -->
+<div class="phone">
+  <div class="phone-label">3. Playing</div>
+  <div class="screen">
+    <div class="status-bar">
+      <span>9:41</span>
+      <span>● ● ● 100%</span>
+    </div>
+
+    <div class="play-hud">
+      <div>
+        <div class="play-score">2,340</div>
+        <div class="play-score-sub">Score · Best 9,937</div>
+      </div>
+      <div class="play-rank-pill">RANK #8 TODAY</div>
+      <div class="play-pause" style="position:relative;top:0;right:0">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+      </div>
+    </div>
+
+    <div class="play-canvas">
+      <div class="snake-emoji" style="top:35%;left:15%">🐍</div>
+      <div class="snake-food" style="top:25%;right:25%">🍎</div>
+      <div class="snake-food" style="bottom:30%;left:40%">⭐</div>
+    </div>
+
+    <div class="play-controls">
+      <div class="play-controls-text">Swipe canvas<br>or tap d-pad →</div>
+      <div class="dpad">
+        <button class="empty"></button>
+        <button>▲</button>
+        <button class="empty"></button>
+        <button>◀</button>
+        <button class="empty"></button>
+        <button>▶</button>
+        <button class="empty"></button>
+        <button>▼</button>
+        <button class="empty"></button>
+      </div>
+    </div>
+
+    <div class="live-strip" style="margin-top:14px">
+      <div class="live-dot"></div>
+      <div class="text">Match settles <b>on Solana</b></div>
+      <div class="stat">8 ticks · 320ms</div>
+    </div>
+
+    <div class="bottom-nav">
+      <div class="nav-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+      <div class="nav-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></div>
+      <div class="nav-center" style="background:linear-gradient(135deg,var(--orange),var(--pink))"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg></div>
+      <div class="nav-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>
+      <div class="nav-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────── SECTION: ARCADE FLOW ─────────────── -->
+<div class="section-banner">
+  <span class="num">04 — 05</span>
+  <h3>Arcade flow continued</h3>
+  <span class="desc">After game-over: connect wallet → save score (3-tier permanence picker)</span>
+</div>
+
+<!-- ─────────────── PHONE 4: CRASH / SAVE SCORE ─────────────── -->
+<div class="phone">
+  <div class="phone-label">4. Crash · Save Score</div>
+  <div class="screen">
+    <div class="status-bar">
+      <span>9:41</span>
+      <span>● ● ● 100%</span>
+    </div>
+    <!-- dimmed canvas behind -->
+    <div style="position:absolute;inset:48px 0 84px 0;display:flex;align-items:center;justify-content:center;opacity:0.18;filter:blur(2px);z-index:1">
+      <div class="play-canvas" style="margin:24px;width:80%;aspect-ratio:1;flex-shrink:0">
+        <div class="snake-emoji" style="top:35%;left:25%">🐍</div>
+      </div>
+    </div>
+    <div class="crash-overlay">
+      <div class="crash-card-m">
+        <div class="gameover">● GAME OVER</div>
+        <div class="score-big">8,459</div>
+        <div class="rank-line">RANK <b>#8</b> · BEAT 91% TODAY</div>
+        <button class="save-btn-m">💾 SAVE SCORE — CONNECT WALLET</button>
+        <div class="free-note">FIRST SAVE FREE ON DEVNET</div>
+        <div class="crash-secondary-m">
+          <button class="btn-outline-m">↻ TRY AGAIN</button>
+          <button class="btn-outline-m">← HOME</button>
+        </div>
+        <div class="pricing-toggle-m">
+          💸 SAVE OPTIONS <b>[+]</b><br>T1 $0.05 · T2 $0.15 · T3 $0.25
+        </div>
+      </div>
+    </div>
+    <div class="bottom-nav">
+      <div class="nav-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+      <div class="nav-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></div>
+      <div class="nav-center"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20"/></svg></div>
+      <div class="nav-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>
+      <div class="nav-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────── PHONE 5: SAVE OPTIONS / WALLET CONNECTED ─────────────── -->
+<div class="phone">
+  <div class="phone-label">5. Save Options · Connected</div>
+  <div class="screen">
+    <div class="status-bar"><span>9:41</span><span>● ● ● 100%</span></div>
+    <div class="mini-header">
+      <div class="back">←</div>
+      <div class="title">Save score</div>
+      <div class="net-badge">DEVNET</div>
+    </div>
+    <div style="padding:18px 20px 12px;text-align:center">
+      <div style="font-size:9px;letter-spacing:2px;color:var(--green);font-weight:800">● WALLET CONNECTED · BEzD…2rtA</div>
+      <div style="font-size:48px;font-weight:900;font-style:italic;line-height:1;margin:8px 0 4px;background:linear-gradient(135deg,var(--green),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent">8,459</div>
+      <div style="font-size:10px;color:var(--dim)">RANK <b style="color:var(--orange)">#8</b> · CHOOSE PERMANENCE</div>
+    </div>
+    <div style="padding:0 20px 12px">
+      <div class="tier-card-m">
+        <div class="tier-price-m">$0.05</div>
+        <div class="tier-meta">
+          <div class="tier-name-m">T1 · MEMO</div>
+          <div class="tier-desc-m">GPX5 + memo · cheapest</div>
+        </div>
+        <button>SAVE</button>
+      </div>
+      <div class="tier-card-m featured">
+        <div class="tier-price-m">$0.15</div>
+        <div class="tier-meta">
+          <div class="tier-name-m">T2 · REPLAY ★</div>
+          <div class="tier-desc-m">GPX5R replay log · recommended</div>
+        </div>
+        <button>SAVE T2</button>
+      </div>
+      <div class="tier-card-m">
+        <div class="tier-price-m">$0.25</div>
+        <div class="tier-meta">
+          <div class="tier-name-m">T3 · NFT</div>
+          <div class="tier-desc-m">cNFT receipt · tradeable proof</div>
+        </div>
+        <button>SAVE</button>
+      </div>
+    </div>
+    <div style="padding:0 20px;font-size:9px;color:var(--dim);text-align:center;letter-spacing:0.5px;line-height:1.5">
+      2% protocol fee included · payable in USDF / SOL<br>
+      <span style="color:var(--cyan)">≈ 0.0001 SOL gas</span>
+    </div>
+    <div class="bottom-nav">
+      <div class="nav-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+      <div class="nav-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></div>
+      <div class="nav-center"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20"/></svg></div>
+      <div class="nav-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>
+      <div class="nav-btn active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────── SECTION: BATTLE FLOW ─────────────── -->
+<div class="section-banner">
+  <span class="num">06 — 08</span>
+  <h3>Battle flow (1v1 wagered match)</h3>
+  <span class="desc">Lobby → live match → on-chain settlement · CM v2.1 escrow</span>
+</div>
+
+<!-- ─────────────── PHONE 6: BATTLE LOBBY ─────────────── -->
+<div class="phone">
+  <div class="phone-label">6. Battle · Lobby</div>
+  <div class="screen">
+    <div class="status-bar"><span>9:41</span><span>● ● ● 100%</span></div>
+    <div class="mini-header">
+      <div class="back">←</div>
+      <div class="title">⚔ Snake Battle</div>
+      <div class="net-badge">DEVNET</div>
+    </div>
+    <div class="lobby-hero">
+      <div class="eyebrow">CYBER SNAKE BATTLE · CM v2.1</div>
+      <h2>Match found.</h2>
+      <div class="sub">Both stake the same. Winner takes 98% · 2% protocol fee.</div>
+    </div>
+    <div class="opp-card-m">
+      <div class="avatar-m" style="background:linear-gradient(135deg,var(--green),var(--cyan))">YOU</div>
+      <div>
+        <div class="name-m">BEzD…2rtA</div>
+        <div class="elo-m">ELO 1,420 · 55% WR</div>
+      </div>
+      <div class="badge-m" style="color:var(--green);background:rgba(20,241,149,0.12);border:1px solid rgba(20,241,149,0.4)">READY</div>
+    </div>
+    <div class="vs-divider">— VS —</div>
+    <div class="opp-card-m">
+      <div class="avatar-m" style="background:linear-gradient(135deg,var(--orange),var(--pink))">7Q</div>
+      <div>
+        <div class="name-m">7QFx…HyL3</div>
+        <div class="elo-m">ELO 1,510 · 61% WR</div>
+      </div>
+      <div class="badge-m" style="color:var(--orange);background:rgba(255,107,44,0.12);border:1px solid rgba(255,107,44,0.4)">WAIT</div>
+    </div>
+    <div class="stake-card-m">
+      <div class="label-m">YOUR STAKE</div>
+      <div class="amount-m">$0.50<span class="unit-m">USDF</span></div>
+      <div class="track-m"></div>
+      <div class="marks-m"><span>$0.10</span><span>$0.50</span><span>$1</span><span>$5</span></div>
+    </div>
+    <div class="escrow-grid-m">
+      <div class="escrow-cell-m"><div class="lab-m">POOL</div><div class="v-m green">$1.00</div></div>
+      <div class="escrow-cell-m"><div class="lab-m">PAYOUT</div><div class="v-m green">$0.98</div></div>
+      <div class="escrow-cell-m"><div class="lab-m">FEE</div><div class="v-m orange">$0.02</div></div>
+      <div class="escrow-cell-m"><div class="lab-m">PDA</div><div class="v-m" style="font-size:10px">7Hx9…YbXz</div></div>
+    </div>
+    <div class="lobby-cta-m">⚔ START MATCH</div>
+    <div class="bottom-nav">
+      <div class="nav-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+      <div class="nav-btn active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></div>
+      <div class="nav-center" style="background:linear-gradient(135deg,var(--purple),var(--orange))"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20"/></svg></div>
+      <div class="nav-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>
+      <div class="nav-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────── PHONE 7: BATTLE PLAY (1v1 live) ─────────────── -->
+<div class="phone">
+  <div class="phone-label">7. Battle · Live 1v1</div>
+  <div class="screen">
+    <div class="status-bar"><span>9:41</span><span>● ● ● 100%</span></div>
+    <div class="battle-hud-m">
+      <div class="player-m">
+        <div class="name-m">YOU · BEzD…</div>
+        <div class="score-m">1,840</div>
+      </div>
+      <div class="player-m them">
+        <div class="name-m">OPP · 7QFx…</div>
+        <div class="score-m">1,420</div>
+      </div>
+    </div>
+    <div class="escrow-pill-m">
+      <span class="lab">POOL</span>
+      <span class="v">$1.00</span>
+      <span class="lab" style="color:var(--green)">● ESCROWED</span>
+    </div>
+    <div class="battle-canvas-m">
+      <div class="label">● YOUR BOARD</div>
+      <div class="snake-m">🐍</div>
+      <div style="position:absolute;font-size:18px;top:25%;right:30%">🍎</div>
+      <div style="position:absolute;font-size:18px;bottom:30%;left:35%">⭐</div>
+      <div class="timer-m">02:14</div>
+    </div>
+    <div class="opp-mini-m">
+      <div class="mini-canvas"></div>
+      <div class="text">
+        <div><b>7QFx…HyL3</b> · ELO 1,510</div>
+        <div class="dim">3 apples · 12 length · 62% backed</div>
+      </div>
+    </div>
+    <div class="play-controls" style="margin:10px 20px 0">
+      <div class="play-controls-text" style="font-size:9px">Swipe<br>or d-pad →</div>
+      <div class="dpad" style="width:110px">
+        <button class="empty"></button><button>▲</button><button class="empty"></button>
+        <button>◀</button><button class="empty"></button><button>▶</button>
+        <button class="empty"></button><button>▼</button><button class="empty"></button>
+      </div>
+    </div>
+    <div class="live-strip" style="margin:10px 20px 0">
+      <div class="live-dot"></div>
+      <div class="text" style="font-size:10px"><b>MagicBlock ER</b> · 50ms · 23ms latency</div>
+    </div>
+    <div class="bottom-nav">
+      <div class="nav-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+      <div class="nav-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></div>
+      <div class="nav-center" style="background:linear-gradient(135deg,var(--orange),var(--pink))"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg></div>
+      <div class="nav-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>
+      <div class="nav-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────── PHONE 8: BATTLE SETTLEMENT (winner) ─────────────── -->
+<div class="phone">
+  <div class="phone-label">8. Battle · Settled</div>
+  <div class="screen">
+    <div class="status-bar"><span>9:41</span><span>● ● ● 100%</span></div>
+    <div class="settle-m">
+      <div class="settle-trophy-m">🏆</div>
+      <div class="you-won">YOU WON · ON-CHAIN</div>
+      <h1>VICTORY</h1>
+      <div class="payout-m">$0.98<span class="unit">USDF</span></div>
+      <div style="font-size:10px;color:var(--dim);line-height:1.5;margin-top:6px">Final 4,820 vs 3,210<br>Settled by <code style="color:var(--cyan);background:rgba(0,242,255,0.06);padding:1px 4px;border-radius:3px;font-size:9px">resolve_market_from_game_pda</code></div>
+      <div class="breakdown-m">
+        <div class="cell"><div class="lab">POOL</div><div class="v green">$1.00</div></div>
+        <div class="cell"><div class="lab">PAYOUT</div><div class="v green">$0.98</div></div>
+        <div class="cell"><div class="lab">PROTOCOL</div><div class="v">$0.008</div></div>
+        <div class="cell"><div class="lab">PARTNER+PB</div><div class="v">$0.012</div></div>
+      </div>
+      <div class="tx-pill-m">
+        <span style="color:var(--dim)">TX</span>
+        <a>2ojQ…ueHm</a>
+        <span style="color:var(--dim)">↗</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;margin-top:auto">
+        <button class="btn-outline-m">↻ REMATCH</button>
+        <button class="btn-outline-m" style="background:linear-gradient(90deg,#9945FF,#14F195);color:#000;border:none;font-style:italic">⚔ NEW</button>
+      </div>
+    </div>
+    <div class="bottom-nav">
+      <div class="nav-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+      <div class="nav-btn active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></div>
+      <div class="nav-center"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20"/></svg></div>
+      <div class="nav-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>
+      <div class="nav-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────── SECTION: META PAGES ─────────────── -->
+<div class="section-banner">
+  <span class="num">09 — 11</span>
+  <h3>Meta pages</h3>
+  <span class="desc">Leaderboard · Profile (badges + NFT receipts) · Docs / Builder</span>
+</div>
+
+<!-- ─────────────── PHONE 9: LEADERBOARD ─────────────── -->
+<div class="phone">
+  <div class="phone-label">9. Leaderboard</div>
+  <div class="screen">
+    <div class="status-bar"><span>9:41</span><span>● ● ● 100%</span></div>
+    <div class="mini-header">
+      <div class="back">←</div>
+      <div class="title">🏆 Leaderboard</div>
+      <div class="net-badge">DEVNET</div>
+    </div>
+    <div class="lb-tabs-m">
+      <span class="tab-m on">🐍 SNAKE</span>
+      <span class="tab-m">♟ CHESS</span>
+      <span class="tab-m">🔮 WORDS</span>
+      <span class="tab-m">⚔ BATTLE</span>
+    </div>
+    <div class="lb-time-m">
+      <span class="pill on">ALL-TIME</span>
+      <span class="pill">7D</span>
+      <span class="pill">24H</span>
+      <span class="pill">YOUR FOLLOWS</span>
+    </div>
+    <div class="lb-rows-m">
+      <div class="lb-row-m"><span class="rank-m gold">1</span><div><div class="pubkey-m">7QFx…HyL3 🇰🇷</div><div class="saves-m">142 saves · joined 2026-04-08</div></div><span class="score-m">9,937</span></div>
+      <div class="lb-row-m"><span class="rank-m silver">2</span><div><div class="pubkey-m">3Vk2…pDmN 🇺🇸</div><div class="saves-m">87 saves</div></div><span class="score-m">8,801</span></div>
+      <div class="lb-row-m"><span class="rank-m bronze">3</span><div><div class="pubkey-m">2sFd…aB1c 🇦🇺</div><div class="saves-m">63 saves</div></div><span class="score-m">8,210</span></div>
+      <div class="lb-row-m"><span class="rank-m">4</span><div><div class="pubkey-m">9zMr…XkLp 🇧🇷</div><div class="saves-m">38 saves</div></div><span class="score-m">7,420</span></div>
+      <div class="lb-row-m"><span class="rank-m">5</span><div><div class="pubkey-m">Hxy7…Tk9q 🇩🇪</div><div class="saves-m">29 saves</div></div><span class="score-m">6,180</span></div>
+      <div class="lb-row-m"><span class="rank-m">6</span><div><div class="pubkey-m">Wnp1…Lq4v 🇸🇬</div><div class="saves-m">21 saves</div></div><span class="score-m">5,920</span></div>
+      <div class="lb-row-m"><span class="rank-m">7</span><div><div class="pubkey-m">Kr5s…Xz8m 🇨🇦</div><div class="saves-m">18 saves</div></div><span class="score-m">4,801</span></div>
+      <div class="lb-row-m you"><span class="rank-m" style="color:var(--green)">8</span><div><div class="pubkey-m" style="color:var(--green)">YOU 🇦🇺</div><div class="saves-m" style="color:var(--green)">12 saves</div></div><span class="score-m">4,420</span></div>
+      <div class="lb-row-m"><span class="rank-m">9</span><div><div class="pubkey-m">Pq3w…Nm7r 🇲🇽</div><div class="saves-m">14 saves</div></div><span class="score-m">3,940</span></div>
+    </div>
+    <div class="bottom-nav">
+      <div class="nav-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+      <div class="nav-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></div>
+      <div class="nav-center"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20"/></svg></div>
+      <div class="nav-btn active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>
+      <div class="nav-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────── PHONE 10: PROFILE ─────────────── -->
+<div class="phone">
+  <div class="phone-label">10. Profile</div>
+  <div class="screen">
+    <div class="status-bar"><span>9:41</span><span>● ● ● 100%</span></div>
+    <div class="profile-hero-m">
+      <div class="avatar-m">🦊</div>
+      <div class="name-m">Player #2741</div>
+      <div class="pubkey-m">BEzD…2rtA · 0.92 SOL</div>
+      <div class="level-m">⚡ LVL 12 · GLADIATOR</div>
+    </div>
+    <div class="profile-stats-m">
+      <div class="cell"><div class="lab">SAVES</div><div class="v">12</div></div>
+      <div class="cell"><div class="lab">WINS</div><div class="v">8</div></div>
+      <div class="cell"><div class="lab">EARNED</div><div class="v" style="font-size:13px">$3.42</div></div>
+      <div class="cell"><div class="lab">DAYS</div><div class="v">28</div></div>
+    </div>
+    <div class="profile-section-m">
+      <h3>BADGES · 8 / 24</h3>
+      <div class="badges-grid-m">
+        <div class="badge-m unlocked"><div class="ic">🎯</div><div class="lab">FIRST</div></div>
+        <div class="badge-m unlocked"><div class="ic">⚡</div><div class="lab">10 SAVES</div></div>
+        <div class="badge-m unlocked"><div class="ic">🏆</div><div class="lab">TOP 10</div></div>
+        <div class="badge-m unlocked"><div class="ic">⚔️</div><div class="lab">FIRST WIN</div></div>
+        <div class="badge-m unlocked"><div class="ic">🔥</div><div class="lab">STREAK</div></div>
+        <div class="badge-m unlocked"><div class="ic">💎</div><div class="lab">NFT</div></div>
+        <div class="badge-m unlocked"><div class="ic">🐍</div><div class="lab">SNAKE PRO</div></div>
+        <div class="badge-m unlocked"><div class="ic">♟</div><div class="lab">CHESS</div></div>
+        <div class="badge-m"><div class="ic" style="opacity:0.3">🌟</div><div class="lab">100 SAVES</div></div>
+        <div class="badge-m"><div class="ic" style="opacity:0.3">👑</div><div class="lab">RANK #1</div></div>
+        <div class="badge-m"><div class="ic" style="opacity:0.3">⏱️</div><div class="lab">SPEEDRUN</div></div>
+        <div class="badge-m"><div class="ic" style="opacity:0.3">🔮</div><div class="lab">PUZZLE</div></div>
+      </div>
+    </div>
+    <div class="profile-section-m" style="padding-bottom:90px">
+      <h3>NFT RECEIPTS · 4 minted</h3>
+      <div class="nft-grid-m">
+        <div class="nft-card-m">
+          <div class="top">🐍 SNAKE T3</div>
+          <div class="score">8,459</div>
+          <div class="bottom">2026-05-08 · 9YkX…</div>
+        </div>
+        <div class="nft-card-m">
+          <div class="top" style="color:var(--purple)">♟ CHESS T3</div>
+          <div class="score" style="color:var(--purple)">1,420</div>
+          <div class="bottom">2026-05-05 · 3Mqw…</div>
+        </div>
+      </div>
+    </div>
+    <div class="bottom-nav">
+      <div class="nav-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+      <div class="nav-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></div>
+      <div class="nav-center"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20"/></svg></div>
+      <div class="nav-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>
+      <div class="nav-btn active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────── PHONE 11: DOCS / BUILDER ─────────────── -->
+<div class="phone">
+  <div class="phone-label">11. Docs · Builder</div>
+  <div class="screen">
+    <div class="status-bar"><span>9:41</span><span>● ● ● 100%</span></div>
+    <div class="mini-header">
+      <div class="back">←</div>
+      <div class="title">📖 Builder</div>
+      <div class="net-badge" style="color:var(--cyan);background:rgba(0,242,255,0.1);border-color:rgba(0,242,255,0.3)">DEVS</div>
+    </div>
+    <div class="docs-section-tabs-m">
+      <span class="tab on">SKILL.md</span>
+      <span class="tab">CM v2.1</span>
+      <span class="tab">ARCADE</span>
+      <span class="tab">RESOLVER</span>
+    </div>
+    <div class="docs-m">
+      <h1>Build a skill game</h1>
+      <p>Sovereign dev harness on localhost:42069 — chat + game preview wired to a local Anchor stack. Ship a game in 4 steps.</p>
+      <h2>1. Clone the template</h2>
+<pre><span class="c"># public</span>
+<span class="k">git</span> clone github.com/gamerplex/
+   gamerplex-dev
+<span class="k">make</span> dev <span class="c"># :42069</span></pre>
+      <h2>2. Define GameState</h2>
+<pre><span class="k">#[account]</span>
+<span class="k">pub struct</span> GameState {
+  <span class="k">pub</span> p1: Pubkey,
+  <span class="k">pub</span> p2: Pubkey,
+  <span class="k">pub</span> status: <span class="k">u8</span>,
+  <span class="k">pub</span> winner: <span class="k">u8</span>,
+  <span class="k">pub</span> score_p1: <span class="k">u32</span>,
+  <span class="k">pub</span> score_p2: <span class="k">u32</span>,
+}</pre>
+      <h2>3. Register adapter</h2>
+<pre>cm.registerGameProgramV2({
+  p1Offset: <span class="s">8</span>,
+  p2Offset: <span class="s">40</span>,
+  statusOffset: <span class="s">72</span>,
+  statusFinishedValue: <span class="s">2</span>,
+  winnerOffset: <span class="s">73</span>,
+})</pre>
+      <h2>4. Anyone can settle</h2>
+      <p>Set <code style="color:var(--cyan);background:rgba(0,242,255,0.06);padding:1px 4px;border-radius:3px;font-size:9px">status = 2</code>, anyone calls <code style="color:var(--green);font-size:9px">resolve_market_from_game_pda</code>. Permissionless, free, trustless.</p>
+      <div class="docs-cta-m">
+        <a>📦 CLONE</a>
+        <a style="background:rgba(0,242,255,0.08);border-color:var(--cyan);color:var(--cyan)">SKILL.md ↗</a>
+        <a style="background:rgba(255,107,44,0.08);border-color:var(--orange);color:var(--orange)">▶ VIDEO</a>
+      </div>
+    </div>
+    <div class="bottom-nav">
+      <div class="nav-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+      <div class="nav-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></div>
+      <div class="nav-center"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20"/></svg></div>
+      <div class="nav-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>
+      <div class="nav-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────── SECTION: BACKER SURFACE ─────────────── -->
+<div class="section-banner">
+  <span class="num">12 — 13</span>
+  <h3>contention.markets — backer surface</h3>
+  <span class="desc">Separate domain (offshore entity), shares CM v2.1 settlement · 3rd-party PoolBacker stake on skill matches</span>
+</div>
+
+<!-- ─────────────── PHONE 12: MARKETS LIST ─────────────── -->
+<div class="phone">
+  <div class="phone-label">12. Markets</div>
+  <div class="screen">
+    <div class="status-bar"><span>9:41</span><span>● ● ● 100%</span></div>
+    <div class="mini-header" style="padding-top:14px">
+      <div style="font-size:14px;font-weight:900;font-style:italic;background:linear-gradient(90deg,var(--orange),var(--pink));-webkit-background-clip:text;-webkit-text-fill-color:transparent">CONTENTION</div>
+      <div class="title" style="font-size:11px;color:var(--dim);font-weight:600">177 markets · $4,820 pools</div>
+      <div class="net-badge">DEVNET</div>
+    </div>
+    <div class="markets-filters-m">
+      <span class="pill on">ALL</span>
+      <span class="pill">🐍 SNAKE</span>
+      <span class="pill">♟ CHESS</span>
+      <span class="pill">🔮 WORDS</span>
+      <span class="pill" style="color:var(--green);border-color:rgba(20,241,149,0.3)">● LIVE</span>
+    </div>
+    <div class="markets-list-m">
+      <div class="market-card-m">
+        <div class="game-row">🐍 CYBER SNAKE · 1V1 · ● LIVE</div>
+        <div class="title">7QFx…HyL3 vs BEzD…2rtA</div>
+        <div class="matchup-m"><span style="color:var(--green)">7Q</span> <span class="vs">vs</span> <span style="color:var(--orange)">BE</span> <span style="color:var(--dim);margin-left:auto">ELO 1510/1420</span></div>
+        <div class="pool-row"><span class="lab">POOL</span><span class="v">$24.80</span></div>
+        <div class="progress"><div class="p1" style="width:62%"></div><div class="p2" style="width:38%"></div></div>
+        <div class="meta"><span>62% / 38%</span><span style="color:var(--green)">● LIVE</span></div>
+      </div>
+      <div class="market-card-m">
+        <div class="game-row" style="color:var(--purple)">♟ MAGIC CHESS · 1V1</div>
+        <div class="title">3Vk2…pDmN vs 9zMr…XkLp</div>
+        <div class="matchup-m"><span style="color:var(--green)">3V</span> <span class="vs">vs</span> <span style="color:var(--orange)">9z</span> <span style="color:var(--dim);margin-left:auto">ELO 1820/1790</span></div>
+        <div class="pool-row"><span class="lab">POOL</span><span class="v">$112.40</span></div>
+        <div class="progress"><div class="p1" style="width:51%"></div><div class="p2" style="width:49%"></div></div>
+        <div class="meta"><span>51% / 49%</span><span>2m left</span></div>
+      </div>
+      <div class="market-card-m">
+        <div class="game-row" style="color:var(--yellow)">🔮 BLOCKWORDS · DAILY</div>
+        <div class="title">Today's solution starts with vowel?</div>
+        <div class="matchup-m"><span style="color:var(--green)">YES</span> <span class="vs">vs</span> <span style="color:var(--orange)">NO</span> <span style="color:var(--dim);margin-left:auto">28 backers</span></div>
+        <div class="pool-row"><span class="lab">POOL</span><span class="v">$48.20</span></div>
+        <div class="progress"><div class="p1" style="width:42%"></div><div class="p2" style="width:58%"></div></div>
+        <div class="meta"><span>42% YES · 58% NO</span><span>4h left</span></div>
+      </div>
+      <div class="market-card-m">
+        <div class="game-row">🐍 CYBER SNAKE · TOURNEY</div>
+        <div class="title">Top 24h above 10,000?</div>
+        <div class="matchup-m"><span style="color:var(--green)">YES</span> <span class="vs">vs</span> <span style="color:var(--orange)">NO</span> <span style="color:var(--dim);margin-left:auto">42 backers</span></div>
+        <div class="pool-row"><span class="lab">POOL</span><span class="v">$84.10</span></div>
+        <div class="progress"><div class="p1" style="width:32%"></div><div class="p2" style="width:68%"></div></div>
+        <div class="meta"><span>top: 9,937</span><span>11h left</span></div>
+      </div>
+    </div>
+    <div class="bottom-nav">
+      <div class="nav-btn active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></div>
+      <div class="nav-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+      <div class="nav-center" style="background:linear-gradient(135deg,var(--orange),var(--pink))"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20"/></svg></div>
+      <div class="nav-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
+      <div class="nav-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────── PHONE 13: MARKET DETAIL ─────────────── -->
+<div class="phone">
+  <div class="phone-label">13. Market Detail · Stake</div>
+  <div class="screen">
+    <div class="status-bar"><span>9:41</span><span>● ● ● 100%</span></div>
+    <div class="mini-header">
+      <div class="back">←</div>
+      <div class="title">Market</div>
+      <div class="net-badge">DEVNET</div>
+    </div>
+    <div class="md-m">
+      <div class="eyebrow-m">🐍 CYBER SNAKE · 1V1 · ● LIVE</div>
+      <h1>7QFx…HyL3 vs BEzD…2rtA</h1>
+      <div class="md-pool-m">
+        <div class="side p1">7Q · 62% · $15.40</div>
+        <div class="side p2">BE · 38% · $9.40</div>
+      </div>
+      <div class="md-line-m">
+        <div class="cell"><div class="lab">POOL</div><div class="v green">$24.80</div></div>
+        <div class="cell"><div class="lab">SETTLES IN</div><div class="v">~2 MIN</div></div>
+        <div class="cell"><div class="lab">7Q ELO/WR</div><div class="v">1510 · 61%</div></div>
+        <div class="cell"><div class="lab">BE ELO/WR</div><div class="v" style="color:var(--orange)">1420 · 55%</div></div>
+      </div>
+      <div style="margin-top:14px">
+        <div style="font-size:9px;letter-spacing:1.5px;color:var(--dim);font-weight:700;margin-bottom:6px">LIVE FEED</div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div style="padding:6px 10px;background:rgba(255,255,255,0.03);border-radius:6px;font-size:10px"><span style="color:var(--dim)">02:14</span> · 🐍 7Q ate apple <span style="color:var(--green);font-weight:800">+10</span></div>
+          <div style="padding:6px 10px;background:rgba(255,255,255,0.03);border-radius:6px;font-size:10px"><span style="color:var(--dim)">02:08</span> · backer <span style="color:var(--cyan)">$0.50</span> on 7Q</div>
+          <div style="padding:6px 10px;background:rgba(255,255,255,0.03);border-radius:6px;font-size:10px"><span style="color:var(--dim)">02:01</span> · 🐍 BE crashed <span style="color:var(--orange);font-weight:800">-50</span></div>
+        </div>
+      </div>
+      <div style="margin-top:12px;padding:10px;background:rgba(255,255,255,0.04);border:1px solid rgba(153,69,255,0.2);border-radius:8px">
+        <div style="font-size:9px;letter-spacing:1.5px;color:var(--dim);margin-bottom:4px">YOUR STAKE</div>
+        <div style="display:flex;justify-content:space-between;font-size:11px"><span>Backed 7Q</span><span style="color:var(--green);font-family:'JetBrains Mono',monospace">$2.50</span></div>
+      </div>
+      <div style="height:200px"></div>
+    </div>
+    <!-- bottom sheet stake input -->
+    <div class="md-stake-m">
+      <div class="head">
+        <span class="lab">BACK A SIDE</span>
+        <span class="v">BAL $42.50</span>
+      </div>
+      <div class="md-side-toggle-m">
+        <button class="on green">7Q · 62%</button>
+        <button>BE · 38%</button>
+      </div>
+      <div class="md-amount-m">
+        <span class="num">5.00</span>
+        <span class="unit">USDF</span>
+        <span class="max">MAX</span>
+      </div>
+      <button class="md-stake-btn-m">⚡ BACK 7Q · WIN $8.05</button>
+    </div>
+    <div class="bottom-nav">
+      <div class="nav-btn active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></div>
+      <div class="nav-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+      <div class="nav-center" style="background:linear-gradient(135deg,var(--orange),var(--pink))"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20"/></svg></div>
+      <div class="nav-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
+      <div class="nav-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+    </div>
+  </div>
+</div>
+
+<!-- design notes column -->
+<div class="notes">
+  <h2>📐 Design decisions (why each choice)</h2>
+  <ul>
+    <li><b>2x2 game-card grid (mobile) / 4-column coverflow (desktop)</b> — same component, different breakpoints. Each card is square-ish (3:4) so the character art dominates and scrolling shows 4 games above the fold on a 6.1" screen. Replaces the current bulk-text "Pick your game" section.</li>
+    <li><b>Glassy purple cards over a grid mesh</b> — keeps the Solana brand (purple/green/cyan) but adds depth via radial gradient backgrounds + 1px inset border. Native-app feel.</li>
+    <li><b>Bottom nav with gradient center action</b> — standard iOS/Android pattern. Center button is the BIG green-purple "Play" affordance — leads back to the active game from anywhere on the site.</li>
+    <li><b>Game detail page mirrors the reference</b> — Eyebrow ("Cyber Snake · Arcade"), big white title, top-score "rating" row, stat bars under it, primary "▶ PLAY FREE" CTA pinned above the bottom nav so thumbs reach it.</li>
+    <li><b>In-game HUD is minimal</b> — score top-left, rank pill top-right, pause top-right corner. Canvas square on mobile (16x16 tap targets at 24px each), d-pad fixed below. No bulk text. Single "Match settles on Solana" reassurance.</li>
+    <li><b>"Locked" coming-soon card</b> — diagonal hatch overlay + blurred art + 🔒 SOON badge. Tells story without a separate section.</li>
+    <li><b>Same components, desktop responsive</b> — 2x2 grid becomes 4-up perspective coverflow at &gt; 900px. Phone-frame previews collapse into desktop layout. Already works in the existing globals.css coverflow at <code>@media (max-width: 900px)</code>.</li>
+  </ul>
+  <h2 style="margin-top:24px">🎯 What changes if you greenlight</h2>
+  <ul>
+    <li>Replace current <code>app/page.tsx</code> hero + coverflow with this card-grid pattern (mobile-first).</li>
+    <li>Wrap each <code>app/play/&lt;game&gt;/_arcade/ArcadeMode.tsx</code> with this play-HUD pattern (square canvas, minimal HUD, fixed d-pad).</li>
+    <li>Add new bottom-nav component shared across all routes (replaces top nav on mobile, augments it on desktop).</li>
+    <li>Add a game-detail intermediate route per game (or modal) that bridges the home grid to the actual play canvas.</li>
+    <li>Promote the crash modal (#4) to a real fullscreen route — currently a small overlay, should be the dominant UX moment.</li>
+    <li>Expand the save-options screen (#5) into the existing <code>save-on-chain</code> flow with the 3-tier permanence picker.</li>
+    <li>Add the battle-flow trio (#6 lobby, #7 live, #8 settle) as <code>/play/cyber-snake-battle</code> sub-routes (lobby/match/settle states).</li>
+    <li>Expand <code>/profile</code> with badges grid + NFT receipt cards (currently minimal).</li>
+    <li>Mirror the docs page (#11) at <code>/docs</code> with section tabs + SKILL.md inline preview.</li>
+    <li>contention.markets (#12-13) is a <b>separate domain</b> — same component library, different bottom nav (Markets / Activity / Stats / Profile, no Play).</li>
+  </ul>
+
+  <h2 style="margin-top:24px">📱 Mobile-specific patterns shipped</h2>
+  <ul>
+    <li><b>Bottom-sheet stake input</b> on Market Detail (#13) — sticks to bottom edge above bottom nav, doesn't push content. Native iOS pattern.</li>
+    <li><b>Phone-frame mini-canvas</b> for opponent in Battle Play (#7) — both boards never fit side-by-side at 380px so opponent collapses to a 64px thumbnail strip.</li>
+    <li><b>Horizontal-scroll filter pills</b> across Leaderboard / Markets / Docs — overflow-x:auto with no scrollbar, swipe to discover.</li>
+    <li><b>Stacked tier cards</b> (#5) instead of 3-column grid — better thumb reach, primary CTA always at thumb height.</li>
+    <li><b>Bottom nav swaps content</b> on contention.markets (#12) — Markets / Activity / Center action / Stake / Profile (no Play tab).</li>
+    <li><b>Center nav button changes meaning</b> — green-purple Play (default), orange-pink Pause (in-game), orange-pink Stake (markets).</li>
+  </ul>
+</div>
+
+</div>
+
+</body>
+</html>

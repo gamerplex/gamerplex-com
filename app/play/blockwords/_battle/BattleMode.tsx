@@ -7,7 +7,6 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import "../../magic-chess/_shared/magic.css";
 import ModeToggle from "../../../../components/games/ModeToggle";
-import { WageredEscrowBadge } from "../../../../components/wagered-battle/EscrowBadge";
 import { BlockwordsOnChain } from "./chain";
 
 const Words3DScene = dynamic(() => import("./Words3DScene"), { ssr: false });
@@ -166,19 +165,33 @@ export default function BlockwordsBattleMode() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#050510", color: "#e8e8f0", fontFamily: "'Space Grotesk', sans-serif" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderBottom: "1px solid #252540" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Link href="/" style={{ textDecoration: "none", fontSize: 16, fontWeight: 700, fontStyle: "italic", background: "linear-gradient(135deg, #9945FF, #14F195)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>GAMERPLEX</Link>
-          <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 6px", borderRadius: 4, background: "rgba(255,170,0,0.15)", border: "1px solid rgba(255,170,0,0.4)", color: "#ffaa00", letterSpacing: 1, textTransform: "uppercase" }}>Devnet</span>
+      {/* 2026 minimalist top nav — matches home */}
+      <nav className="top-nav" style={{ padding: "12px 16px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <Link href="/" className="nav-logo" style={{ textDecoration: "none" }}>GAMERPLEX</Link>
+          <span className="devnet-badge">Devnet</span>
         </div>
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+        <div className="nav-links">
           {!isMobile && <>
-            <Link href="/games" style={{ color: "#555", textDecoration: "none", fontSize: 12 }}>Arcade</Link>
-            <Link href="/leaderboard" style={{ color: "#555", textDecoration: "none", fontSize: 12 }}>Leaderboard</Link>
+            <Link href="/#featured">Play</Link>
+            <Link href="/docs">Build</Link>
+            <Link href="/leaderboard">Leaderboard</Link>
+            <Link href="/profile">Profile</Link>
           </>}
-          <WalletMultiButton style={{ fontSize: 12, height: 32 }} />
+          <WalletMultiButton
+            style={{
+              background: "rgba(153,69,255,0.12)",
+              color: "#e8e8f0",
+              fontSize: 11,
+              height: 32,
+              padding: "0 12px",
+              borderRadius: 99,
+              border: "1px solid rgba(153,69,255,0.4)",
+              fontWeight: 700,
+            }}
+          />
         </div>
-      </div>
+      </nav>
 
       <div style={{ position: "fixed", inset: 0, zIndex: 0 }}>
         <Words3DScene
@@ -205,8 +218,7 @@ export default function BlockwordsBattleMode() {
         {phase === "menu" && (
           <div style={{ textAlign: "center", maxWidth: 440 }}>
             <h1 className="magic-chess-title magic-pulse" style={{ fontSize: 42, fontWeight: 700, marginBottom: 8 }}>✨ BLOCKWORDS ✨</h1>
-            <p className="magic-chess-text" style={{ fontSize: 14, marginBottom: 4 }}>On-chain word duels on MagicBlock PER</p>
-            <p style={{ color: "#555", fontSize: 11, marginBottom: 24 }}>Intel TDX TEE hides the word. Even the validator can't peek.</p>
+            <p className="magic-chess-text" style={{ fontSize: 14, marginBottom: 18 }}>On-chain word duels — guess the hidden word</p>
 
             <p style={{ color: "#888", fontSize: 12, marginBottom: 10 }}>Pick a category</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -226,13 +238,6 @@ export default function BlockwordsBattleMode() {
                   </div>
                 </button>
               ))}
-            </div>
-            {/* Architectural visibility: same wagered-escrow module as Cyber Snake Battle. */}
-            <div style={{ marginTop: 20, textAlign: "left" }}>
-              <WageredEscrowBadge slug="blockwords" stake={1} status="scaffold" />
-            </div>
-            <div style={{ marginTop: 12, fontSize: 10, color: "#333" }}>
-              Program: 3XA1rz...tU4o · MagicBlock PER · Every guess on-chain
             </div>
           </div>
         )}
@@ -303,18 +308,30 @@ export default function BlockwordsBattleMode() {
 
             {(phase === "won" || phase === "lost") && (
               <div className="magic-chess-panel" style={{
-                padding: 24, borderRadius: 12, textAlign: "center", maxWidth: 400, margin: "0 auto",
+                padding: 24, borderRadius: 12, textAlign: "center", maxWidth: 440, margin: "0 auto",
                 borderColor: won ? "#14F195" : "#ff1744",
                 boxShadow: `0 0 40px ${won ? "rgba(20,241,149,0.15)" : "rgba(255,23,68,0.1)"}`,
               }}>
-                <div className="magic-chess-title" style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>
-                  {won ? "✨ SOLVED ✨" : "💀 GAME OVER"}
+                {/* 2026: status eyebrow (tiny), word (hero gradient), then context */}
+                <div style={{ fontSize: 11, fontWeight: 800, color: won ? "#14F195" : "#ff5230", letterSpacing: 3, textTransform: "uppercase", marginBottom: 4 }}>
+                  {won ? "● Solved" : "● Game Over"}
                 </div>
-                <div style={{ fontSize: 24, fontWeight: 700, color: "#14F195", textTransform: "uppercase", letterSpacing: 4, marginBottom: 12 }}>
-                  {word}
-                </div>
-                <div style={{ fontSize: 11, color: "#555", marginBottom: 16 }}>
-                  {won ? `Solved with ${wrongGuesses} wrong guess${wrongGuesses !== 1 ? "es" : ""}` : `The word was "${word}"`}
+                {/* WORD is the hero — huge gradient italic */}
+                <div style={{
+                  fontSize: "clamp(40px, 9vw, 72px)",
+                  fontWeight: 900,
+                  fontStyle: "italic",
+                  lineHeight: 1,
+                  textTransform: "uppercase",
+                  letterSpacing: 4,
+                  background: "linear-gradient(135deg, #14F195, #00f2ff)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  textShadow: "0 0 40px rgba(20,241,149,0.35)",
+                  margin: "4px 0 6px",
+                }}>{word}</div>
+                <div style={{ fontSize: 11, color: "#8a8aa0", marginBottom: 14, letterSpacing: 1, textTransform: "uppercase", fontWeight: 700 }}>
+                  {won ? `${wrongGuesses} wrong guess${wrongGuesses !== 1 ? "es" : ""}` : "the word"}
                   {" · "}{category}
                 </div>
 
@@ -353,7 +370,7 @@ export default function BlockwordsBattleMode() {
               </div>
             )}
 
-            {txLogs.length > 0 && (
+            {txLogs.length > 0 && !isMobile && (
               <div style={{ marginTop: 16, maxWidth: 400, margin: "16px auto 0", maxHeight: 120, overflowY: "auto", background: "rgba(10,0,20,0.7)", borderRadius: 8, border: "1px solid rgba(153,69,255,0.2)", padding: "8px 12px", backdropFilter: "blur(8px)" }}>
                 {txLogs.map((tx, i) => (
                   <div key={i} style={{ fontSize: 9, color: "#888", fontFamily: "monospace", marginBottom: 2, display: "flex", gap: 4 }}>

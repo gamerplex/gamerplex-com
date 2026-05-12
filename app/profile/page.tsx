@@ -8,28 +8,20 @@ export default function ProfilePage() {
   const { publicKey } = useWallet();
 
   return (
-    <div style={{ minHeight: "100vh", background: "#0a0a12", color: "#cfcfe0" }}>
-      <header
-        style={{
-          borderBottom: "1px solid #1a1a28",
-          padding: "14px 20px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
-      >
-        <Link href="/" style={{ color: "#e8e8f0", fontWeight: 700, fontSize: 16, textDecoration: "none" }}>
-          Gamerplex
-        </Link>
-        <nav style={{ display: "flex", gap: 16, fontSize: 12 }}>
-          <Link href="/arcade" style={{ color: "#a8a8c0", textDecoration: "none" }}>
-            Arcade
-          </Link>
-          <Link href="/leaderboard" style={{ color: "#a8a8c0", textDecoration: "none" }}>
-            Leaderboard
-          </Link>
-        </nav>
-      </header>
+    <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
+      {/* 2026 minimalist top nav — matches home */}
+      <nav className="top-nav">
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <Link href="/" className="nav-logo" style={{ textDecoration: "none" }}>GAMERPLEX</Link>
+          <span className="devnet-badge">Devnet</span>
+        </div>
+        <div className="nav-links">
+          <Link href="/#featured">Play</Link>
+          <Link href="/docs">Build</Link>
+          <Link href="/leaderboard">Leaderboard</Link>
+          <Link href="/profile">Profile</Link>
+        </div>
+      </nav>
       <ProfileView walletPubkey={publicKey ?? null} isOwnProfile={true} />
     </div>
   );

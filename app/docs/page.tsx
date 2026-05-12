@@ -68,11 +68,10 @@ export default function DocsPage() {
         </div>
         <SiteNav
           links={[
-            { href: "/", label: "Arena" },
-            { href: "/games", label: "Arcade" },
+            { href: "/#featured", label: "Play" },
+            { href: "/docs", label: "Build", active: true },
             { href: "/leaderboard", label: "Leaderboard" },
-            { href: "/activity", label: "Activity" },
-            { href: "/docs", label: "Docs", active: true },
+            { href: "/profile", label: "Profile" },
             { href: "https://x.com/gamerplex_com", label: "𝕏", external: true },
           ]}
         />

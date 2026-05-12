@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 
 const InterstellarSymphony = dynamic(() => import("../components/InterstellarSymphony"), {
   ssr: false,
@@ -10,46 +10,10 @@ const InterstellarSymphony = dynamic(() => import("../components/InterstellarSym
 const Chess3DBoard = dynamic(() => import("./play/magic-chess/_shared/Chess3DBoard"), { ssr: false });
 const OnchainPreview = dynamic(() => import("./_components/OnchainPreview"), { ssr: false });
 
-// ─── Agent Roster ───────────────────────────────────────────────────────────
-const AGENTS = [
-  { name: "Molty-Prime", emoji: "🦞", color: "#ff6b2c", style: "aggressive" },
-  { name: "DegenBot-9", emoji: "🤖", color: "#448aff", style: "fast" },
-  { name: "ShadowAlpha", emoji: "🥷", color: "#b388ff", style: "balanced" },
-  { name: "CrabDAO", emoji: "🦀", color: "#ff1744", style: "defensive" },
-  { name: "Ape.agent", emoji: "🦍", color: "#00e676", style: "yolo" },
-  { name: "Whale-007", emoji: "🐋", color: "#18ffff", style: "patient" },
-  { name: "NeonSamurai", emoji: "⚔️", color: "#ff80ab", style: "fast" },
-  { name: "QuantumFish", emoji: "🐡", color: "#ffd740", style: "random" },
-  { name: "ZeroKnight", emoji: "🛡️", color: "#69f0ae", style: "defensive" },
-  { name: "FlashLoan", emoji: "⚡", color: "#ffab40", style: "aggressive" },
-  { name: "CoralReef", emoji: "🪸", color: "#f48fb1", style: "balanced" },
-  { name: "ByteStorm", emoji: "🌊", color: "#80d8ff", style: "fast" },
-];
-
-type Agent = typeof AGENTS[0];
-type AgentStats = { wins: number; losses: number; pnl: number; streak: number };
-type MatchData = {
-  id: number; game: string;
-  p1: Agent & { type: string }; p2: Agent & { type: string };
-  stake: number; live: boolean;
-  p1hp: number; p2hp: number;
-  p1score: number; p2score: number;
-  winner: number | null; payout: string | null;
-  timeAgo: string;
-};
-
-function pickTwo(): [Agent, Agent] {
-  const s = [...AGENTS].sort(() => Math.random() - 0.5);
-  return [s[0], s[1]];
-}
-
 // localStorage cache helpers — keep the home page feeling instant on repeat visits.
-// Writes cache every successful fetch; reads once on mount so first paint shows
-// prior data, then background polling swaps in fresh numbers silently.
 const CACHE_KEY_HOME = "gp.home.v1";
 interface HomeCache {
   at: number;
-  matches: any[];
   leaderboard: any[];
   agents: any[];
   liveGames: any[];
@@ -72,12 +36,31 @@ function writeHomeCache(c: HomeCache) {
 
 const MUTE_KEY_HOME = "gp.home.muted.v1";
 
+// Image with emoji fallback. Drop a real PNG at the src path to upgrade.
+function GameArt({ src, emoji, alt, big }: { src: string; emoji: string; alt: string; big?: boolean }) {
+  const [errored, setErrored] = useState(false);
+  if (errored) {
+    return (
+      <div className="cf-art-fallback">
+        <span className="cf-emoji" style={{ fontSize: big ? 110 : 88 }}>{emoji}</span>
+      </div>
+    );
+  }
+  return (
+    <img
+      src={src}
+      alt={alt}
+      onError={() => setErrored(true)}
+      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+    />
+  );
+}
+
 // ─── Component ──────────────────────────────────────────────────────────────
 export default function Home() {
   const [mounted, setMounted] = useState(false);
-  const [muted, setMuted] = useState(true); // SSR-safe default; hydrated from localStorage on mount
+  const [muted, setMuted] = useState(true);
 
-  // Hydrate mute preference from localStorage on first mount
   useEffect(() => {
     try {
       const saved = window.localStorage.getItem(MUTE_KEY_HOME);
@@ -86,25 +69,23 @@ export default function Home() {
     } catch {}
   }, []);
 
-  // Persist mute preference on change
   useEffect(() => {
     try {
       window.localStorage.setItem(MUTE_KEY_HOME, String(muted));
     } catch {}
   }, [muted]);
+
   const [stats, setStats] = useState({ fps: "0", meshes: 0, memory: "0" });
-  const [realMatches, setRealMatches] = useState<any[]>([]);
   const [realLeaderboard, setRealLeaderboard] = useState<any[]>([]);
+  const [lbLoaded, setLbLoaded] = useState(false);
   const [liveGames, setLiveGames] = useState<any[]>([]);
   const [selectedGame, setSelectedGame] = useState<string | null>(null);
   const [agentLeaderboard, setAgentLeaderboard] = useState<any[]>([]);
   const [coverMode, setCoverMode] = useState<"arcade" | "battle">("arcade");
 
-  // Instant hydration from localStorage on first mount — before any network call.
   useEffect(() => {
     const c = readHomeCache();
     if (!c) return;
-    if (c.matches) setRealMatches(c.matches);
     if (c.leaderboard) setRealLeaderboard(c.leaderboard);
     if (c.agents) setAgentLeaderboard(c.agents);
     if (c.liveGames) {
@@ -113,33 +94,27 @@ export default function Home() {
     }
   }, []);
 
-  // Fetch real stats + feed + leaderboard from resolver
   const RESOLVER = process.env.NEXT_PUBLIC_RESOLVER_URL || "https://resolver.gamerplex.com";
   useEffect(() => {
-    let matchesRef = realMatches;
     let lbRef = realLeaderboard;
     let agentsRef = agentLeaderboard;
     let liveRef = liveGames;
     const fetchAll = async () => {
       const results = await Promise.allSettled([
-        fetch(`${RESOLVER}/feed`).then(r => r.json()),
         fetch(`${RESOLVER}/leaderboard/chess`).then(r => r.json()),
         fetch(`${RESOLVER}/rankings/agents`).then(r => r.json()),
       ]);
-      const [feedRes, lbRes, agentsRes] = results;
-      if (feedRes.status === "fulfilled" && feedRes.value?.ok) {
-        matchesRef = feedRes.value.matches || [];
-        setRealMatches(matchesRef);
-      }
+      const [lbRes, agentsRes] = results;
       if (lbRes.status === "fulfilled" && lbRes.value?.ok) {
         lbRef = lbRes.value.players || [];
         setRealLeaderboard(lbRef);
       }
+      setLbLoaded(true);
       if (agentsRes.status === "fulfilled" && agentsRes.value?.ok) {
         agentsRef = agentsRes.value.agents || [];
         setAgentLeaderboard(agentsRef);
       }
-      writeHomeCache({ at: Date.now(), matches: matchesRef, leaderboard: lbRef, agents: agentsRef, liveGames: liveRef });
+      writeHomeCache({ at: Date.now(), leaderboard: lbRef, agents: agentsRef, liveGames: liveRef });
     };
     fetchAll();
     const interval = setInterval(fetchAll, 5000);
@@ -147,7 +122,6 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Poll live games every 2s — also refreshes cache so next visit paints instantly.
   useEffect(() => {
     const fetchLive = () => {
       fetch(`${RESOLVER}/game-pool/live`).then(r => r.json()).then(data => {
@@ -160,7 +134,6 @@ export default function Home() {
           const existing = readHomeCache();
           writeHomeCache({
             at: Date.now(),
-            matches: existing?.matches || [],
             leaderboard: existing?.leaderboard || [],
             agents: existing?.agents || [],
             liveGames: games,
@@ -175,24 +148,32 @@ export default function Home() {
 
   useEffect(() => { setMounted(true); }, []);
 
+  // 2026: sticky FAB appears when user scrolls past hero
+  const [fabVisible, setFabVisible] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setFabVisible(window.scrollY > window.innerHeight * 0.6);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   if (!mounted) return <div style={{ backgroundColor: "#0d001a", width: "100vw", height: "100vh" }} />;
+
+  const topPlayer = agentLeaderboard[0];
+  const liveCount = liveGames.length;
 
   return (
     <>
-      {/* NAV */}
+      {/* NAV — Play / Build / Leaderboard / Profile */}
       <nav className="top-nav">
         <div style={{display:"flex",alignItems:"center",gap:10}}>
-          <div className="nav-logo">GAMERPLEX</div>
+          <a href="/" className="nav-logo" style={{textDecoration:"none"}}>GAMERPLEX</a>
           <span className="devnet-badge">Devnet</span>
         </div>
         <div className="nav-links">
-          <a href="#arena">Arena</a>
-          <a href="/arcade">Arcade</a>
-          <a href="/games">Tournaments</a>
+          <a href="#featured">Play</a>
+          <a href="/docs">Build</a>
           <a href="/leaderboard">Leaderboard</a>
-          <a href="/activity">Activity</a>
           <a href="/profile">Profile</a>
-          <a href="/docs">Docs</a>
           <a href="https://x.com/gamerplex_com" target="_blank" title="@gamerplex_com" style={{display:"flex",alignItems:"center"}}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
           </a>
@@ -206,8 +187,6 @@ export default function Home() {
               display:"flex",alignItems:"center",
             }}
           >
-            {/* Speaker SVGs — match the X icon styling above (no emoji,
-                no system-font dependence, no "looks like Brave logo" gotcha). */}
             {muted ? (
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
@@ -224,7 +203,7 @@ export default function Home() {
         </div>
       </nav>
 
-      {/* HERO */}
+      {/* HERO — wormhole bg + logo + one tagline + one CTA + one ticker line */}
       <section className="hero">
         <div className="hero-bg">
           <InterstellarSymphony onStatsUpdate={setStats} showJoystick={false} muted={muted} />
@@ -232,205 +211,96 @@ export default function Home() {
         <div className="hero-content">
           <h1 className="hero-title">GAMERPLEX</h1>
           <p className="hero-sub">Build · Play · Own · Compete · Onchain Forever</p>
-          <p className="hero-desc">Skill games on Solana. Practice free. Pay $0.05 to save your score forever. 1v1 matches for real prize pools — settled on-chain in seconds.</p>
 
-          <div className="cta-row" style={{marginBottom:28}}>
+          <div className="cta-row" style={{marginBottom:24,marginTop:18}}>
             <a href="#featured" className="btn-primary" style={{textDecoration:"none",display:"inline-flex",alignItems:"center",gap:8}}>
-              ▶ Play Now — 1 Free Credit
+              ▶ Play Now
             </a>
           </div>
 
-          <div className="stats-bar" style={{marginBottom:0}}>
-            <div className="stat-item">
-              <div className="stat-val" style={{ color: "var(--green)" }}>3</div>
-              <div className="stat-label">Games Live</div>
-            </div>
-            <div className="stat-item">
-              <div className="stat-val" style={{ color: "var(--yellow)" }}>{agentLeaderboard.reduce((sum, a) => sum + (a.wins || 0) + (a.losses || 0) + (a.draws || 0), 0)}</div>
-              <div className="stat-label">Matches Played</div>
-            </div>
-            <div className="stat-item">
-              <div className="stat-val" style={{ color: "var(--cyan)" }}>9</div>
-              <div className="stat-label">Programs on Devnet</div>
-            </div>
+          {/* single minimal ticker line — top score + live count */}
+          <div className="hero-ticker">
+            {topPlayer && (
+              <span>
+                Top score: <b style={{color:"var(--green)"}}>{(topPlayer.elo ?? topPlayer.score ?? 0).toLocaleString()}</b> by <span style={{color:"var(--dim)"}}>{topPlayer.name || "anon"}</span>
+              </span>
+            )}
+            {liveCount > 0 && (
+              <span style={{marginLeft:14}}>
+                <span style={{color:"var(--green)"}}>●</span> <b>{liveCount}</b> live now
+              </span>
+            )}
           </div>
-
-          <div className="hero-activity">
-            <div className="hero-activity-col">
-              <div className="hero-activity-head"><span style={{color:"var(--yellow)"}}>🏆</span> TOP PLAYERS</div>
-              {agentLeaderboard.slice(0, 3).map((a: any, i: number) => (
-                <div className="hero-activity-row" key={a.name || i}>
-                  <span className="rank">#{i + 1}</span>
-                  <span className="who">{a.name || a.player || "anon"}</span>
-                  <span className="val" style={{color:"var(--green)"}}>{(a.elo ?? a.score ?? a.wins ?? 0).toLocaleString()}</span>
-                </div>
-              ))}
-              {agentLeaderboard.length === 0 && <div className="hero-activity-empty">loading…</div>}
-            </div>
-            <div className="hero-activity-col">
-              <div className="hero-activity-head"><span style={{color:"var(--green)"}}>●</span> LIVE NOW</div>
-              {liveGames.slice(0, 3).map((g: any, i: number) => (
-                <div className="hero-activity-row" key={g.gamePda || i}>
-                  <span className="rank">{g.game === "chess" ? "♟" : "🐍"}</span>
-                  <span className="who">{(g.white || g.p1 || "anon").slice(0, 4)}…  vs  {(g.black || g.p2 || "anon").slice(0, 4)}…</span>
-                  <span className="val" style={{color:"var(--cyan)"}}>{g.status || "in play"}</span>
-                </div>
-              ))}
-              {liveGames.length === 0 && <div className="hero-activity-empty">no live games right now</div>}
-            </div>
-          </div>
-        </div>
-
-        <div className="scroll-hint">
-          <span>MORE GAMES</span>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12l7 7 7-7" /></svg>
         </div>
       </section>
 
-      {/* GAME COVERFLOW — chess front-center, snake recessed left, blockwords recessed right */}
+      {/* GAMES GRID — 3 cards, mode toggle above */}
       <section className="coverflow-section" id="featured">
-        <div className="arena-header" style={{marginBottom:18,maxWidth:1100,margin:"0 auto 18px",padding:"0 20px"}}>
-          <h2 style={{fontSize:14}}>🎮 PICK YOUR GAME</h2>
-          <span style={{ fontSize: 10, color: "var(--dim)", letterSpacing: 2 }}>
-            3 GAMES · ARCADE OR BATTLE · ALL ON-CHAIN
-          </span>
-        </div>
-
-        <div className="mode-switcher">
+        <div className="mode-switcher" style={{marginBottom:24}}>
           <div className="mode-pill" data-active={coverMode}>
             <button
               className={`mode-opt ${coverMode === "arcade" ? "active" : ""}`}
               onClick={() => setCoverMode("arcade")}
               aria-pressed={coverMode === "arcade"}
             >
-              🕹 ARCADE
+              ARCADE
             </button>
             <button
               className={`mode-opt ${coverMode === "battle" ? "active" : ""}`}
               onClick={() => setCoverMode("battle")}
               aria-pressed={coverMode === "battle"}
             >
-              ⚔ BATTLE
+              BATTLE
             </button>
-          </div>
-          <div className="mode-explain">
-            {coverMode === "arcade" ? (
-              <>
-                <span className="mode-explain-tag">SOLO</span>
-                <span>Play free. Pay <b>$0.05</b> to save your score forever on Solana. Climb the on-chain leaderboard.</span>
-              </>
-            ) : (
-              <>
-                <span className="mode-explain-tag mode-explain-tag-battle">1v1</span>
-                <span>Heads-up match. Both stake <b>$0.50–$10 USDF</b>. Winner takes <b>98%</b> of the pot — settled on-chain by CM v2.1 escrow.</span>
-              </>
-            )}
           </div>
         </div>
 
         <div className="coverflow">
-          {/* LEFT — Cyber Snake (recessed) */}
+          {/* LEFT — Cyber Snake */}
           <a href={`/play/cyber-snake?mode=${coverMode}`} className="cf-card cf-left" aria-label={`Play Cyber Snake — ${coverMode}`}>
             <div className="cf-art cf-snake-art">
-              <span className="cf-emoji">🐍</span>
-              <div className="cf-grid"></div>
+              <GameArt src="/games/cyber-snake/banner.png" emoji="🐍" alt="Cyber Snake" />
+              <div className="cf-art-overlay"></div>
             </div>
             <div className="cf-meta">
               <div className="cf-name">Cyber Snake</div>
-              <div className="cf-tag">{coverMode === "arcade" ? "Eat. Grow. Don't crash." : "Tron lightcycle 1v1 on MagicBlock ER"}</div>
-              <div className="cf-cta">{coverMode === "arcade" ? "PLAY FREE →" : "STAKE & PLAY →"}</div>
+              <div className="cf-cta">{coverMode === "arcade" ? "PLAY FREE →" : "$0.50 STAKE →"}</div>
             </div>
           </a>
 
-          {/* CENTER — Magic Chess (front, biggest) */}
+          {/* CENTER — Magic Chess */}
           <a href={`/play/magic-chess?mode=${coverMode}`} className="cf-card cf-center" aria-label={`Play Magic Chess — ${coverMode}`}>
             <div className="cf-art cf-chess-art">
-              <img src="/magic-chess-banner.jpg" alt="" />
+              <GameArt src="/games/magic-chess/banner.png" emoji="♟" alt="Magic Chess" big />
               <div className="cf-art-overlay"></div>
               <span className="cf-badge cf-badge-live">● LIVE 3D</span>
             </div>
             <div className="cf-meta">
               <div className="cf-name">Magic Chess</div>
-              <div className="cf-tag">{coverMode === "arcade" ? "vs ELO bot · every move on-chain" : "1v1 wagered match · CM v2.1 settled"}</div>
-              <div className="cf-cta cf-cta-primary">{coverMode === "arcade" ? "PLAY FREE →" : "STAKE & PLAY →"}</div>
+              <div className="cf-cta cf-cta-primary">{coverMode === "arcade" ? "PLAY FREE →" : "$0.50 STAKE →"}</div>
             </div>
           </a>
 
-          {/* RIGHT — Blockwords (recessed) */}
+          {/* RIGHT — Blockwords */}
           <a href={`/play/blockwords?mode=${coverMode}`} className="cf-card cf-right" aria-label={`Play Blockwords — ${coverMode}`}>
             <div className="cf-art cf-words-art">
-              <span className="cf-emoji">🔮</span>
-              <div className="cf-letters">
-                <span>S</span><span>O</span><span>L</span><span>A</span><span>N</span>
-              </div>
+              <GameArt src="/games/blockwords/banner.png" emoji="🔮" alt="Blockwords" />
+              <div className="cf-art-overlay"></div>
             </div>
             <div className="cf-meta">
               <div className="cf-name">Blockwords</div>
-              <div className="cf-tag">{coverMode === "arcade" ? "Daily word puzzle · saved on-chain" : "Hidden-info word duel · 1v1"}</div>
-              <div className="cf-cta">{coverMode === "arcade" ? "PLAY FREE →" : "STAKE & PLAY →"}</div>
+              <div className="cf-cta">{coverMode === "arcade" ? "PLAY FREE →" : "$0.50 STAKE →"}</div>
             </div>
           </a>
         </div>
-
-        <div className="coming-soon-strip">
-          <div className="coming-soon-card" aria-label="Pet Legends Arena — coming soon">
-            <div className="coming-soon-art">
-              <img src="/pet-legends-teaser.png" alt="" />
-              <div className="coming-soon-fog"></div>
-              <span className="coming-soon-lock">🔒 COMING SOON</span>
-            </div>
-            <div className="coming-soon-meta">
-              <div className="coming-soon-eyebrow">GAME #4 · IN STEALTH</div>
-              <div className="coming-soon-name">Pet Legends Arena</div>
-              <div className="coming-soon-tag">A different breed. Battle pets. On-chain duels.</div>
-            </div>
-          </div>
-          <div className="coming-soon-side">
-            <div className="coming-soon-side-head">More games shipping</div>
-            <div className="coming-soon-side-body">
-              The shared <span className="cs-mono">gamerplex-arcade</span> + <span className="cs-mono">CM&nbsp;v2.1</span> contracts let new games plug in for ~$60 each. Pet Legends is next — sign up to be first in.
-            </div>
-            <a className="coming-soon-cta" href="https://x.com/gamerplex_com" target="_blank" rel="noopener noreferrer">
-              Follow @gamerplex_com →
-            </a>
-          </div>
-        </div>
-
-        <div className="mode-compare">
-          <div className="mode-compare-col">
-            <div className="mode-compare-head">
-              🕹 ARCADE
-              <span className="net-badge net-badge-devnet">DEVNET</span>
-              <span className="net-badge net-badge-soon">MAINNET SOON</span>
-            </div>
-            <div className="mode-compare-row"><span>Players</span><b>Solo</b></div>
-            <div className="mode-compare-row"><span>Cost</span><b>Free · $0.05 to save</b></div>
-            <div className="mode-compare-row"><span>Goal</span><b>Beat the leaderboard</b></div>
-            <div className="mode-compare-row"><span>Settles via</span><b>GPX5 memo on Solana</b></div>
-          </div>
-          <div className="mode-compare-col">
-            <div className="mode-compare-head" style={{color:"var(--cyan)"}}>
-              ⚔ BATTLE
-              <span className="net-badge net-badge-devnet">DEVNET</span>
-            </div>
-            <div className="mode-compare-row"><span>Players</span><b>2-player heads-up</b></div>
-            <div className="mode-compare-row"><span>Cost</span><b>$0.50–$10 USDF / side</b></div>
-            <div className="mode-compare-row"><span>Goal</span><b>Winner takes 98% pot</b></div>
-            <div className="mode-compare-row"><span>Settles via</span><b>CM v2.1 escrow on-chain</b></div>
-          </div>
-        </div>
       </section>
 
-      {/* LIVE ARENA — full width 3D viewer */}
-      <section className="arena-section" style={{paddingTop:30}}>
-        <div className="arena-header">
-          <h2><span className="live-dot" /> Live Arena</h2>
-          <span style={{ fontSize: 10, color: "var(--dim)", letterSpacing: 2 }}>
-            REAL MATCHES ON SOLANA DEVNET
-          </span>
-        </div>
-
-        {liveGames.length > 0 ? (
+      {/* LIVE 3D CHESS — the actual product, playing right now */}
+      {liveGames.length > 0 && (
+        <section className="arena-section" style={{paddingTop:40}}>
+          <div className="arena-header">
+            <h2><span className="live-dot" /> Live on Solana</h2>
+          </div>
           <div style={{maxWidth:1200,margin:"0 auto",padding:"0 20px"}}>
             <LiveAgentViewer
               games={liveGames}
@@ -438,240 +308,174 @@ export default function Home() {
               onSelect={setSelectedGame}
             />
           </div>
-        ) : (
-          <div style={{maxWidth:800,margin:"0 auto",padding:"40px 20px",textAlign:"center",color:"#555570",border:"1px dashed #252540",borderRadius:12}}>
-            <div style={{fontSize:32,marginBottom:8,opacity:0.3}}>⚔️</div>
-            <div style={{fontSize:14,fontWeight:600,color:"#888"}}>No matches running</div>
-            <div style={{fontSize:11,color:"#444",marginTop:4}}>Gamerplex Agents will appear here playing chess on-chain</div>
-          </div>
-        )}
-      </section>
+        </section>
+      )}
 
-      {/* LIVE ON-CHAIN PREVIEW — hydrates from localStorage instantly */}
+      {/* ON-CHAIN PREVIEW (existing component) */}
       <OnchainPreview />
 
-      {/* LEADERBOARDS — dedicated section */}
-      <section className="arena-section" style={{paddingTop:30, paddingBottom:30}}>
-        <div className="arena-header">
-          <h2>🏆 Leaderboards</h2>
-          <span style={{ fontSize: 10, color: "var(--dim)", letterSpacing: 2 }}>
-            ELO RANKINGS ON SOAR (SOLANA)
-          </span>
-        </div>
+      {/* LEADERBOARD — real on-chain data only. Falls back to live agent ELO if no humans yet. */}
+      <LeaderboardSection
+        humans={realLeaderboard}
+        agents={agentLeaderboard}
+        loaded={lbLoaded}
+      />
 
-        <div style={{maxWidth:900,margin:"0 auto",padding:"0 20px",display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(340px, 1fr))",gap:20}}>
-          {/* Agent Rankings (Gamerplex Agents) */}
-          <div style={{background:"#0c0c14",border:"1px solid #252540",borderRadius:12,padding:"20px 24px"}}>
-            <div style={{fontSize:10,fontWeight:800,color:"#14F195",letterSpacing:2,textTransform:"uppercase",marginBottom:12}}>
-              Gamerplex Agents
-            </div>
-            {agentLeaderboard.length === 0 ? (
-              <div style={{padding:"40px 8px",textAlign:"center",color:"#555",fontSize:12}}>
-                <div style={{fontSize:24,marginBottom:8,opacity:0.3}}>⏳</div>
-                <div style={{color:"#888",fontWeight:600}}>Rankings loading...</div>
-                <div style={{fontSize:10,color:"#444",marginTop:4}}>Agents playing now — ELO emerges from real matches</div>
-              </div>
-            ) : agentLeaderboard.map((a: any, i: number) => (
-              <div key={a.name} style={{
-                display:"flex",alignItems:"center",gap:10,padding:"10px 0",
-                borderBottom: i < agentLeaderboard.length - 1 ? "1px solid #1a1a28" : "none",
-              }}>
-                <div style={{
-                  width:28,height:28,borderRadius:6,
-                  background:i===0?"#ffd74020":i===1?"#b388ff20":i===2?"#00e67620":"#25254020",
-                  border:`1px solid ${i===0?"#ffd740":i===1?"#b388ff":i===2?"#00e676":"#555"}40`,
-                  display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,
-                  color:i===0?"#ffd740":i===1?"#b388ff":i===2?"#00e676":"#888",fontWeight:700,
-                }}>{i+1}</div>
-                <span style={{fontSize:18,lineHeight:1}}>{a.emoji}</span>
-                <div style={{flex:1}}>
-                  <div style={{fontSize:13,fontWeight:600,color:"#e8e8f0"}}>{a.name}</div>
-                  <div style={{fontSize:10,color:"#555"}}>ELO {a.elo} · target {a.baseElo}</div>
-                </div>
-                <div style={{fontSize:11,color:"#666",fontFamily:"monospace"}}>
-                  {a.wins}W · {a.losses}L{a.draws > 0 ? ` · ${a.draws}D` : ""}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Player Leaderboard */}
-          <div style={{background:"#0c0c14",border:"1px solid #252540",borderRadius:12,padding:"20px 24px"}}>
-            <div style={{fontSize:10,fontWeight:800,color:"#9945FF",letterSpacing:2,textTransform:"uppercase",marginBottom:12}}>
-              Players (SOAR)
-            </div>
-            {/* Rank 0: Parzival easter egg — always visible */}
-            <div style={{
-              display:"flex",alignItems:"center",gap:10,padding:"10px 0",
-              borderBottom:"1px solid #1a1a28",
-              background:"linear-gradient(90deg, rgba(255,215,64,0.08), transparent)",
-            }}>
-              <div style={{
-                width:28,height:28,borderRadius:6,
-                background:"rgba(255,215,64,0.25)",
-                border:"1px solid #ffd740",
-                display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,
-                color:"#ffd740",fontWeight:900,
-              }}>0</div>
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{fontSize:13,fontWeight:700,color:"#ffd740"}} title="Ready Player One easter egg">🥚 Parzival</div>
-                <div style={{fontSize:10,color:"#886"}}>ELO 9420 · ???</div>
-              </div>
-              <div style={{fontSize:11,color:"#ffd740",fontFamily:"monospace"}}>
-                69W · 0L
-              </div>
-            </div>
-            {realLeaderboard.length === 0 ? (
-              <div style={{padding:"30px 8px",textAlign:"center",color:"#555",fontSize:12,lineHeight:1.6}}>
-                <div style={{fontSize:20,marginBottom:6,opacity:0.3}}>🎮</div>
-                <div style={{color:"#888",fontWeight:600}}>No players yet — beat Parzival's score 👆</div>
-                <div style={{fontSize:10,color:"#444",marginTop:4}}>Connect your wallet after a game to save your ELO on-chain</div>
-              </div>
-            ) : (
-              realLeaderboard.slice(0,6).map((p: any, i: number) => (
-                <div key={p.wallet} style={{
-                  display:"flex",alignItems:"center",gap:10,padding:"10px 0",
-                  borderBottom: i < realLeaderboard.length-1 ? "1px solid #1a1a28" : "none",
-                }}>
-                  <div style={{
-                    width:28,height:28,borderRadius:6,
-                    background:i===0?"#ffd74020":i===1?"#b388ff20":i===2?"#00e67620":"#25254020",
-                    border:`1px solid ${i===0?"#ffd740":i===1?"#b388ff":i===2?"#00e676":"#555"}40`,
-                    display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,
-                    color:i===0?"#ffd740":i===1?"#b388ff":i===2?"#00e676":"#888",fontWeight:700,
-                  }}>{i+1}</div>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:13,fontWeight:600,color:"#e8e8f0",fontFamily:"monospace"}}>{p.name}</div>
-                    <div style={{fontSize:10,color:"#555"}}>ELO {p.elo} · {p.winRate}%</div>
-                  </div>
-                  <div style={{fontSize:11,color:"#666",fontFamily:"monospace"}}>
-                    {p.wins}W · {p.losses}L
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
-        <div style={{maxWidth:900,margin:"20px auto 0",padding:"0 20px",textAlign:"center"}}>
-          <a href="/leaderboard" style={{
-            display:"inline-block",padding:"10px 24px",borderRadius:8,
-            background:"transparent",border:"1px solid rgba(153,69,255,0.4)",
-            color:"#e0b3ff",textDecoration:"none",fontSize:13,fontWeight:600,
-            transition:"all 0.2s",
+      {/* PET LEGENDS — slim strip, not a hero */}
+      <section style={{padding:"24px 20px 40px",maxWidth:920,margin:"0 auto"}}>
+        <a
+          href="https://x.com/gamerplex_com"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display:"flex",
+            alignItems:"center",
+            gap:14,
+            padding:"12px 18px",
+            textDecoration:"none",
+            borderRadius:10,
+            border:"1px solid rgba(255,215,64,0.3)",
+            backgroundImage:"repeating-linear-gradient(45deg, transparent 0, transparent 8px, rgba(255,215,64,0.03) 8px, rgba(255,215,64,0.03) 10px), linear-gradient(90deg, rgba(60,30,100,0.4), rgba(20,5,46,0.6))",
+            transition:"border-color 0.2s, transform 0.2s",
           }}
-          onMouseEnter={e=>{e.currentTarget.style.borderColor="#9945FF";e.currentTarget.style.background="rgba(153,69,255,0.1)";}}
-          onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(153,69,255,0.4)";e.currentTarget.style.background="transparent";}}
-          >See Full Leaderboard →</a>
-        </div>
+        >
+          <div style={{width:36,height:36,borderRadius:8,background:"rgba(255,215,64,0.12)",border:"1px solid rgba(255,215,64,0.4)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>🔒</div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontSize:9,fontWeight:800,letterSpacing:2,color:"#ffd740",textTransform:"uppercase"}}>Game #4 · In stealth</div>
+            <div style={{fontSize:14,fontWeight:700,color:"#fff",marginTop:2}}>Pet Legends Arena <span style={{color:"var(--dim)",fontWeight:400,fontSize:12}}>· battle pets · on-chain duels</span></div>
+          </div>
+          <div style={{fontSize:11,color:"#ffd740",fontWeight:700,letterSpacing:0.5,whiteSpace:"nowrap"}}>Follow →</div>
+        </a>
       </section>
 
-      {/* ABOUT */}
-      <section style={{padding:"40px 20px 60px",maxWidth:900,margin:"0 auto"}}>
-        <div className="arena-header" style={{marginBottom:24}}>
-          <h2>About Gamerplex</h2>
-          <span style={{ fontSize: 10, color: "var(--dim)", letterSpacing: 2 }}>
-            THE ON-CHAIN GAME ARENA
-          </span>
-        </div>
+      {/* Sticky Play FAB — appears after user scrolls past hero */}
+      <a
+        href="#featured"
+        className={`fab-play ${fabVisible ? "visible" : ""}`}
+        aria-label="Play Now"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20"/></svg>
+        Play Now
+      </a>
 
-        <div style={{fontSize:14,color:"#aaa",lineHeight:1.7,marginBottom:24}}>
-          Gamerplex is a Solana arcade for simple, addictive games — Cyber Snake, Magic Chess, Blockwords. Play free in your browser, no wallet needed. When you set a high score, save it on-chain so it lives forever — anyone can verify it, no one can erase it.
-          <br/><br/>
-          <span style={{color:"#a0f0c8"}}>The leaderboard is the game.</span> Rankings live permanently on SOAR. Your scores belong to your wallet, not a platform.
-        </div>
-
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(250px, 1fr))",gap:16,marginBottom:32}}>
-          <div style={{padding:"16px 20px",background:"#0c0c14",border:"1px solid #252540",borderRadius:12}}>
-            <div style={{fontSize:11,fontWeight:700,color:"#9945FF",letterSpacing:1,textTransform:"uppercase",marginBottom:6}}>Every Move On-Chain</div>
-            <div style={{fontSize:13,color:"#888"}}>Magic Chess, Blockwords, Pet Legends Arena — every move validated on Solana programs, sub-second via MagicBlock ER.</div>
-          </div>
-          <div style={{padding:"16px 20px",background:"#0c0c14",border:"1px solid #252540",borderRadius:12}}>
-            <div style={{fontSize:11,fontWeight:700,color:"#14F195",letterSpacing:1,textTransform:"uppercase",marginBottom:6}}>Portable Rankings</div>
-            <div style={{fontSize:13,color:"#888"}}>Your ELO belongs to your wallet, not a platform. Query any wallet&apos;s rating via our open protocol.</div>
-          </div>
-          <div style={{padding:"16px 20px",background:"#0c0c14",border:"1px solid #252540",borderRadius:12}}>
-            <div style={{fontSize:11,fontWeight:700,color:"#00f0ff",letterSpacing:1,textTransform:"uppercase",marginBottom:6}}>USD-Backed Tokens</div>
-            <div style={{fontSize:13,color:"#888"}}>$GAMER on Flipcash bonding curve — can never go to zero. Your gaming skill converts to real money.</div>
-          </div>
-        </div>
-
-        <div style={{display:"flex",gap:12,justifyContent:"center",flexWrap:"wrap"}}>
-          <a href="/docs" style={{
-            padding:"12px 28px",borderRadius:8,textDecoration:"none",
-            background:"linear-gradient(90deg, #9945ff, #00f0ff)",
-            color:"#050508",fontSize:14,fontWeight:700,
-          }}>Read the Docs →</a>
-          <a href="/leaderboard" style={{
-            padding:"12px 28px",borderRadius:8,textDecoration:"none",
-            background:"transparent",border:"1px solid #252540",
-            color:"#e8e8f0",fontSize:14,fontWeight:600,
-          }}>See Leaderboard</a>
-          <a href="https://github.com/gamerplex" target="_blank" rel="noopener noreferrer" style={{
-            padding:"12px 28px",borderRadius:8,textDecoration:"none",
-            background:"transparent",border:"1px solid #252540",
-            color:"#e8e8f0",fontSize:14,fontWeight:600,
-          }}>GitHub</a>
-        </div>
-      </section>
-
+      {/* Mobile bottom nav — thumb-zone primary nav, hidden on desktop via CSS */}
+      <nav className="bottom-nav-m" aria-label="Primary mobile navigation">
+        <a href="#featured" className="active" aria-label="Play">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+          Play
+        </a>
+        <a href="/docs" aria-label="Build">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+          Build
+        </a>
+        <a href="#featured" className="fab-center" aria-label="Play Now">
+          <svg viewBox="0 0 24 24" fill="#000" stroke="#000"><polygon points="6 4 20 12 6 20"/></svg>
+        </a>
+        <a href="/leaderboard" aria-label="Leaderboard">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+          Rank
+        </a>
+        <a href="/profile" aria-label="Profile">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          You
+        </a>
+      </nav>
     </>
   );
 }
 
-// ─── Match Card ─────────────────────────────────────────────────────────────
-function MatchCard({ m }: { m: MatchData }) {
-  const p1w = m.winner === 0 ? "winner" : m.winner !== null ? "loser" : "";
-  const p2w = m.winner === 1 ? "winner" : m.winner !== null ? "loser" : "";
+// ─── Leaderboard section ─────────────────────────────────────────────────────
+// Three honest states:
+//   1. Initial fetch in flight  → 3 skeleton rows (real "loading" signal)
+//   2. Loaded, humans present   → top-5 humans
+//   3. Loaded, no humans yet    → real agent ELO from on-chain matches (no fake rows)
+function LeaderboardSection({ humans, agents, loaded }: {
+  humans: any[];
+  agents: any[];
+  loaded: boolean;
+}) {
+  const usingAgents = loaded && humans.length === 0 && agents.length > 0;
+  const rows = humans.length > 0 ? humans.slice(0, 5) : agents.slice(0, 5);
 
   return (
-    <div className={`match-card ${m.live ? "is-live" : "is-done"}`}>
-      <div className="match-top">
-        <span className="match-game">{m.game}</span>
-        <span className={`match-badge ${m.live ? "badge-live" : "badge-done"}`}>
-          {m.live ? "● LIVE" : "SETTLED"}
-        </span>
+    <section className="arena-section" style={{paddingTop:40, paddingBottom:30}}>
+      <div className="arena-header" style={{display:"flex",alignItems:"baseline",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}>
+        <h2>Leaderboard</h2>
+        {usingAgents && (
+          <span style={{fontSize:10,letterSpacing:2,color:"var(--cyan)",textTransform:"uppercase",fontWeight:700}}>
+            Live agent ELO · real on-chain matches
+          </span>
+        )}
       </div>
-
-      <div className="match-fighters">
-        <div className={`fighter ${p1w}`}>
-          <div className="f-ava" style={{ background: m.p1.color }}>{m.p1.emoji}</div>
-          <div>
-            <div className="f-name">{m.p1.name}</div>
-            <div className="f-type">{m.p1.type}</div>
+      <div style={{maxWidth:560,margin:"0 auto",padding:"0 20px"}}>
+        <div style={{background:"#0c0c14",border:"1px solid #252540",borderRadius:12,padding:"14px 20px"}}>
+          {/* Parzival easter egg — always rank 0, always visible */}
+          <div style={{
+            display:"flex",alignItems:"center",gap:12,padding:"10px 0",
+            borderBottom:"1px solid #1a1a28",
+          }}>
+            <div style={{
+              width:24,height:24,borderRadius:6,
+              background:"rgba(255,215,64,0.2)",
+              border:"1px solid #ffd740",
+              display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,
+              color:"#ffd740",fontWeight:900,
+            }}>0</div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#ffd740"}} title="Ready Player One easter egg">🥚 Parzival</div>
+            </div>
+            <div style={{fontSize:12,color:"#ffd740",fontFamily:"monospace",fontWeight:700}}>9420</div>
           </div>
+
+          {/* State 1: actually loading — show 3 skeleton rows briefly */}
+          {!loaded && (
+            <>
+              <div className="skeleton-row"><div className="skeleton-box skel-rank"/><div className="skeleton-box skel-name"/><div className="skeleton-box skel-score"/></div>
+              <div className="skeleton-row"><div className="skeleton-box skel-rank"/><div className="skeleton-box skel-name"/><div className="skeleton-box skel-score"/></div>
+              <div className="skeleton-row"><div className="skeleton-box skel-rank"/><div className="skeleton-box skel-name"/><div className="skeleton-box skel-score"/></div>
+            </>
+          )}
+
+          {/* State 2 & 3: real rows (humans, or agents if no humans yet) */}
+          {loaded && rows.length > 0 && rows.map((p: any, i: number) => (
+            <div key={p.wallet || p.name} style={{
+              display:"flex",alignItems:"center",gap:12,padding:"10px 0",
+              borderBottom: i < rows.length - 1 ? "1px solid #1a1a28" : "none",
+            }}>
+              <div style={{
+                width:24,height:24,borderRadius:6,
+                background:i===0?"#ffd74020":i===1?"#b388ff20":i===2?"#00e67620":"#25254020",
+                border:`1px solid ${i===0?"#ffd740":i===1?"#b388ff":i===2?"#00e676":"#555"}40`,
+                display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,
+                color:i===0?"#ffd740":i===1?"#b388ff":i===2?"#00e676":"#888",fontWeight:700,
+              }}>{i+1}</div>
+              {p.emoji && <span style={{fontSize:16,lineHeight:1}}>{p.emoji}</span>}
+              <div style={{flex:1,minWidth:0,fontSize:13,color:"#e8e8f0",fontFamily:p.emoji?undefined:"monospace",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontWeight:p.emoji?600:400}}>
+                {p.name}
+                {p.emoji && <span style={{fontSize:10,color:"#666",marginLeft:6}}>· {p.wins ?? 0}W</span>}
+              </div>
+              <div style={{fontSize:12,color:"#e8e8f0",fontFamily:"monospace",fontWeight:700}}>{p.elo ?? p.score ?? 0}</div>
+            </div>
+          ))}
+
+          {/* State 3 footer: when no humans yet, invite to be first */}
+          {loaded && humans.length === 0 && (
+            <div style={{padding:"12px 0 2px",textAlign:"center",color:"#666",fontSize:11,lineHeight:1.5}}>
+              No human saves yet · Play → beat Parzival → connect wallet to save
+            </div>
+          )}
         </div>
-        <div className="match-vs">VS</div>
-        <div className={`fighter right ${p2w}`}>
-          <div>
-            <div className="f-name">{m.p2.name}</div>
-            <div className="f-type">{m.p2.type}</div>
-          </div>
-          <div className="f-ava" style={{ background: m.p2.color }}>{m.p2.emoji}</div>
+        <div style={{textAlign:"center",marginTop:14}}>
+          <a href="/leaderboard" style={{
+            fontSize:12,color:"#9c8fb8",textDecoration:"none",letterSpacing:1,
+          }}>See full leaderboard →</a>
         </div>
       </div>
-
-      {m.live && (
-        <div className="hp-row">
-          <div className="hp-icon">{m.p1.emoji}</div>
-          <div className="hp-track"><div className="hp-fill p1" style={{ width: `${m.p1hp}%` }} /></div>
-          <div className="hp-track"><div className="hp-fill p2" style={{ width: `${m.p2hp}%` }} /></div>
-          <div className="hp-icon">{m.p2.emoji}</div>
-        </div>
-      )}
-
-      <div className="match-bottom">
-        <span className="match-pot">💰 ${m.stake * 2} pot</span>
-        {m.winner === 0 && <span className="match-result win">{m.p1.name} wins +${m.payout}</span>}
-        {m.winner === 1 && <span className="match-result win">{m.p2.name} wins +${m.payout}</span>}
-        {m.live && <span className="match-result" style={{ color: "var(--cyan)" }}>In progress...</span>}
-      </div>
-    </div>
+    </section>
   );
 }
 
 // ─── Live Agent Viewer ──────────────────────────────────────────────────────
-// Shows 5 Gamerplex Agents playing chess on MagicBlock ER live
 interface LiveGame {
   gamePda: string;
   gameId: number;
@@ -688,7 +492,6 @@ function LiveAgentViewer({ games, selectedGame, onSelect }: {
 }) {
   const selected = games.find(g => g.gamePda === selectedGame) || games[0];
 
-  // Track previous board for each game to detect last move (diff)
   const prevBoardsRef = useRef<Map<string, number[]>>(new Map());
   const lastMoveRef = useRef<Map<string, { f: number; t: number }>>(new Map());
 
@@ -696,7 +499,6 @@ function LiveAgentViewer({ games, selectedGame, onSelect }: {
     if (!selected) return null;
     const prev = prevBoardsRef.current.get(selected.gamePda);
     if (prev) {
-      // Find from (was piece, now empty) and to (was empty/different, now piece)
       let from = -1, to = -1;
       for (let i = 0; i < 64; i++) {
         if (prev[i] !== 0 && selected.board[i] === 0) {
@@ -716,7 +518,6 @@ function LiveAgentViewer({ games, selectedGame, onSelect }: {
 
   return (
     <div style={{display:"flex",flexDirection:"column",gap:12}}>
-      {/* BIG 3D VIEWER */}
       {selected && (
         <div style={{position:"relative",width:"100%",height:480,borderRadius:12,overflow:"hidden",border:"1px solid rgba(153,69,255,0.3)",boxShadow:"0 0 30px rgba(153,69,255,0.2)"}}>
           <Chess3DBoard
@@ -739,31 +540,32 @@ function LiveAgentViewer({ games, selectedGame, onSelect }: {
         </div>
       )}
 
-      {/* MINI GAME CARDS */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(140px, 1fr))",gap:8}}>
-        {games.map(game => {
-          const isSelected = game.gamePda === selected?.gamePda;
-          return (
-            <div
-              key={game.gamePda}
-              onClick={() => onSelect(game.gamePda)}
-              style={{
-                padding:"10px 12px",borderRadius:8,cursor:"pointer",
-                background:isSelected?"rgba(153,69,255,0.15)":"rgba(12,12,20,0.6)",
-                border:`1px solid ${isSelected?"#9945FF":"#252540"}`,
-                transition:"all 0.2s",
-              }}
-            >
-              <div style={{fontSize:10,fontWeight:700,color:isSelected?"#e0b3ff":"#aaa",lineHeight:1.3,marginBottom:4}}>
-                {game.label || "Game"}
+      {games.length > 1 && (
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(140px, 1fr))",gap:8}}>
+          {games.map(game => {
+            const isSelected = game.gamePda === selected?.gamePda;
+            return (
+              <div
+                key={game.gamePda}
+                onClick={() => onSelect(game.gamePda)}
+                style={{
+                  padding:"10px 12px",borderRadius:8,cursor:"pointer",
+                  background:isSelected?"rgba(153,69,255,0.15)":"rgba(12,12,20,0.6)",
+                  border:`1px solid ${isSelected?"#9945FF":"#252540"}`,
+                  transition:"all 0.2s",
+                }}
+              >
+                <div style={{fontSize:10,fontWeight:700,color:isSelected?"#e0b3ff":"#aaa",lineHeight:1.3,marginBottom:4}}>
+                  {game.label || "Game"}
+                </div>
+                <div style={{fontSize:9,color:"#555",fontFamily:"monospace"}}>
+                  Move {game.moveCount} &bull; {game.whiteTurn ? "⚪" : "⚫"}
+                </div>
               </div>
-              <div style={{fontSize:9,color:"#555",fontFamily:"monospace"}}>
-                Move {game.moveCount} &bull; {game.whiteTurn ? "⚪" : "⚫"}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

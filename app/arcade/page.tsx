@@ -23,7 +23,7 @@ const ARCADE_GAMES = [
     id: "magic-chess",
     slug: "magic-chess",
     name: "Magic Chess",
-    tagline: "Full chess vs ELO bots. Free to play, save score on-chain. Battle Mode (1v1 wagered, devnet) also live.",
+    tagline: "Full chess vs ELO bots. Free to play, save score on-chain. Battle Mode (1v1 skill contest, devnet) also live.",
     emoji: "♟️",
     color: "#c99aff",
     status: "playable",
@@ -82,23 +82,21 @@ const ARCADE_GAMES = [
 export default function ArcadePage() {
   return (
     <div style={{ minHeight: "100vh", background: "#050508", color: "#e8e8f0", fontFamily: "'Space Grotesk', sans-serif" }}>
-      {/* Header */}
-      <div style={{ padding: "14px 24px", borderBottom: "1px solid #252540", display: "flex", justifyContent: "space-between", alignItems: "center", position: "relative" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Link href="/" style={{ textDecoration: "none", fontSize: 24, fontWeight: 900, fontStyle: "italic", background: "linear-gradient(135deg, #9945FF, #14F195)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", paddingRight: 8 }}>GAMERPLEX</Link>
-          <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 4, background: "rgba(79,195,247,0.15)", border: "1px solid rgba(79,195,247,0.4)", color: "#4fc3f7", letterSpacing: 1, textTransform: "uppercase" }}>Arcade</span>
+      {/* 2026 minimalist top nav — matches home */}
+      <nav className="top-nav" style={{ padding: "14px 24px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <Link href="/" className="nav-logo" style={{ textDecoration: "none" }}>GAMERPLEX</Link>
+          <span className="devnet-badge">Devnet</span>
         </div>
         <SiteNav
           links={[
-            { href: "/", label: "Arena" },
-            { href: "/arcade", label: "Arcade", active: true },
-            { href: "/games", label: "Tournaments" },
+            { href: "/#featured", label: "Play", active: true },
+            { href: "/docs", label: "Build" },
             { href: "/leaderboard", label: "Leaderboard" },
-            { href: "/activity", label: "Activity" },
-            { href: "/docs", label: "Docs" },
+            { href: "/profile", label: "Profile" },
           ]}
         />
-      </div>
+      </nav>
 
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "48px 24px 64px" }}>
         {/* Hero */}
@@ -191,7 +189,7 @@ export default function ArcadePage() {
 
         {/* Not-for-arcade callout */}
         <div style={{ marginTop: 20, fontSize: 12, color: "#6a6a80", textAlign: "center", lineHeight: 1.6 }}>
-          Looking for wagered matches with prize pools? → <Link href="/games" style={{ color: "#9945FF", textDecoration: "underline" }}>Tournaments</Link>
+          Looking for 1v1 matches with prize pools? → <Link href="/games" style={{ color: "#9945FF", textDecoration: "underline" }}>Tournaments</Link>
           <br />
           Arcade leaderboards are cosmetic prizes only. Cash prizes live on Tournaments (skill-contest doctrine, geofenced where required).
         </div>

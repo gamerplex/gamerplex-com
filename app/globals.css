@@ -43,10 +43,12 @@ html, body {
 ::-webkit-scrollbar-thumb:hover { background: var(--purple); }
 
 /* ---- HERO SECTION ---- */
+/* 2026: 78vh — games peek above the fold so users see what's playable without scroll */
 .hero {
   position: relative;
-  height: 100vh;
-  min-height: 600px;
+  height: 78vh;
+  min-height: 560px;
+  max-height: 820px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -88,6 +90,155 @@ html, body {
   margin-bottom: 10px;
   text-shadow: 0 0 24px rgba(153, 69, 255, 0.45);
 }
+
+/* Single ticker line under hero CTA — replaces stats-bar + dual activity strips */
+.hero-ticker {
+  margin-top: 18px;
+  padding: 10px 18px;
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px 14px;
+  font-size: clamp(11px, 1.1vw, 13px);
+  color: var(--text);
+  background: rgba(20, 5, 46, 0.55);
+  border: 1px solid rgba(153, 69, 255, 0.28);
+  border-radius: 99px;
+  backdrop-filter: blur(10px);
+  letter-spacing: 0.5px;
+}
+.hero-ticker b { font-family: 'JetBrains Mono', monospace; }
+
+/* Image-fallback wrapper shown when a game banner image is missing */
+.cf-art-fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ─── 2026 PATTERNS ───────────────────────────────────────── */
+
+/* Floating Action Button — sticky Play CTA when hero scrolls past */
+.fab-play {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 100;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 22px;
+  border-radius: 99px;
+  background: linear-gradient(90deg, #9945FF, #14F195);
+  color: #000;
+  font-weight: 900;
+  font-style: italic;
+  font-size: 14px;
+  letter-spacing: 0.5px;
+  text-decoration: none;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4), 0 0 32px rgba(20, 241, 149, 0.5);
+  opacity: 0;
+  transform: translateY(20px);
+  pointer-events: none;
+  transition: opacity 0.28s ease, transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.fab-play.visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+.fab-play:hover { transform: translateY(-2px) scale(1.04); }
+
+/* Mobile bottom nav — thumb-zone primary navigation, hidden on desktop */
+.bottom-nav-m {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  padding: 0 24px;
+  z-index: 90;
+  background: rgba(13, 0, 26, 0.92);
+  backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(153, 69, 255, 0.25);
+  align-items: center;
+  justify-content: space-between;
+}
+.bottom-nav-m a {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  color: var(--dim);
+  text-decoration: none;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  flex: 1;
+}
+.bottom-nav-m a.active { color: var(--text); }
+.bottom-nav-m a.active svg { stroke: var(--green); }
+.bottom-nav-m svg { width: 22px; height: 22px; }
+.bottom-nav-m .fab-center {
+  width: 56px;
+  height: 56px;
+  margin-top: -16px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #9945FF, #14F195);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 24px rgba(20, 241, 149, 0.5), 0 0 48px rgba(153, 69, 255, 0.3);
+  color: #000;
+}
+.bottom-nav-m .fab-center svg { width: 26px; height: 26px; stroke: #000; fill: #000; }
+
+@media (max-width: 700px) {
+  .bottom-nav-m { display: flex; }
+  /* Reserve space under content so nothing hides behind the bottom nav */
+  body { padding-bottom: 64px; }
+  /* Move FAB above bottom nav on mobile */
+  .fab-play { bottom: 80px; right: 16px; }
+  /* 2026: hide dev camera toggles on mobile snake — useless on touch + eats above-fold */
+  .arcade-cam-toggle { display: none !important; }
+  /* 2026: shrink Blockwords intro overlay so START button is above the fold on 390x844 */
+  .bw-intro-overlay { min-height: 320px !important; padding: 12px !important; gap: 10px !important; }
+  .bw-intro-emoji { display: none !important; }
+  /* 2026: shrink Blockwords title on narrow screens — "BLOCKWORDS" overflows at letter-spacing 4 */
+  .bw-intro-overlay .bw-title { font-size: 34px !important; letter-spacing: 2px !important; }
+  .bw-intro-overlay .bw-title span { font-size: 18px !important; letter-spacing: 3px !important; }
+}
+
+/* 2026 skeleton shimmer — replaces "loading..." text */
+@keyframes shimmer-2026 {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #1a1a28;
+}
+.skeleton-row:last-child { border-bottom: none; }
+.skeleton-box {
+  background: linear-gradient(90deg, rgba(153, 69, 255, 0.04) 0%, rgba(153, 69, 255, 0.12) 50%, rgba(153, 69, 255, 0.04) 100%);
+  background-size: 200% 100%;
+  animation: shimmer-2026 1.6s ease-in-out infinite;
+  border-radius: 4px;
+}
+.skel-rank { width: 24px; height: 24px; border-radius: 6px; }
+.skel-name { flex: 1; height: 14px; }
+.skel-score { width: 48px; height: 14px; }
+
+/* Card hover scale on coverflow center */
+.cf-card { transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s, border-color 0.3s; }
 .hero-desc {
   font-size: clamp(12px, 1.3vw, 16px);
   color: var(--dim);
@@ -448,8 +599,8 @@ html, body {
 
 /* ---- COVERFLOW (3-game perspective stack: chess center, snake/words recessed) ---- */
 .coverflow-section {
-  padding: 60px 20px 50px;
-  perspective: 1600px;
+  padding: 32px 20px 40px;
+  perspective: 1800px;
 }
 .coverflow {
   position: relative;
@@ -536,16 +687,18 @@ html, body {
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6), 0 0 80px rgba(153, 69, 255, 0.35);
   border-color: rgba(153, 69, 255, 0.65);
 }
-.cf-center .cf-art { aspect-ratio: 16 / 9; }
+/* 2026: matched 4/3 so all 3 cards have equal height — no text overlap on side cards */
+.cf-center .cf-art { aspect-ratio: 4 / 3; }
 .cf-center:hover { transform: translateZ(110px) scale(1.03); box-shadow: 0 28px 80px rgba(0, 0, 0, 0.7), 0 0 100px rgba(20, 241, 149, 0.45); }
 
 /* LEFT — recessed, tilted toward right (toward center), behind */
+/* 2026: gentler perspective so text never clips */
 .cf-left {
   width: 320px;
   z-index: 1;
-  margin-right: -90px;
-  transform: rotateY(28deg) translateX(-20px) translateZ(-40px) scale(0.86);
-  opacity: 0.92;
+  margin-right: -40px;
+  transform: rotateY(18deg) translateX(-10px) translateZ(-30px) scale(0.92);
+  opacity: 0.95;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
 }
 .cf-left .cf-art { aspect-ratio: 4 / 3; background: radial-gradient(ellipse at center, rgba(0, 242, 255, 0.35), rgba(20, 5, 46, 0.9) 70%), linear-gradient(135deg, #050a14, #0a0a18); }
@@ -564,9 +717,9 @@ html, body {
 .cf-right {
   width: 320px;
   z-index: 1;
-  margin-left: -90px;
-  transform: rotateY(-28deg) translateX(20px) translateZ(-40px) scale(0.86);
-  opacity: 0.92;
+  margin-left: -40px;
+  transform: rotateY(-18deg) translateX(10px) translateZ(-30px) scale(0.92);
+  opacity: 0.95;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
 }
 .cf-right .cf-art { aspect-ratio: 4 / 3; background: radial-gradient(ellipse at center, rgba(255, 215, 64, 0.32), rgba(20, 5, 46, 0.9) 70%), linear-gradient(135deg, #160a05, #1f0a18); display: flex; flex-direction: column; gap: 10px; padding: 24px 0; }
@@ -595,11 +748,11 @@ html, body {
 }
 
 /* ---- ARENA SECTION ---- */
+/* 2026: tight rhythm — sections size to content, no 100vh forced height */
 .arena-section {
   position: relative;
   background: var(--bg);
   border-top: 1px solid var(--border);
-  min-height: 100vh;
 }
 .arena-header {
   display: flex;
@@ -991,6 +1144,12 @@ html, body {
   display: flex;
   gap: 24px;
   align-items: center;
+}
+/* 2026: on mobile, hide top nav links — bottom-nav-m is primary navigation */
+@media (max-width: 700px) {
+  .nav-links a:not([href^="https://x"]),
+  .nav-links button { display: none; }
+  .nav-links { gap: 10px; }
 }
 .nav-links a {
   color: var(--dim);

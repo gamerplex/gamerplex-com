@@ -39,7 +39,7 @@ export function WageredEscrowBadge({ slug, stake = 1, status = "scaffold", marke
           textTransform: "uppercase",
         }}
       >
-        Wagered escrow · CM v2.1
+        Escrow · CM v2.1
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "2px 12px" }}>
         <span style={{ color: "#7d7d99" }}>Stake</span>

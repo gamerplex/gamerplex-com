@@ -256,13 +256,10 @@ export default function LeaderboardPage() {
         </div>
         <SiteNav
           links={[
-            { href: "/", label: "Arena" },
-            { href: "/arcade", label: "Arcade" },
-            { href: "/games", label: "Tournaments" },
+            { href: "/#featured", label: "Play" },
+            { href: "/docs", label: "Build" },
             { href: "/leaderboard", label: "Leaderboard", active: true },
-            { href: "/activity", label: "Activity" },
             { href: "/profile", label: "Profile" },
-            { href: "/docs", label: "Docs" },
           ]}
         />
       </div>
@@ -294,7 +291,7 @@ export default function LeaderboardPage() {
           >
             Rankings derived directly from CM v2.1{" "}
             <code style={{ color: "#c99aff" }}>MarketResolvedV2</code> events
-            on Solana. Every wager, win, and net P&amp;L is independently
+            on Solana. Every match, win, and net P&amp;L is independently
             verifiable — the resolver is a cache, not a source of truth.
           </p>
         </div>
@@ -315,7 +312,7 @@ export default function LeaderboardPage() {
             loading={showSkeleton}
           />
           <StatCard
-            label="Volume wagered"
+            label="Pool volume"
             value={totals ? fmtUsdf(totals.totalPotRaw) : null}
             accent="#9945FF"
             loading={showSkeleton}
@@ -561,7 +558,7 @@ export default function LeaderboardPage() {
               <div style={{ textAlign: "center" }}>W / L</div>
               <div style={{ textAlign: "center" }}>Win %</div>
               <div style={{ textAlign: "center" }}>Streak</div>
-              <div style={{ textAlign: "right" }}>Wagered</div>
+              <div style={{ textAlign: "right" }}>Pool</div>
               <div style={{ textAlign: "right" }}>Net P&amp;L</div>
             </div>
             {rest.map((p, idx) => {

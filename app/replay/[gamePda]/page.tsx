@@ -245,9 +245,10 @@ export default function ReplayPage() {
           <span className="devnet-badge">Devnet</span>
         </div>
         <div className="nav-links">
-          <a href="/play/magic-chess">Play</a>
-          <a href="/activity">Activity</a>
+          <a href="/#featured">Play</a>
+          <a href="/docs">Build</a>
           <a href="/leaderboard">Leaderboard</a>
+          <a href="/profile">Profile</a>
         </div>
       </nav>
 
