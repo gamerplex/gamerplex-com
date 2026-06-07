@@ -11,6 +11,8 @@ import {
 import { useAnchorWallet } from "@solana/wallet-adapter-react";
 import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
 import { PhantomWalletAdapter } from "@solana/wallet-adapter-phantom";
+import { SolflareWalletAdapter } from "@solana/wallet-adapter-solflare";
+import { BackpackWalletAdapter } from "@solana/wallet-adapter-backpack";
 import { PublicKey, Transaction } from "@solana/web3.js";
 
 import { hasAcceptedCurrent } from "../../lib/arcade/tos";
@@ -19,6 +21,7 @@ import {
   buildOpenProfileIx,
   makeProgram,
 } from "../../lib/arcade/client";
+import { assertNetworkMatchesHostname } from "../../lib/arcade/safety";
 
 import "@solana/wallet-adapter-react-ui/styles.css";
 
@@ -105,7 +108,17 @@ function ProfileGuard({ children }: { children: React.ReactNode }) {
 }
 
 export default function ArcadeLayout({ children }: { children: React.ReactNode }) {
-  const wallets = useMemo(() => [new PhantomWalletAdapter()], []);
+  // v1.3 — hostname guard: throws if e.g. gamerplex.com is pointed at devnet
+  if (typeof window !== "undefined") assertNetworkMatchesHostname();
+
+  const wallets = useMemo(
+    () => [
+      new PhantomWalletAdapter(),
+      new SolflareWalletAdapter(),
+      new BackpackWalletAdapter(),
+    ],
+    []
+  );
   return (
     <ConnectionProvider endpoint={RPC_URL}>
       <WalletProvider wallets={wallets} autoConnect>

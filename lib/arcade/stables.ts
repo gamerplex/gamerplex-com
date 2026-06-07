@@ -8,7 +8,13 @@
 // the highest user balance, expose a dropdown to override.
 
 import { PublicKey } from "@solana/web3.js";
-import { ARCADE_NETWORK, USDC_DEVNET_MINT, USDC_MAINNET_MINT } from "./client";
+import {
+  ARCADE_NETWORK,
+  USDC_DEVNET_MINT,
+  USDC_MAINNET_MINT,
+  USDT_MAINNET_MINT,
+  USDF_MAINNET_MINT,
+} from "./client";
 
 export interface StablecoinDef {
   symbol: string;
@@ -21,12 +27,13 @@ export const STABLES_DEVNET: StablecoinDef[] = [
   { symbol: "USDC", mint: USDC_DEVNET_MINT, decimals: 6, label: "USDC (Circle devnet)" },
 ];
 
+// v1.3 — all three stables active on mainnet. Admin must also have called
+// update_accepted_stablecoins([USDC, USDT, USDF, ...]) on-chain (see
+// migrations/v1_3-upgrade.ts).
 export const STABLES_MAINNET: StablecoinDef[] = [
   { symbol: "USDC", mint: USDC_MAINNET_MINT, decimals: 6, label: "USDC (Circle)" },
-  // Future additions — admin must also call update_accepted_stablecoins to
-  // activate on-chain before adding here.
-  // { symbol: "USDT", mint: new PublicKey("Es9vMF..."), decimals: 6, label: "USDT (Tether)" },
-  // { symbol: "PYUSD", mint: new PublicKey("2b1kV6..."), decimals: 6, label: "PYUSD (PayPal)" },
+  { symbol: "USDT", mint: USDT_MAINNET_MINT, decimals: 6, label: "USDT (Tether)" },
+  { symbol: "USDF", mint: USDF_MAINNET_MINT, decimals: 6, label: "USDF (Flipcash)" },
 ];
 
 export const SUPPORTED_STABLES: StablecoinDef[] =

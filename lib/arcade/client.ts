@@ -53,6 +53,23 @@ export const USDC_DEVNET_MINT = new PublicKey(
 export const USDC_MINT =
   ARCADE_NETWORK === "mainnet" ? USDC_MAINNET_MINT : USDC_DEVNET_MINT;
 
+// v1.3 — additional stablecoins (mainnet only — no devnet faucets for these)
+export const USDT_MAINNET_MINT = new PublicKey("Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB");
+export const USDF_MAINNET_MINT = new PublicKey("5AMAA9JV9H97YYVxx8F6FsCMmTwXSuTTQneiup4RYAUQ");
+
+// v1.3 — $GAME mint per network. Mainnet = Flipcash-issued, devnet = test mint.
+export const GAME_MAINNET_MINT = new PublicKey("7TTBUfDomCKBMemv7FF37Tg3y52cRkAxn8vJnvKD4rsE");
+export const GAME_DEVNET_MINT = new PublicKey("8eGnj5jkW6zTGYieGhtejPjLtGmnKfCdk7FamoJ5LLvD");
+export const GAME_MINT = ARCADE_NETWORK === "mainnet" ? GAME_MAINNET_MINT : GAME_DEVNET_MINT;
+export const GAME_DECIMALS = 10;
+
+// v1.3 — pricing constants matching the on-chain contract.
+export const SOL_NATIVE = PublicKey.default; // sentinel for native SOL payment_mint
+export const GAME_DISCOUNT_BPS = 2000; // 20% off USD price when paying in $GAME
+export const RATE_SCALE_FACTOR = 1_000_000_000_000; // ×1e12 fixed-point on rates
+export const RATE_OVERPAY_BPS = 50; // frontend overpays 0.5% to clear 1% slippage floor
+export const PAYMENT_SLIPPAGE_BPS = 100; // matches on-chain
+
 // SPL Memo program (used for GPX5 / GPX5R emission by the arcade program itself).
 export const SPL_MEMO_ID = new PublicKey(
   "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"
@@ -73,6 +90,9 @@ export const MAGIC_CHESS_GAME_ID = 3;
 // shared arcade contract. Admin must run register_game(4, "blockwords-arcade",
 // "Blockwords", deadline) on devnet before saves succeed.
 export const BLOCKWORDS_ARCADE_GAME_ID = 4;
+// FLIPBALL — Astro+Three.js+Rapier pinball. Registered v1.3.
+export const FLIPBALL_GAME_ID = 5;
+export const FLIPBALL_SLUG = "flipball";
 
 // Category codes matching on-chain CATEGORY_*.
 export const CATEGORY = {
@@ -117,6 +137,18 @@ export function profilePda(wallet: PublicKey): [PublicKey, number] {
     ARCADE_PROGRAM_ID
   );
 }
+export function profileExtPda(wallet: PublicKey): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from("profile-ext"), wallet.toBuffer()],
+    ARCADE_PROGRAM_ID
+  );
+}
+export function handleClaimPda(handle: string): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from("handle-claim"), Buffer.from(handle, "utf8")],
+    ARCADE_PROGRAM_ID
+  );
+}
 export function receiptPda(originalPlayer: PublicKey, nonce: BN): [PublicKey, number] {
   // Nonce is serialized as little-endian 8 bytes to match Rust's &nonce.to_le_bytes()
   const nonceLe = nonce.toArrayLike(Buffer, "le", 8);
@@ -124,6 +156,11 @@ export function receiptPda(originalPlayer: PublicKey, nonce: BN): [PublicKey, nu
     [Buffer.from("receipt"), originalPlayer.toBuffer(), nonceLe],
     ARCADE_PROGRAM_ID
   );
+}
+
+// v1.3 — ExchangeRatesConfig PDA at seed `["rates"]`.
+export function ratesPda(): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync([Buffer.from("rates")], ARCADE_PROGRAM_ID);
 }
 
 // ───── Program instance ───────────────────────────────────────────────
@@ -220,24 +257,30 @@ export async function buildSubmitScoreIx(
     .instruction();
 }
 
-/** Record a payment tied to a specific category (continue, powerup, VERIFIED commit, etc.).
- *  v1.2 hardening: now requires config + stablecoin_config + instructions_sysvar
- *  so the contract can introspect for the matching SPL TransferChecked. */
+/** Record a payment (v1.3): contract introspects for an SPL TransferChecked
+ *  OR a native SOL transfer matching `paymentMint`. `paymentAmountRaw` is the
+ *  actual smallest-unit transferred; `amountMicroUsd` is the USD-equivalent
+ *  value being claimed (after $GAME discount, if applicable).
+ *
+ *  Pass `paymentMint = PublicKey.default` for SOL; `paymentMint = GAME_MINT`
+ *  for $GAME; else any allowed stablecoin mint. */
 export async function buildRecordPaymentIx(
   program: Program,
   player: PublicKey,
   params: {
     category: number;
     amountMicroUsd: BN;
-    paymentTxSig: Uint8Array; // 64 bytes
-    gamerPaid: boolean;
+    paymentMint: PublicKey;
+    paymentAmountRaw: BN;
+    paymentTxSig: Uint8Array; // 64 bytes; new Uint8Array(64) if no prior sig
     externalRef: string;
-    referrerProfile?: PublicKey; // only if player has an active referrer
+    referrerProfile?: PublicKey;
     gameId?: number;
   }
 ): Promise<TransactionInstruction> {
   const [cfg] = configPda();
   const [stablecoinConfig] = stablecoinConfigPda();
+  const [rates] = ratesPda();
   const [game] = gamePda(params.gameId ?? CYBER_SNAKE_GAME_ID);
   const [profile] = profilePda(player);
   const accounts: any = {
@@ -246,9 +289,8 @@ export async function buildRecordPaymentIx(
     game,
     profile,
     wallet: player,
-    // Anchor's TS client requires Optional accounts to be passed explicitly —
-    // `null` means "not present", a PublicKey means "here's the referrer".
     referrerProfile: params.referrerProfile ?? null,
+    rates,
     player,
     instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
   };
@@ -256,11 +298,54 @@ export async function buildRecordPaymentIx(
     .recordPayment(
       params.category,
       params.amountMicroUsd,
+      params.paymentMint,
+      params.paymentAmountRaw,
       Array.from(params.paymentTxSig),
-      params.gamerPaid,
       params.externalRef
     )
     .accounts(accounts)
+    .instruction();
+}
+
+/** v1.3 — admin: open the ExchangeRatesConfig PDA with initial rates.
+ *  Rates are scaled ×1e12: micro-USD per smallest unit (lamport or quark). */
+export async function buildInitExchangeRatesIx(
+  program: Program,
+  admin: PublicKey,
+  solRateScaled: BN,
+  gameRateScaled: BN
+): Promise<TransactionInstruction> {
+  const [cfg] = configPda();
+  const [rates] = ratesPda();
+  return await program.methods
+    .initializeExchangeRates(solRateScaled, gameRateScaled)
+    .accounts({
+      config: cfg,
+      rates,
+      admin,
+      systemProgram: SystemProgram.programId,
+    })
+    .instruction();
+}
+
+/** v1.3 — admin: update SOL and/or $GAME exchange rate. Pass 0 to skip a
+ *  rate. Deadline-gated. */
+export async function buildUpdateExchangeRatesIx(
+  program: Program,
+  admin: PublicKey,
+  solRateScaled: BN,
+  gameRateScaled: BN,
+  deadline: BN
+): Promise<TransactionInstruction> {
+  const [cfg] = configPda();
+  const [rates] = ratesPda();
+  return await program.methods
+    .updateExchangeRates(solRateScaled, gameRateScaled, deadline)
+    .accounts({
+      config: cfg,
+      rates,
+      admin,
+    })
     .instruction();
 }
 
@@ -344,8 +429,8 @@ export async function buildUpdateStablecoinsIx(
 // ───── Solana Pay USDC transfer builder ───────────────────────────────
 
 /** Build a USDC transfer from `from` to `to` for `amountMicroUsd`.
- *  Returns a list of instructions; may include an ATA-create ix if the
- *  destination's token account doesn't exist yet. */
+ *  Kept for backwards compatibility with v1.2 callers. New code should use
+ *  buildSplTransferIxs (generalized to any mint + decimals). */
 export async function buildUsdcTransferIxs(
   connection: Connection,
   payer: PublicKey,
@@ -353,16 +438,27 @@ export async function buildUsdcTransferIxs(
   to: PublicKey,
   amountMicroUsd: BN
 ): Promise<TransactionInstruction[]> {
-  const mint = USDC_MINT;
+  return buildSplTransferIxs(connection, payer, from, to, USDC_MINT, amountMicroUsd, 6);
+}
+
+/** v1.3 — generalized SPL TransferChecked builder. Auto-creates the
+ *  destination ATA if missing. Caller supplies the raw token amount
+ *  (already in smallest unit; not micro-USD). */
+export async function buildSplTransferIxs(
+  connection: Connection,
+  payer: PublicKey,
+  from: PublicKey,
+  to: PublicKey,
+  mint: PublicKey,
+  amountRaw: BN,
+  decimals: number
+): Promise<TransactionInstruction[]> {
   const fromAta = getAssociatedTokenAddressSync(mint, from);
   const toAta = getAssociatedTokenAddressSync(mint, to);
   const ixs: TransactionInstruction[] = [];
-  // Create destination ATA if it doesn't exist.
   const toAtaInfo = await connection.getAccountInfo(toAta);
   if (!toAtaInfo) {
-    ixs.push(
-      createAssociatedTokenAccountInstruction(payer, toAta, to, mint)
-    );
+    ixs.push(createAssociatedTokenAccountInstruction(payer, toAta, to, mint));
   }
   ixs.push(
     createTransferCheckedInstruction(
@@ -370,13 +466,26 @@ export async function buildUsdcTransferIxs(
       mint,
       toAta,
       from,
-      BigInt(amountMicroUsd.toString()),
-      6, // USDC decimals
+      BigInt(amountRaw.toString()),
+      decimals,
       [],
       TOKEN_PROGRAM_ID
     )
   );
   return ixs;
+}
+
+/** v1.3 — native SOL transfer from player → treasury. Single ix. */
+export function buildSolTransferIx(
+  from: PublicKey,
+  to: PublicKey,
+  lamports: BN
+): TransactionInstruction {
+  return SystemProgram.transfer({
+    fromPubkey: from,
+    toPubkey: to,
+    lamports: BigInt(lamports.toString()) as unknown as number,
+  });
 }
 
 // ───── Small utilities ────────────────────────────────────────────────
@@ -505,4 +614,233 @@ export function sigToBytes(sig: string): Uint8Array {
   const decoded = bs58.decode(sig);
   out.set(decoded.slice(0, 64));
   return out;
+}
+
+/** Claim or rename a handle. First call also creates the caller's ProfileExtV2.
+ *  Pass `currentHandle = ""` if the wallet has no existing handle (first claim);
+ *  otherwise pass the current handle so its claim PDA is closed (rent refund). */
+export async function buildSetHandleIx(
+  program: Program,
+  player: PublicKey,
+  handle: string,
+  currentHandle: string
+): Promise<TransactionInstruction> {
+  const [profileExt] = profileExtPda(player);
+  const [newClaim] = handleClaimPda(handle);
+  const oldClaim =
+    currentHandle.length > 0 ? handleClaimPda(currentHandle)[0] : null;
+  return await program.methods
+    .setHandle(handle)
+    .accounts({
+      profileExt,
+      oldHandleClaim: oldClaim,
+      newHandleClaim: newClaim,
+      player,
+      systemProgram: SystemProgram.programId,
+    })
+    .instruction();
+}
+
+/** Set or update bio. First call also creates the caller's ProfileExtV2. */
+export async function buildUpdateBioIx(
+  program: Program,
+  player: PublicKey,
+  bio: string
+): Promise<TransactionInstruction> {
+  const [profileExt] = profileExtPda(player);
+  return await program.methods
+    .updateBio(bio)
+    .accounts({
+      profileExt,
+      player,
+      systemProgram: SystemProgram.programId,
+    })
+    .instruction();
+}
+
+// ───── v1.3 — Exchange rates + quote helpers ──────────────────────────
+
+export interface ExchangeRatesSnapshot {
+  solMicroUsdPerLamport: BN;  // scaled ×1e12
+  gameMicroUsdPerQuark: BN;   // scaled ×1e12
+  solUpdatedAt: number;       // unix seconds
+  gameUpdatedAt: number;
+}
+
+// 30s in-memory cache to avoid hammering RPC on every price preview.
+let cachedRates: { at: number; value: ExchangeRatesSnapshot } | null = null;
+
+/** Fetch the on-chain ExchangeRatesConfig (cached 30s). */
+export async function fetchExchangeRates(
+  program: Program
+): Promise<ExchangeRatesSnapshot> {
+  const now = Date.now();
+  if (cachedRates && now - cachedRates.at < 30_000) return cachedRates.value;
+  const [pda] = ratesPda();
+  const r: any = await (program.account as any).exchangeRatesConfig.fetch(pda);
+  const snapshot: ExchangeRatesSnapshot = {
+    solMicroUsdPerLamport: r.solMicroUsdPerLamport as BN,
+    gameMicroUsdPerQuark: r.gameMicroUsdPerQuark as BN,
+    solUpdatedAt: Number(r.solUpdatedAt),
+    gameUpdatedAt: Number(r.gameUpdatedAt),
+  };
+  cachedRates = { at: now, value: snapshot };
+  return snapshot;
+}
+
+/** Convert a USD-equivalent micro-amount to the raw smallest-unit using a
+ *  scaled rate (×1e12). Mirror of on-chain `convert_usd_to_raw`. */
+export function convertUsdToRaw(amountMicroUsd: BN, rateScaled: BN): BN {
+  // raw = (amount × 1e12) / rate_scaled
+  const num = amountMicroUsd.mul(new BN(RATE_SCALE_FACTOR));
+  return num.div(rateScaled);
+}
+
+/** Frontend slippage overshoot — pay slightly more than the contract floor
+ *  so a single-block rate movement doesn't reject the tx. */
+export function applyOverpay(raw: BN, overpayBps: number = RATE_OVERPAY_BPS): BN {
+  const num = new BN(10_000 + overpayBps);
+  return raw.mul(num).div(new BN(10_000));
+}
+
+/** Quote: convert a USD price (micro-USD) into the raw token amount needed
+ *  for a chosen payment token, applying any token-side discount and
+ *  the frontend overpay buffer.
+ *
+ *  Returns `{ amountMicroUsdToRecord, paymentAmountRaw }` ready for
+ *  `buildRecordPaymentIx`. */
+export interface PaymentQuote {
+  amountMicroUsdToRecord: BN;
+  paymentAmountRaw: BN;
+}
+export function quotePaymentAmount(
+  rates: ExchangeRatesSnapshot,
+  basePriceMicroUsd: BN,
+  paymentMint: PublicKey,
+  discountBps: number = 0
+): PaymentQuote {
+  const discounted = basePriceMicroUsd
+    .mul(new BN(10_000 - discountBps))
+    .div(new BN(10_000));
+
+  if (paymentMint.equals(PublicKey.default)) {
+    // Native SOL
+    const lamports = convertUsdToRaw(discounted, rates.solMicroUsdPerLamport);
+    return { amountMicroUsdToRecord: discounted, paymentAmountRaw: applyOverpay(lamports) };
+  }
+  if (paymentMint.equals(GAME_MINT)) {
+    const quarks = convertUsdToRaw(discounted, rates.gameMicroUsdPerQuark);
+    return { amountMicroUsdToRecord: discounted, paymentAmountRaw: applyOverpay(quarks) };
+  }
+  // Stablecoin path — 6-decimal parity, no rate conversion, no overpay
+  return { amountMicroUsdToRecord: discounted, paymentAmountRaw: discounted };
+}
+
+// ───── v1.3 — Flipcash buy-and-pay bundle (Option B from the plan) ────
+//
+// Builds a single-tx atomic bundle: buy $GAME on Flipcash curve from USDF,
+// then SPL TransferChecked $GAME → arcade treasury, then record_payment.
+// Lets first-time players (USDF-only) pay in $GAME and claim the 20%
+// discount without pre-holding $GAME.
+//
+// Caveats: requires the player to hold USDF (~$0.04 + curve slippage).
+// If they don't have USDF, swap to USDF first (Jupiter, etc.) — this
+// builder does not handle that leg.
+
+export interface BuyGameAndPayParams {
+  category: number;
+  basePriceMicroUsd: BN;     // pre-discount USD price (e.g. SCORE_COMMIT_MICRO_USD)
+  externalRef: string;
+  referrerProfile?: PublicKey;
+  gameId?: number;
+  // USDF in_amount buffer — defaults to 1% over the spot quote
+  usdfBufferBps?: number;
+}
+
+/** Build the full set of ixs for: buy_tokens(USDF→GAME) +
+ *  TransferChecked(GAME→treasury) + record_payment(GAME mint, discounted).
+ *
+ *  Returns a flat list ready for `new Transaction().add(...ixs)`. */
+export async function buildBuyGameAndPayIxs(
+  program: Program,
+  connection: Connection,
+  player: PublicKey,
+  params: BuyGameAndPayParams
+): Promise<TransactionInstruction[]> {
+  // Defer-import Flipcash + USDF constants to avoid a circular import.
+  const fc = await import("./flipcash");
+
+  const treasury = await getTreasuryWallet(program);
+  const rates = await fetchExchangeRates(program);
+
+  // 1. Quote target $GAME amount at the discounted USD price.
+  const quote = quotePaymentAmount(
+    rates,
+    params.basePriceMicroUsd,
+    GAME_MINT,
+    GAME_DISCOUNT_BPS
+  );
+
+  // 2. Estimate USDF needed: target_game_quarks × game_micro_usd_per_quark / 1e12
+  //    in micro-USDF units (6 decimals). Curve slippage is bounded by
+  //    min_amount_out + frontend overpay.
+  const microUsdEquiv = quote.paymentAmountRaw
+    .mul(rates.gameMicroUsdPerQuark)
+    .div(new BN(RATE_SCALE_FACTOR));
+  const usdfBufferBps = params.usdfBufferBps ?? 100; // 1%
+  const usdfInAmount = microUsdEquiv
+    .mul(new BN(10_000 + usdfBufferBps))
+    .div(new BN(10_000));
+
+  // 3. ATAs for buyer (player) — both GAME and USDF
+  const buyerGameAta = getAssociatedTokenAddressSync(GAME_MINT, player);
+  const buyerUsdfAta = getAssociatedTokenAddressSync(fc.USDF_MINT, player);
+
+  const ixs: TransactionInstruction[] = [];
+
+  // Ensure buyer's GAME ATA exists (USDF ATA must exist or buy fails — that's
+  // the user's problem; we don't auto-fund USDF).
+  const gameAtaInfo = await connection.getAccountInfo(buyerGameAta);
+  if (!gameAtaInfo) {
+    ixs.push(createAssociatedTokenAccountInstruction(player, buyerGameAta, player, GAME_MINT));
+  }
+
+  // 4. Flipcash buy_tokens (USDF in → GAME out)
+  ixs.push(
+    fc.buildFlipcashBuyTokensIx(
+      player,
+      buyerGameAta,
+      buyerUsdfAta,
+      usdfInAmount,
+      quote.paymentAmountRaw // min_amount_out — refuse worse than the quote
+    )
+  );
+
+  // 5. SPL TransferChecked: send the GAME we just bought → treasury
+  const transferIxs = await buildSplTransferIxs(
+    connection,
+    player,
+    player,
+    treasury,
+    GAME_MINT,
+    quote.paymentAmountRaw,
+    GAME_DECIMALS
+  );
+  ixs.push(...transferIxs);
+
+  // 6. record_payment(GAME mint, discounted USD value, GAME quarks raw)
+  ixs.push(
+    await buildRecordPaymentIx(program, player, {
+      category: params.category,
+      amountMicroUsd: quote.amountMicroUsdToRecord,
+      paymentMint: GAME_MINT,
+      paymentAmountRaw: quote.paymentAmountRaw,
+      paymentTxSig: new Uint8Array(64),
+      externalRef: params.externalRef,
+      referrerProfile: params.referrerProfile,
+      gameId: params.gameId,
+    })
+  );
+
+  return ixs;
 }

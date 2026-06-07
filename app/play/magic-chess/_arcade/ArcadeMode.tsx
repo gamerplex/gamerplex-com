@@ -14,6 +14,7 @@ import {
 import { ARCADE_BOTS, botById, computeScore, encodeMoveLog, generateSeed, type MoveLogEntry } from "./score";
 import {
   makeProgram, buildOpenProfileIx, buildSubmitScoreIx, buildRecordPaymentIx,
+  USDC_MINT,
   buildCommitReplayIx, buildMintReceiptIx, buildUsdcTransferIxs,
   profilePda, sha256, sigToBytes, getTreasuryWallet,
   CATEGORY, SCORE_COMMIT_MICRO_USD, VERIFIED_COMMIT_MICRO_USD, REPLAY_RECEIPT_MICRO_USD,
@@ -217,7 +218,8 @@ export default function ArcadeMode() {
         category: CATEGORY.SCORE_COMMIT,
         amountMicroUsd: new BN(SCORE_COMMIT_MICRO_USD),
         paymentTxSig: emptySig,
-        gamerPaid: false,
+        paymentMint: USDC_MINT,
+          paymentAmountRaw: new BN(SCORE_COMMIT_MICRO_USD), // v1.3: stablecoin parity (raw === micro-USD)
         externalRef: "",
         gameId: MAGIC_CHESS_GAME_ID,
       }));
@@ -263,7 +265,8 @@ export default function ArcadeMode() {
         category: CATEGORY.VERIFIED_COMMIT,
         amountMicroUsd: new BN(VERIFIED_COMMIT_MICRO_USD),
         paymentTxSig: emptySig,
-        gamerPaid: false,
+        paymentMint: USDC_MINT,
+          paymentAmountRaw: new BN(VERIFIED_COMMIT_MICRO_USD), // v1.3: stablecoin parity (raw === micro-USD)
         externalRef: "",
         gameId: MAGIC_CHESS_GAME_ID,
       }));
@@ -301,7 +304,8 @@ export default function ArcadeMode() {
         category: CATEGORY.REPLAY_RECEIPT,
         amountMicroUsd: new BN(REPLAY_RECEIPT_MICRO_USD),
         paymentTxSig: emptySig,
-        gamerPaid: false,
+        paymentMint: USDC_MINT,
+          paymentAmountRaw: new BN(REPLAY_RECEIPT_MICRO_USD), // v1.3: stablecoin parity (raw === micro-USD)
         externalRef: "",
         gameId: MAGIC_CHESS_GAME_ID,
       }));

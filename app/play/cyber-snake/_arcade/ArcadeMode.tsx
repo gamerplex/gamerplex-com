@@ -20,6 +20,7 @@ import {
   buildOpenProfileIx,
   buildSubmitScoreIx,
   buildRecordPaymentIx,
+  USDC_MINT,
   buildCommitReplayIx,
   buildMintReceiptIx,
   buildUsdcTransferIxs,
@@ -458,7 +459,8 @@ export default function CyberSnakeSolo() {
           category: CATEGORY.SCORE_COMMIT,
           amountMicroUsd: new BN(SCORE_COMMIT_MICRO_USD),
           paymentTxSig: emptySig,
-          gamerPaid: false,
+          paymentMint: USDC_MINT,
+          paymentAmountRaw: new BN(SCORE_COMMIT_MICRO_USD), // v1.3: stablecoin parity (raw === micro-USD)
           externalRef: "",
         })
       );
@@ -522,7 +524,8 @@ export default function CyberSnakeSolo() {
           category: CATEGORY.VERIFIED_COMMIT,
           amountMicroUsd: new BN(VERIFIED_COMMIT_MICRO_USD),
           paymentTxSig: emptySig,
-          gamerPaid: false,
+          paymentMint: USDC_MINT,
+          paymentAmountRaw: new BN(VERIFIED_COMMIT_MICRO_USD), // v1.3: stablecoin parity (raw === micro-USD)
           externalRef: "",
         })
       );
@@ -583,7 +586,8 @@ export default function CyberSnakeSolo() {
           category: CATEGORY.REPLAY_RECEIPT,
           amountMicroUsd: new BN(REPLAY_RECEIPT_MICRO_USD),
           paymentTxSig: emptySig,
-          gamerPaid: false,
+          paymentMint: USDC_MINT,
+          paymentAmountRaw: new BN(REPLAY_RECEIPT_MICRO_USD), // v1.3: stablecoin parity (raw === micro-USD)
           externalRef: "",
         })
       );
