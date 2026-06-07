@@ -90,6 +90,13 @@ export type GamerplexArcade = {
         {
           "name": "memoProgram",
           "address": "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"
+        },
+        {
+          "name": "instructionsSysvar",
+          "docs": [
+            "record_payment(VERIFIED_COMMIT)."
+          ],
+          "address": "Sysvar1nstructions1111111111111111111111111"
         }
       ],
       "args": [
@@ -162,6 +169,99 @@ export type GamerplexArcade = {
         {
           "name": "treasuryWallet",
           "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "initializeStablecoins",
+      "docs": [
+        "One-time init of the StablecoinConfig PDA. Admin passes the initial",
+        "allowlist of accepted stablecoin mints. Up to MAX_STABLECOIN_SLOTS = 8",
+        "slots; unused slots set to `Pubkey::default()`.",
+        "",
+        "Typical bootstrap:",
+        "Devnet:  [USDC_DEVNET,  default, default, ...]",
+        "Mainnet: [USDC_MAINNET, default, default, ...]",
+        "Additional stablecoins added later via update_accepted_stablecoins."
+      ],
+      "discriminator": [
+        219,
+        26,
+        189,
+        116,
+        146,
+        30,
+        54,
+        54
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "docs": [
+            "Admin must match ArcadeConfig.admin. has_one enforces this."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "stablecoinConfig",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  98,
+                  108,
+                  101,
+                  99,
+                  111,
+                  105,
+                  110,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "mints",
+          "type": {
+            "array": [
+              "pubkey",
+              8
+            ]
+          }
         }
       ]
     },
@@ -245,6 +345,13 @@ export type GamerplexArcade = {
         {
           "name": "systemProgram",
           "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "instructionsSysvar",
+          "docs": [
+            "record_payment(REPLAY_RECEIPT)."
+          ],
+          "address": "Sysvar1nstructions1111111111111111111111111"
         }
       ],
       "args": [
@@ -432,6 +539,47 @@ export type GamerplexArcade = {
       ],
       "accounts": [
         {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "stablecoinConfig",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  98,
+                  108,
+                  101,
+                  99,
+                  111,
+                  105,
+                  110,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "game"
         },
         {
@@ -500,6 +648,13 @@ export type GamerplexArcade = {
         {
           "name": "player",
           "signer": true
+        },
+        {
+          "name": "instructionsSysvar",
+          "docs": [
+            "SPL TransferChecked. Address-constrained to the canonical sysvar id."
+          ],
+          "address": "Sysvar1nstructions1111111111111111111111111"
         }
       ],
       "args": [
@@ -596,6 +751,10 @@ export type GamerplexArcade = {
         {
           "name": "displayName",
           "type": "string"
+        },
+        {
+          "name": "deadline",
+          "type": "i64"
         }
       ]
     },
@@ -639,7 +798,152 @@ export type GamerplexArcade = {
           ]
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "deadline",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "setHandle",
+      "docs": [
+        "Claim or rename a handle. First call also creates the caller's",
+        "ProfileExtV2 PDA (init_if_needed). Atomic close-old + init-new claim.",
+        "",
+        "Caller responsibilities:",
+        "* Pass `old_handle_claim = null` on first claim.",
+        "* Pass the existing HandleClaim PDA on rename.",
+        "* Handle must match `[a-z0-9_]{3,32}` and not be in RESERVED_HANDLES."
+      ],
+      "discriminator": [
+        206,
+        110,
+        19,
+        48,
+        91,
+        71,
+        188,
+        197
+      ],
+      "accounts": [
+        {
+          "name": "profileExt",
+          "docs": [
+            "Created on first call (init_if_needed); mutated on rename.",
+            "Seeds bind it to the signer's wallet — no other wallet can ever write here."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  102,
+                  105,
+                  108,
+                  101,
+                  45,
+                  101,
+                  120,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "player"
+              }
+            ]
+          }
+        },
+        {
+          "name": "oldHandleClaim",
+          "docs": [
+            "Existing claim for the wallet's current handle. REQUIRED if",
+            "`profile_ext.handle != \"\"` (rename). Pass `null` on the first claim.",
+            "Closed at end of ix → rent refunded to player."
+          ],
+          "writable": true,
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  97,
+                  110,
+                  100,
+                  108,
+                  101,
+                  45,
+                  99,
+                  108,
+                  97,
+                  105,
+                  109
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "profile_ext.handle",
+                "account": "profileExtV2"
+              }
+            ]
+          }
+        },
+        {
+          "name": "newHandleClaim",
+          "docs": [
+            "New claim being created. Init constraint enforces global uniqueness —",
+            "if anyone else already owns this handle, init fails with account-exists."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  97,
+                  110,
+                  100,
+                  108,
+                  101,
+                  45,
+                  99,
+                  108,
+                  97,
+                  105,
+                  109
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "handle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "player",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "handle",
+          "type": "string"
+        }
+      ]
     },
     {
       "name": "submitScore",
@@ -819,6 +1123,89 @@ export type GamerplexArcade = {
       ]
     },
     {
+      "name": "updateAcceptedStablecoins",
+      "docs": [
+        "Update the accepted stablecoin allowlist. Admin-only, deadline-gated.",
+        "Overwrite semantics — pass the full desired array each time."
+      ],
+      "discriminator": [
+        236,
+        126,
+        175,
+        109,
+        156,
+        226,
+        14,
+        60
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "stablecoinConfig",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  98,
+                  108,
+                  101,
+                  99,
+                  111,
+                  105,
+                  110,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "mints",
+          "type": {
+            "array": [
+              "pubkey",
+              8
+            ]
+          }
+        },
+        {
+          "name": "deadline",
+          "type": "i64"
+        }
+      ]
+    },
+    {
       "name": "updateAvatar",
       "docs": [
         "Update avatar source preference. Fully off-chain-resolvable:",
@@ -887,6 +1274,71 @@ export type GamerplexArcade = {
           "type": "u16"
         }
       ]
+    },
+    {
+      "name": "updateBio",
+      "docs": [
+        "Set or update bio. First call also creates the caller's ProfileExtV2",
+        "PDA. Empty string allowed (clears the bio)."
+      ],
+      "discriminator": [
+        201,
+        29,
+        45,
+        117,
+        230,
+        37,
+        55,
+        183
+      ],
+      "accounts": [
+        {
+          "name": "profileExt",
+          "docs": [
+            "Created on first call (init_if_needed); mutated on subsequent calls."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  102,
+                  105,
+                  108,
+                  101,
+                  45,
+                  101,
+                  120,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "player"
+              }
+            ]
+          }
+        },
+        {
+          "name": "player",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "bio",
+          "type": "string"
+        }
+      ]
     }
   ],
   "accounts": [
@@ -917,6 +1369,19 @@ export type GamerplexArcade = {
       ]
     },
     {
+      "name": "handleClaim",
+      "discriminator": [
+        148,
+        215,
+        248,
+        53,
+        11,
+        234,
+        115,
+        190
+      ]
+    },
+    {
       "name": "playerProfile",
       "discriminator": [
         82,
@@ -930,6 +1395,19 @@ export type GamerplexArcade = {
       ]
     },
     {
+      "name": "profileExtV2",
+      "discriminator": [
+        58,
+        234,
+        55,
+        37,
+        188,
+        153,
+        253,
+        213
+      ]
+    },
+    {
       "name": "replayReceipt",
       "discriminator": [
         242,
@@ -940,6 +1418,19 @@ export type GamerplexArcade = {
         87,
         71,
         62
+      ]
+    },
+    {
+      "name": "stablecoinConfig",
+      "discriminator": [
+        127,
+        25,
+        244,
+        213,
+        1,
+        192,
+        101,
+        6
       ]
     }
   ],
@@ -971,6 +1462,19 @@ export type GamerplexArcade = {
       ]
     },
     {
+      "name": "bioUpdated",
+      "discriminator": [
+        172,
+        229,
+        184,
+        199,
+        16,
+        128,
+        188,
+        111
+      ]
+    },
+    {
       "name": "configInitialized",
       "discriminator": [
         181,
@@ -997,6 +1501,19 @@ export type GamerplexArcade = {
       ]
     },
     {
+      "name": "handleSet",
+      "discriminator": [
+        198,
+        200,
+        95,
+        128,
+        193,
+        91,
+        121,
+        216
+      ]
+    },
+    {
       "name": "paymentRecorded",
       "discriminator": [
         214,
@@ -1007,6 +1524,19 @@ export type GamerplexArcade = {
         35,
         104,
         98
+      ]
+    },
+    {
+      "name": "profileExtOpened",
+      "discriminator": [
+        185,
+        27,
+        239,
+        200,
+        254,
+        59,
+        147,
+        13
       ]
     },
     {
@@ -1098,6 +1628,32 @@ export type GamerplexArcade = {
         77,
         249,
         72
+      ]
+    },
+    {
+      "name": "stablecoinsInitialized",
+      "discriminator": [
+        45,
+        164,
+        89,
+        182,
+        45,
+        83,
+        91,
+        30
+      ]
+    },
+    {
+      "name": "stablecoinsUpdated",
+      "discriminator": [
+        85,
+        79,
+        241,
+        6,
+        152,
+        56,
+        169,
+        186
       ]
     }
   ],
@@ -1266,6 +1822,86 @@ export type GamerplexArcade = {
       "code": 6032,
       "name": "moveLogTooLong",
       "msg": "Move log exceeds MAX_MOVE_LOG_BYTES (400)."
+    },
+    {
+      "code": 6033,
+      "name": "paymentTransferNotFound",
+      "msg": "No matching SPL TransferChecked of an accepted stablecoin to treasury found in tx."
+    },
+    {
+      "code": 6034,
+      "name": "requiredPaymentMissing",
+      "msg": "Required record_payment of the expected category + amount was not bundled in the same tx."
+    },
+    {
+      "code": 6035,
+      "name": "duplicateIxInTx",
+      "msg": "This instruction may appear at most once per tx."
+    },
+    {
+      "code": 6036,
+      "name": "instructionExpired",
+      "msg": "Instruction deadline has expired."
+    },
+    {
+      "code": 6037,
+      "name": "deadlineTooFar",
+      "msg": "Instruction deadline is too far in the future (> MAX_DEADLINE_FUTURE_SEC)."
+    },
+    {
+      "code": 6038,
+      "name": "gamerPaymentsDisabled",
+      "msg": "$GAMER-paid actions are not yet supported (v1.3)."
+    },
+    {
+      "code": 6039,
+      "name": "handleTooShort",
+      "msg": "Handle too short (min 3 chars)."
+    },
+    {
+      "code": 6040,
+      "name": "handleTooLong",
+      "msg": "Handle too long (max 32 chars)."
+    },
+    {
+      "code": 6041,
+      "name": "handleInvalidChars",
+      "msg": "Handle contains invalid characters (allowed: a-z, 0-9, _)."
+    },
+    {
+      "code": 6042,
+      "name": "handleReserved",
+      "msg": "Handle is reserved."
+    },
+    {
+      "code": 6043,
+      "name": "handleUnchanged",
+      "msg": "Handle is unchanged — no-op rejected (would conflict with itself in same tx)."
+    },
+    {
+      "code": 6044,
+      "name": "bioTooLong",
+      "msg": "Bio too long (max 140 bytes)."
+    },
+    {
+      "code": 6045,
+      "name": "bioInvalidChars",
+      "msg": "Bio contains forbidden control characters."
+    },
+    {
+      "code": 6046,
+      "name": "handleClaimMismatch",
+      "msg": "HandleClaim wallet does not match the signer."
+    },
+    {
+      "code": 6047,
+      "name": "oldHandleClaimRequired",
+      "msg": "Wallet already has a handle; the existing HandleClaim must be passed for rent refund."
+    },
+    {
+      "code": 6048,
+      "name": "oldHandleClaimUnexpected",
+      "msg": "Wallet has no current handle — do not pass an old HandleClaim."
     }
   ],
   "types": [
@@ -1370,6 +2006,26 @@ export type GamerplexArcade = {
       }
     },
     {
+      "name": "bioUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "wallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "bioLen",
+            "type": "u16"
+          },
+          {
+            "name": "updatedAt",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
       "name": "configInitialized",
       "type": {
         "kind": "struct",
@@ -1437,6 +2093,61 @@ export type GamerplexArcade = {
           {
             "name": "displayName",
             "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "handleClaim",
+      "docs": [
+        "Global uniqueness ledger for handles. Existence at",
+        "[HANDLE_CLAIM_SEED, handle.as_bytes()] IS the claim. Closed and re-init'd",
+        "on handle change so the rent is recovered."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "wallet",
+            "docs": [
+              "The wallet whose ProfileExtV2 currently owns this handle."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "claimedAt",
+            "docs": [
+              "Unix seconds when claim was created."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "handleSet",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "wallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "oldHandle",
+            "type": "string"
+          },
+          {
+            "name": "newHandle",
+            "type": "string"
+          },
+          {
+            "name": "setAt",
+            "type": "i64"
           }
         ]
       }
@@ -1597,6 +2308,80 @@ export type GamerplexArcade = {
               "Count of distinct referred players who've ever paid something."
             ],
             "type": "u32"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "profileExtOpened",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "wallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "createdAt",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "profileExtV2",
+      "docs": [
+        "Identity-layer extension PDA. Holds handle + bio + version. Created lazily",
+        "on first `set_handle` / `update_bio` via `init_if_needed`. Sibling of the",
+        "PlayerProfile PDA — matches the StablecoinConfig pattern above. Keeps the",
+        "existing PlayerProfile layout / rent / live devnet accounts undisturbed,",
+        "and lets non-gameplay surfaces (Sledgit identity-only users) have a handle",
+        "without opening a PlayerProfile.",
+        "",
+        "Seeds: [PROFILE_EXT_SEED, wallet.as_ref()]"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "wallet",
+            "docs": [
+              "Mirrors the seed. Set once on fresh init; never modified."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "profileVersion",
+            "docs": [
+              "Schema version (currently 2)."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "handle",
+            "docs": [
+              "User-chosen handle. Charset [a-z0-9_], 3-32 bytes. Empty until first",
+              "set_handle. Backed by a HandleClaim PDA at [HANDLE_CLAIM_SEED, handle]."
+            ],
+            "type": "string"
+          },
+          {
+            "name": "bio",
+            "docs": [
+              "Free-form bio. Max 140 UTF-8 bytes. Empty until first update_bio."
+            ],
+            "type": "string"
+          },
+          {
+            "name": "createdAt",
+            "docs": [
+              "Unix seconds when this ext was created. Immutable after fresh init."
+            ],
+            "type": "i64"
           },
           {
             "name": "bump",
@@ -1882,6 +2667,74 @@ export type GamerplexArcade = {
           {
             "name": "moveLogBytes",
             "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "stablecoinConfig",
+      "docs": [
+        "Allowlist of stablecoin mints accepted for arcade payments. Stored in a",
+        "separate PDA (not ArcadeConfig) so the existing config's rent / layout is",
+        "undisturbed — avoids a painful realloc migration on the already-deployed",
+        "devnet account.",
+        "",
+        "Initialised once by the admin via `initialize_stablecoins`, updated via",
+        "`update_accepted_stablecoins` (deadline-gated). Empty slots = `Pubkey::default()`."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "mints",
+            "type": {
+              "array": [
+                "pubkey",
+                8
+              ]
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "stablecoinsInitialized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mints",
+            "type": {
+              "array": [
+                "pubkey",
+                8
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "stablecoinsUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mints",
+            "type": {
+              "array": [
+                "pubkey",
+                8
+              ]
+            }
           }
         ]
       }

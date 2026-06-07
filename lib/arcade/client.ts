@@ -629,15 +629,16 @@ export async function buildSetHandleIx(
   const [newClaim] = handleClaimPda(handle);
   const oldClaim =
     currentHandle.length > 0 ? handleClaimPda(currentHandle)[0] : null;
+  const accounts: any = {
+    profileExt,
+    oldHandleClaim: oldClaim,
+    newHandleClaim: newClaim,
+    player,
+    systemProgram: SystemProgram.programId,
+  };
   return await program.methods
     .setHandle(handle)
-    .accounts({
-      profileExt,
-      oldHandleClaim: oldClaim,
-      newHandleClaim: newClaim,
-      player,
-      systemProgram: SystemProgram.programId,
-    })
+    .accounts(accounts)
     .instruction();
 }
 
