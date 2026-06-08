@@ -163,6 +163,11 @@ export function ratesPda(): [PublicKey, number] {
   return PublicKey.findProgramAddressSync([Buffer.from("rates")], ARCADE_PROGRAM_ID);
 }
 
+// v1.3 — AffiliateConfig PDA at seed `["affiliate"]`. Hardening layer (kill-switch + min-accrual).
+export function affiliateConfigPda(): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync([Buffer.from("affiliate")], ARCADE_PROGRAM_ID);
+}
+
 // ───── Program instance ───────────────────────────────────────────────
 export function makeProgram(connection: Connection, wallet: AnchorWallet): Program {
   const provider = new AnchorProvider(connection, wallet, {
@@ -281,6 +286,7 @@ export async function buildRecordPaymentIx(
   const [cfg] = configPda();
   const [stablecoinConfig] = stablecoinConfigPda();
   const [rates] = ratesPda();
+  const [affiliateConfig] = affiliateConfigPda();
   const [game] = gamePda(params.gameId ?? CYBER_SNAKE_GAME_ID);
   const [profile] = profilePda(player);
   const accounts: any = {
@@ -291,6 +297,7 @@ export async function buildRecordPaymentIx(
     wallet: player,
     referrerProfile: params.referrerProfile ?? null,
     rates,
+    affiliateConfig,
     player,
     instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
   };
@@ -346,6 +353,55 @@ export async function buildUpdateExchangeRatesIx(
       rates,
       admin,
     })
+    .instruction();
+}
+
+/** v1.3 affiliate hardening — admin: open the AffiliateConfig PDA. */
+export async function buildInitAffiliateConfigIx(
+  program: Program,
+  admin: PublicKey,
+  minAccrualMicro: BN
+): Promise<TransactionInstruction> {
+  const [cfg] = configPda();
+  const [aff] = affiliateConfigPda();
+  return await program.methods
+    .initializeAffiliateConfig(minAccrualMicro)
+    .accounts({
+      config: cfg,
+      affiliateConfig: aff,
+      admin,
+      systemProgram: SystemProgram.programId,
+    })
+    .instruction();
+}
+
+/** v1.3 affiliate hardening — admin: flip the kill switch. Deadline-gated. */
+export async function buildSetAffiliateEnabledIx(
+  program: Program,
+  admin: PublicKey,
+  enabled: boolean,
+  deadline: BN
+): Promise<TransactionInstruction> {
+  const [cfg] = configPda();
+  const [aff] = affiliateConfigPda();
+  return await program.methods
+    .setAffiliateEnabled(enabled, deadline)
+    .accounts({ config: cfg, affiliateConfig: aff, admin })
+    .instruction();
+}
+
+/** v1.3 affiliate hardening — admin: tune min-accrual threshold. Deadline-gated. */
+export async function buildSetAffiliateMinAccrualIx(
+  program: Program,
+  admin: PublicKey,
+  minMicro: BN,
+  deadline: BN
+): Promise<TransactionInstruction> {
+  const [cfg] = configPda();
+  const [aff] = affiliateConfigPda();
+  return await program.methods
+    .setAffiliateMinAccrual(minMicro, deadline)
+    .accounts({ config: cfg, affiliateConfig: aff, admin })
     .instruction();
 }
 

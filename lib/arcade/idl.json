@@ -114,6 +114,79 @@
       ]
     },
     {
+      "name": "initialize_affiliate_config",
+      "discriminator": [
+        22,
+        27,
+        15,
+        31,
+        17,
+        166,
+        74,
+        86
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "affiliate_config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  102,
+                  102,
+                  105,
+                  108,
+                  105,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "min_accrual_micro",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "initialize_config",
       "docs": [
         "One-time initialization of the arcade. Only callable once per program",
@@ -688,13 +761,6 @@
         },
         {
           "name": "referrer_profile",
-          "docs": [
-            "Referrer's PlayerProfile — required if profile.referrer is set and",
-            "the tail window is active. Seeds constrain it to the expected wallet",
-            "(no mismatched profile can be passed). Optional because many players",
-            "have no referrer and the instruction skips affiliate logic in that",
-            "case."
-          ],
           "writable": true,
           "optional": true,
           "pda": {
@@ -721,10 +787,6 @@
         },
         {
           "name": "rates",
-          "docs": [
-            "Read-only exchange rates PDA (v1.3+). Required for SOL / $GAME paths;",
-            "always-passed for ix-layout simplicity. Stablecoin paths ignore it."
-          ],
           "pda": {
             "seeds": [
               {
@@ -735,6 +797,27 @@
                   116,
                   101,
                   115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "affiliate_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  102,
+                  102,
+                  105,
+                  108,
+                  105,
+                  97,
+                  116,
+                  101
                 ]
               }
             ]
@@ -898,6 +981,150 @@
         }
       ],
       "args": [
+        {
+          "name": "deadline",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "set_affiliate_enabled",
+      "discriminator": [
+        109,
+        173,
+        38,
+        1,
+        43,
+        196,
+        231,
+        4
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "affiliate_config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  102,
+                  102,
+                  105,
+                  108,
+                  105,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "enabled",
+          "type": "bool"
+        },
+        {
+          "name": "deadline",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "set_affiliate_min_accrual",
+      "discriminator": [
+        35,
+        177,
+        71,
+        108,
+        129,
+        26,
+        205,
+        31
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "affiliate_config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  102,
+                  102,
+                  105,
+                  108,
+                  105,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "min_micro",
+          "type": "u64"
+        },
         {
           "name": "deadline",
           "type": "i64"
@@ -1518,6 +1745,19 @@
   ],
   "accounts": [
     {
+      "name": "AffiliateConfig",
+      "discriminator": [
+        59,
+        190,
+        66,
+        88,
+        43,
+        52,
+        139,
+        29
+      ]
+    },
+    {
       "name": "ArcadeConfig",
       "discriminator": [
         72,
@@ -1647,6 +1887,32 @@
         168,
         113,
         107
+      ]
+    },
+    {
+      "name": "AffiliateConfigInitialized",
+      "discriminator": [
+        130,
+        32,
+        121,
+        56,
+        154,
+        240,
+        91,
+        7
+      ]
+    },
+    {
+      "name": "AffiliateConfigUpdated",
+      "discriminator": [
+        79,
+        42,
+        82,
+        94,
+        138,
+        80,
+        217,
+        171
       ]
     },
     {
@@ -2099,51 +2365,56 @@
     },
     {
       "code": 6045,
+      "name": "AffiliateMinAccrualTooLow",
+      "msg": "Affiliate min_accrual_micro out of bounds (must be >= MIN_PAYMENT_MICRO_USD and <= MAX_PAYMENT_MICRO_USD)."
+    },
+    {
+      "code": 6046,
       "name": "HandleTooShort",
       "msg": "Handle too short (min 3 chars)."
     },
     {
-      "code": 6046,
+      "code": 6047,
       "name": "HandleTooLong",
       "msg": "Handle too long (max 32 chars)."
     },
     {
-      "code": 6047,
+      "code": 6048,
       "name": "HandleInvalidChars",
       "msg": "Handle contains invalid characters (allowed: a-z, 0-9, _)."
     },
     {
-      "code": 6048,
+      "code": 6049,
       "name": "HandleReserved",
       "msg": "Handle is reserved."
     },
     {
-      "code": 6049,
+      "code": 6050,
       "name": "HandleUnchanged",
       "msg": "Handle is unchanged — no-op rejected (would conflict with itself in same tx)."
     },
     {
-      "code": 6050,
+      "code": 6051,
       "name": "BioTooLong",
       "msg": "Bio too long (max 140 bytes)."
     },
     {
-      "code": 6051,
+      "code": 6052,
       "name": "BioInvalidChars",
       "msg": "Bio contains forbidden control characters."
     },
     {
-      "code": 6052,
+      "code": 6053,
       "name": "HandleClaimMismatch",
       "msg": "HandleClaim wallet does not match the signer."
     },
     {
-      "code": 6053,
+      "code": 6054,
       "name": "OldHandleClaimRequired",
       "msg": "Wallet already has a handle; the existing HandleClaim must be passed for rent refund."
     },
     {
-      "code": 6054,
+      "code": 6055,
       "name": "OldHandleClaimUnexpected",
       "msg": "Wallet has no current handle — do not pass an old HandleClaim."
     }
@@ -2205,6 +2476,69 @@
           {
             "name": "payments_allotted",
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AffiliateConfig",
+      "docs": [
+        "Affiliate hardening config. Sibling PDA at seed [\"affiliate\"]. Two knobs:",
+        "- disabled: kill-switch — if true, record_payment skips affiliate accrual",
+        "- min_accrual_micro: payments below this threshold don't accrue",
+        "Both are admin-tunable via deadline-gated ix. Same pattern as",
+        "StablecoinConfig / ExchangeRatesConfig — sibling PDA, no realloc."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "disabled",
+            "type": "bool"
+          },
+          {
+            "name": "min_accrual_micro",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AffiliateConfigInitialized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "disabled",
+            "type": "bool"
+          },
+          {
+            "name": "min_accrual_micro",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AffiliateConfigUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "disabled",
+            "type": "bool"
+          },
+          {
+            "name": "min_accrual_micro",
+            "type": "u64"
           }
         ]
       }
