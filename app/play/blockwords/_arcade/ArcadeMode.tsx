@@ -32,6 +32,8 @@ import {
   ARCADE_NETWORK,
   BLOCKWORDS_ARCADE_GAME_ID,
 } from "../../../../lib/arcade/client";
+import { buildSaveScorePaymentIxs } from "../../../../lib/arcade/save-score-payment";
+import { PAYMENT_TOKENS, type PaymentTokenDef } from "../../../../lib/arcade/tokens";
 import { WORDS, isAcceptableGuess } from "./words";
 import {
   answerForSeed,
@@ -262,6 +264,12 @@ export default function ArcadeMode() {
     return () => window.removeEventListener("keydown", onKey);
   }, [startNewRun, onSubmit, onBackspace, onLetter]);
 
+  // v1.4: default to USDC. Token picker UI ships in the next commit; for now
+  // the new shared helper handles the existing USDC flow byte-equivalently.
+  const [paymentToken, setPaymentToken] = useState<PaymentTokenDef>(
+    PAYMENT_TOKENS.find((t) => t.symbol === "USDC") ?? PAYMENT_TOKENS[0]
+  );
+
   const onSaveOnChain = useCallback(async () => {
     const r = runRef.current;
     if (!r || !anchorWallet || !publicKey) return;
@@ -276,27 +284,22 @@ export default function ArcadeMode() {
         tx.add(await buildOpenProfileIx(program, publicKey, PublicKey.default));
       }
 
-      const usdcIxs = await buildUsdcTransferIxs(
+      // v1.4: shared multi-token helper. Routes USDC/SOL/$GAME and applies
+      // the 20% discount for $GAME automatically via contract-aware quote.
+      const { ixs: paymentIxs } = await buildSaveScorePaymentIxs(
+        program,
         connection,
         publicKey,
-        publicKey,
-        treasury,
-        new BN(SCORE_COMMIT_MICRO_USD),
-      );
-      usdcIxs.forEach((ix) => tx.add(ix));
-
-      const emptySig = new Uint8Array(64);
-      tx.add(
-        await buildRecordPaymentIx(program, publicKey, {
+        {
+          token: paymentToken,
           category: CATEGORY.SCORE_COMMIT,
-          amountMicroUsd: new BN(SCORE_COMMIT_MICRO_USD),
-          paymentTxSig: emptySig,
-          paymentMint: USDC_MINT,
-          paymentAmountRaw: new BN(SCORE_COMMIT_MICRO_USD), // v1.3: stablecoin parity (raw === micro-USD)
-          externalRef: "",
+          basePriceMicroUsd: new BN(SCORE_COMMIT_MICRO_USD),
           gameId: BLOCKWORDS_ARCADE_GAME_ID,
-        }),
+          externalRef: "",
+          treasury,
+        },
       );
+      paymentIxs.forEach((ix) => tx.add(ix));
 
       const moveLogBytes = encodeGuessLog(r.guesses);
       const moveHash = await sha256(moveLogBytes);
@@ -329,7 +332,7 @@ export default function ArcadeMode() {
     } finally {
       setBusy(null);
     }
-  }, [anchorWallet, publicKey, connection, profileExists]);
+  }, [anchorWallet, publicKey, connection, profileExists, paymentToken]);
 
   const onVerifyRun = useCallback(async () => {
     const r = runRef.current;
