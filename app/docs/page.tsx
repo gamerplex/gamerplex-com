@@ -422,7 +422,7 @@ Pet Legends: GPX1|pla|BEzD...|GYYw...|w|12|8|15|atk,blk,spc,atk,...`}</CodeBlock
             <List items={[
               <><strong>Cyber Snake</strong> — classic Tron-style snake. Solo arcade flavor live on devnet.</>,
               <><strong>Magic Chess</strong> — deep skill strategy. ER-native. 1.2M positions verified.</>,
-              <><strong>Blockwords</strong> — Wordle-style word sprint. Daily puzzle + free-play.</>,
+              <><strong>Blockwords</strong> — timed 5-letter word puzzle. 90s sprint, 6 guesses, on-chain leaderboard.</>,
               <><strong>Flipball</strong> — pinball with on-chain leaderboard. Live on devnet.</>,
             ]} />
             <P>

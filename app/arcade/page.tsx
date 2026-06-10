@@ -32,7 +32,7 @@ const ARCADE_GAMES = [
     id: "blockwords",
     slug: "blockwords",
     name: "Blockwords",
-    tagline: "Pick the secret 5-letter word in 6 guesses, against a 90s timer. Wordle-style word sprint.",
+    tagline: "Pick the secret 5-letter word in 6 guesses, against a 90s timer. Pure word-sprint speed run.",
     emoji: "📝",
     color: "#ffd24a",
     status: "playable",
