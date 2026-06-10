@@ -583,20 +583,31 @@ export default function ArcadeMode() {
                 </div>
 
                 {connected ? (
-                  <ProgressiveUpgradeStack
-                    busy={busy}
-                    profileExists={profileExists}
-                    savedThisRun={savedThisRun}
-                    verifiedThisRun={verifiedThisRun}
-                    ownedThisRun={ownedThisRun}
-                    showAdvanced={showAdvanced}
-                    setShowAdvanced={setShowAdvanced}
-                    onSave={onSaveOnChain}
-                    onVerify={onVerifyRun}
-                    onMintReceipt={onMintReceipt}
-                    onWrapCnft={() => setOnchainError("T4 cNFT wrap ships in v1.3 — Metaplex Bubblegum integration pending.")}
-                    onRestart={startNewRun}
-                  />
+                  <>
+                    {!savedThisRun && (
+                      <div style={{ width: "100%", maxWidth: 420, marginBottom: 4 }}>
+                        <PaymentMethodPicker
+                          value={paymentToken}
+                          onChange={setPaymentToken}
+                          basePriceMicroUsd={new BN(SCORE_COMMIT_MICRO_USD)}
+                        />
+                      </div>
+                    )}
+                    <ProgressiveUpgradeStack
+                      busy={busy}
+                      profileExists={profileExists}
+                      savedThisRun={savedThisRun}
+                      verifiedThisRun={verifiedThisRun}
+                      ownedThisRun={ownedThisRun}
+                      showAdvanced={showAdvanced}
+                      setShowAdvanced={setShowAdvanced}
+                      onSave={onSaveOnChain}
+                      onVerify={onVerifyRun}
+                      onMintReceipt={onMintReceipt}
+                      onWrapCnft={() => setOnchainError("T4 cNFT wrap ships in v1.3 — Metaplex Bubblegum integration pending.")}
+                      onRestart={startNewRun}
+                    />
+                  </>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, marginTop: 4, width: "100%", maxWidth: 420, zIndex: 1 }}>
                     <button
