@@ -37,7 +37,10 @@ import {
   CNFT_WRAP_MICRO_USD,
   ARCADE_PROGRAM_ID,
   ARCADE_NETWORK,
+  CYBER_SNAKE_GAME_ID,
 } from "../../../../lib/arcade/client";
+import { buildSaveScorePaymentIxs } from "../../../../lib/arcade/save-score-payment";
+import { PAYMENT_TOKENS, type PaymentTokenDef } from "../../../../lib/arcade/tokens";
 import { ArcadeLeaderboard } from "../../../arcade/_components/ArcadeLeaderboard";
 
 const EXPLORER_SUFFIX = ARCADE_NETWORK === "mainnet" ? "" : `?cluster=${ARCADE_NETWORK}`;
@@ -428,6 +431,11 @@ export default function CyberSnakeSolo() {
     }
   }, []);
 
+  // v1.4: default to USDC. Token picker UI ships in the next commit.
+  const [paymentToken, setPaymentToken] = useState<PaymentTokenDef>(
+    PAYMENT_TOKENS.find((t) => t.symbol === "USDC") ?? PAYMENT_TOKENS[0]
+  );
+
   const onSaveOnChain = useCallback(async () => {
     const g = gameRef.current;
     if (!g || !anchorWallet || !publicKey) return;
@@ -444,26 +452,20 @@ export default function CyberSnakeSolo() {
         );
       }
 
-      const usdcIxs = await buildUsdcTransferIxs(
-        connection,
-        publicKey,
-        publicKey,
-        treasury,
-        new BN(SCORE_COMMIT_MICRO_USD)
-      );
-      usdcIxs.forEach((ix) => tx.add(ix));
-
-      const emptySig = new Uint8Array(64);
-      tx.add(
-        await buildRecordPaymentIx(program, publicKey, {
+      // v1.4: shared multi-token helper. Routes USDC/SOL/$GAME and applies
+      // the 20% discount for $GAME automatically via contract-aware quote.
+      const { ixs: paymentIxs } = await buildSaveScorePaymentIxs(
+        program, connection, publicKey,
+        {
+          token: paymentToken,
           category: CATEGORY.SCORE_COMMIT,
-          amountMicroUsd: new BN(SCORE_COMMIT_MICRO_USD),
-          paymentTxSig: emptySig,
-          paymentMint: USDC_MINT,
-          paymentAmountRaw: new BN(SCORE_COMMIT_MICRO_USD), // v1.3: stablecoin parity (raw === micro-USD)
+          basePriceMicroUsd: new BN(SCORE_COMMIT_MICRO_USD),
+          gameId: CYBER_SNAKE_GAME_ID,
           externalRef: "",
-        })
+          treasury,
+        },
       );
+      paymentIxs.forEach((ix) => tx.add(ix));
 
       const moveLogBytes = encodeMoveLog(g.moveLog);
       const moveHash = await sha256(moveLogBytes);
@@ -493,7 +495,7 @@ export default function CyberSnakeSolo() {
     } finally {
       setBusy(null);
     }
-  }, [anchorWallet, publicKey, connection, profileExists]);
+  }, [anchorWallet, publicKey, connection, profileExists, paymentToken]);
 
   const onVerifyRun = useCallback(async () => {
     const g = gameRef.current;

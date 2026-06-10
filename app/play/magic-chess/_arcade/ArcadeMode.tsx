@@ -20,6 +20,8 @@ import {
   CATEGORY, SCORE_COMMIT_MICRO_USD, VERIFIED_COMMIT_MICRO_USD, REPLAY_RECEIPT_MICRO_USD,
   MAGIC_CHESS_GAME_ID, ARCADE_NETWORK,
 } from "../../../../lib/arcade/client";
+import { buildSaveScorePaymentIxs } from "../../../../lib/arcade/save-score-payment";
+import { PAYMENT_TOKENS, type PaymentTokenDef } from "../../../../lib/arcade/tokens";
 import { ArcadeLeaderboard } from "../../../arcade/_components/ArcadeLeaderboard";
 import "../_shared/magic.css";
 
@@ -198,6 +200,11 @@ export default function ArcadeMode() {
     return computeScore(bot.elo, won === true, mc, dur);
   }, [bot, won, mc, startedAt, phase]);
 
+  // v1.4: default to USDC. Token picker UI ships in the next commit.
+  const [paymentToken, setPaymentToken] = useState<PaymentTokenDef>(
+    PAYMENT_TOKENS.find((t) => t.symbol === "USDC") ?? PAYMENT_TOKENS[0]
+  );
+
   const onSaveOnChain = useCallback(async () => {
     if (!seed || !anchorWallet || !publicKey || !bot) return;
     setBusy("save"); setOnchainError(null);
@@ -210,19 +217,20 @@ export default function ArcadeMode() {
         tx.add(await buildOpenProfileIx(program, publicKey, PublicKey.default));
       }
 
-      const usdcIxs = await buildUsdcTransferIxs(connection, publicKey, publicKey, treasury, new BN(SCORE_COMMIT_MICRO_USD));
-      usdcIxs.forEach(ix => tx.add(ix));
-
-      const emptySig = new Uint8Array(64);
-      tx.add(await buildRecordPaymentIx(program, publicKey, {
-        category: CATEGORY.SCORE_COMMIT,
-        amountMicroUsd: new BN(SCORE_COMMIT_MICRO_USD),
-        paymentTxSig: emptySig,
-        paymentMint: USDC_MINT,
-          paymentAmountRaw: new BN(SCORE_COMMIT_MICRO_USD), // v1.3: stablecoin parity (raw === micro-USD)
-        externalRef: "",
-        gameId: MAGIC_CHESS_GAME_ID,
-      }));
+      // v1.4: shared multi-token helper. Routes USDC/SOL/$GAME and applies
+      // the 20% discount for $GAME automatically via contract-aware quote.
+      const { ixs: paymentIxs } = await buildSaveScorePaymentIxs(
+        program, connection, publicKey,
+        {
+          token: paymentToken,
+          category: CATEGORY.SCORE_COMMIT,
+          basePriceMicroUsd: new BN(SCORE_COMMIT_MICRO_USD),
+          gameId: MAGIC_CHESS_GAME_ID,
+          externalRef: "",
+          treasury,
+        },
+      );
+      paymentIxs.forEach((ix) => tx.add(ix));
 
       const moveLogBytes = encodeMoveLog(moveLogRef.current);
       const moveHash = await sha256(moveLogBytes);
@@ -246,7 +254,7 @@ export default function ArcadeMode() {
       console.error("save failed:", e);
       setOnchainError(e?.message || "Save failed");
     } finally { setBusy(null); }
-  }, [anchorWallet, publicKey, connection, profileExists, seed, bot, startedAt, finalScore]);
+  }, [anchorWallet, publicKey, connection, profileExists, seed, bot, startedAt, finalScore, paymentToken]);
 
   const onVerifyRun = useCallback(async () => {
     if (!seed || !anchorWallet || !publicKey) return;
