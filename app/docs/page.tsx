@@ -30,7 +30,7 @@ const SECTIONS = [
   { id: "pet-legends", label: "Pet Legends Arena", group: "Games" },
   { id: "agents", label: "Gamerplex Agents", group: "Games" },
 
-  { id: "gamer-token", label: "$GAMER Token", group: "Economics" },
+  { id: "gamer-token", label: "$GAME Token", group: "Economics" },
   { id: "fees", label: "Fees & Revenue", group: "Economics" },
 
   { id: "mainnet-gate", label: "Mainnet Readiness Gate", group: "Roadmap" },
@@ -230,7 +230,8 @@ Contention Markets v2.1  69YfcveAbLbJ5LNERjq6k5wnszfZbXMYVzx2j8Ca1Xo8
 Gamerplex Orchestrator   tsHnDDmYyqpcRyQejKcvai6fECRWyNQ4F87QgKcHg4d
 Flipcash                 FLip3dQVfpeUKg5fUNfFhcHvQvG3HoXqYw5XDDx8Wo9i
 SOAR                     SoarNNzwQHMwcfdkdLc6kvbkoMSxcHy89gTHrjhJYkk
-$GAMER Token             8eGnj5jkW6zTGYieGhtejPjLtGmnKfCdk7FamoJ5LLvD
+$GAME Token (MAINNET ✅)  7TTBUfDomCKBMemv7FF37Tg3y52cRkAxn8vJnvKD4rsE
+$GAME Token (devnet)     8eGnj5jkW6zTGYieGhtejPjLtGmnKfCdk7FamoJ5LLvD
 Mock USDF (devnet)       9Lc5ftsVbVS1T8c6D9Yan83fNaPryo3xpKp4DgKtyKhK
 PoolBacker PDA          FNKPP6q2qk3wqMd7ErkWYk98etrZfuMnvGh2EQKdrrcJ`}
             </CodeBlock>
@@ -405,7 +406,7 @@ Pet Legends: GPX1|pla|BEzD...|GYYw...|w|12|8|15|atk,blk,spc,atk,...`}</CodeBlock
               ["Game state (board, moves, turns)", "✅ On-chain (MagicBlock ER)"],
               ["Move validation", "✅ On-chain (full chess rules in program)"],
               ["SOAR leaderboard", "✅ On-chain (permanent rankings)"],
-              ["$GAMER token (Flipcash curve)", "✅ On-chain (USD-backed)"],
+              ["$GAME token (Flipcash curve)", "✅ Live on mainnet (USD-backed)"],
               ["PoolBacker (game funding)", "✅ On-chain PDA (delegated to ER)"],
               ["Game creation (ephemeral accounts)", "✅ On ER (no L1 tx needed)"],
               ["AI opponent", "⚠️ Server-signed (Cloud Run)"],
@@ -463,7 +464,7 @@ Pet Legends: GPX1|pla|BEzD...|GYYw...|w|12|8|15|atk,blk,spc,atk,...`}</CodeBlock
             ]} />
             <P>
               Future state: connect your wallet → your <code>parzival.sol</code> name shows on the leaderboard →
-              people can send you $GAMER tips or challenge links directly to your name.
+              people can send you $GAME tips or challenge links directly to your name.
             </P>
           </Section>
 
@@ -560,20 +561,28 @@ SF3000  — Superhuman (Stockfish skill 20)`}
           </Section>
 
           {/* Economics */}
-          <Section id="gamer-token" title="$GAMER Token">
+          <Section id="gamer-token" title="$GAME Token">
             <P>
-              Platform token on a Flipcash exponential bonding curve.
+              <strong>$GAME is a utility token</strong> — designed to be earned through skill and used for in-game
+              features across Gamerplex games, with utility on Sledgit rolling out. It runs on a Flipcash
+              exponential bonding curve. <strong style={{color:"#14F195"}}>✅ Live on mainnet.</strong>
+            </P>
+            <P style={{border:"1px solid #9945FF", borderRadius:8, padding:"10px 12px"}}>
+              <strong style={{color:"#9945FF"}}>Official contract address — verify before any interaction:</strong><br/>
+              <code style={{fontSize:12}}>7TTBUfDomCKBMemv7FF37Tg3y52cRkAxn8vJnvKD4rsE</code><br/>
+              <span style={{fontSize:13, opacity:0.85}}>
+                Ticker symbols are not reserved on Flipcash — any token calling itself &ldquo;$GAME&rdquo; at a
+                different address is <strong>not ours</strong>. Always check the mint address above.
+              </span>
             </P>
             <List items={[
-              "Starts at $0.01, max supply 21M, endpoint ~$1M/token",
-              "Buy with USDF (mock USDC on devnet)",
-              "1% burn on sell → deflationary",
-              "USD-backed — price can never go to zero",
-              "Protocol revenue buys and burns $GAMER",
+              "Utility token for in-game features across Gamerplex (and Sledgit, rolling out)",
+              "Fixed supply: 21,000,000 · 10 decimals · mint authority revoked (no new tokens can be minted)",
+              "Acquired on a USDF-denominated Flipcash bonding curve; 1% fee applied on sell",
             ]} />
-            <P>
-              Unlike memecoins, $GAMER is backed by the bonding curve. You can always sell back at the curve price.
-              This is fundamentally different from tokens that can rug.
+            <P style={{fontSize:13, opacity:0.85}}>
+              $GAME is a consumable platform credit for accessing features. It is <strong>not an investment,
+              security, or ownership stake</strong>, and confers no profit expectation, dividend, or governance right.
             </P>
           </Section>
 
@@ -601,7 +610,7 @@ SF3000  — Superhuman (Stockfish skill 20)`}
               ["Token swap (Flipcash curves)", "0.5%", "Swappers"],
               ["Flipcash sell burn", "1%", "Sellers (burned, not collected)"],
               ["Referral fees", "20% of protocol fee", "Protocol → referrer (on-chain, atomic)"],
-              ["Tournament entry fees", "Varies", "Players (burned $GAMER/$CHESS)"],
+              ["Tournament entry fees", "Varies", "Players (burned $GAME/$CHESS)"],
               ["Tipping (optional)", "0%", "Tippers"],
             ]} />
             <P>
@@ -684,7 +693,7 @@ SF3000  — Superhuman (Stockfish skill 20)`}
                 "Two-Squads multisig live (Gamerplex Pty Ltd ↔ CM operator entity)",
                 "48hr admin timelock on CM v2.1",
                 "All 64 items in the Wagered Readiness Gate green",
-                "$GAMER token launches alongside (Flipcash bonding curve)",
+                "$GAME token launches alongside (Flipcash bonding curve)",
               ]} />
               <RoadmapCard phase="Post-Mainnet — Scale" status="Planned" color="#888" items={[
                 "One new arcade game a week (Time Gate, Tetris-Arcade, Math Drills, etc.)",
