@@ -558,8 +558,16 @@ export default function ArcadeMode() {
                       </>
                     ) : (
                       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        {!savedThisRun && (
+                          <PaymentMethodPicker
+                            value={paymentToken}
+                            onChange={setPaymentToken}
+                            basePriceMicroUsd={new BN(SCORE_COMMIT_MICRO_USD)}
+                            compact
+                          />
+                        )}
                         <button onClick={onSaveOnChain} disabled={busy !== null || savedThisRun} style={tierBtn(savedThisRun)}>
-                          {busy === "save" ? "Saving…" : savedThisRun ? "✓ Score saved (T1)" : "Save Score · $0.05"}
+                          {busy === "save" ? "Saving…" : savedThisRun ? "✓ Score saved (T1)" : `Save Score · $${((50_000 * (10_000 - paymentToken.discountBps) / 10_000) / 1_000_000).toFixed(2)} · ${paymentToken.symbol}`}
                         </button>
                         <button onClick={onVerifyRun} disabled={busy !== null || verifiedThisRun || !savedThisRun} style={tierBtn(verifiedThisRun, !savedThisRun)}>
                           {busy === "verify" ? "Verifying…" : verifiedThisRun ? "✓ Replay saved (T2)" : "Save Verified Replay · $0.15"}
