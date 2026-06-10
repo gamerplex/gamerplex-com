@@ -6,14 +6,12 @@ import { SiteNav } from "../../components/SiteNav";
 
 const SECTIONS = [
   { id: "intro", label: "What is Gamerplex?", group: "Overview" },
-  { id: "two-surfaces", label: "Two Surfaces, Two Entities", group: "Overview" },
   { id: "sovereign", label: "Sovereign Game Dev", group: "Overview" },
   { id: "vision", label: "Vision", group: "Overview" },
   { id: "why-onchain", label: "Why On-Chain?", group: "Overview" },
 
   { id: "architecture", label: "Architecture", group: "Protocol" },
   { id: "programs", label: "Smart Contracts", group: "Protocol" },
-  { id: "cm-v2", label: "CM v2 + Orchestrator", group: "Protocol" },
   { id: "er-pool", label: "ER Pool (Free Play)", group: "Protocol" },
   { id: "rankings", label: "Rankings Protocol", group: "Protocol" },
   { id: "gpx-standard", label: "GPX Standard", group: "Protocol" },
@@ -123,36 +121,14 @@ export default function DocsPage() {
             <P>
               Gamerplex is a Solana on-chain skill-arcade. Pay-to-save microtransactions ($0.05 to immortalize a score on the global leaderboard, $0.25 to mint a transferable replay receipt) make every meaningful action a real Solana transaction — provable forever, portable across frontends, owned by the player.
             </P>
-            <P>
-              Skill-arcade is the <strong style={{color:"#14F195"}}>player surface</strong> shipped here at gamerplex.com — operated by Gamerplex Pty Ltd (Australia). Wagered head-to-head matches and pari-mutuel skill-contest markets (the <em>Battle Mode</em> and the <em>backer surface</em>) are operated by a separate entity at <a href="https://contention.markets" target="_blank" rel="noopener noreferrer" style={{color:"#9945FF"}}>contention.markets</a>. See <a href="#two-surfaces" style={{color:"#9945FF"}}>Two Surfaces, Two Entities</a> below.
+            <P style={{fontSize:13,color:"#888"}}>
+              Two-player wagered Battle Mode and prediction-market settlement live at <a href="https://contention.markets" target="_blank" rel="noopener noreferrer" style={{color:"#9945FF"}}>contention.markets</a> — a separate product under a separate legal entity. This site documents the Arcade only.
             </P>
             <Stats items={[
-              { label: "Programs Deployed", value: "11" },
+              { label: "Programs Deployed", value: "1" },
               { label: "E2E Tests Passing", value: "170+" },
-              { label: "Arcade Games Live", value: "1" },
-              { label: "Positions Verified", value: "1.2M" },
-            ]} />
-          </Section>
-
-          <Section id="two-surfaces" title="Two Surfaces, Two Entities">
-            <P>
-              Gamerplex ships in two surfaces. They share Solana primitives but are separate products operated by separate entities.
-            </P>
-            <Table cols={["Surface", "What it is", "Network", "Entity"]} rows={[
-              ["gamerplex.com (here)", "Single-player skill arcade — pay-to-save microtxn ($0.05 / $0.15 / $0.25)", "Mainnet candidate (devnet today)", "Gamerplex Pty Ltd (AU)"],
-              ["contention.markets", "Wagered 2-player Battle Mode + pari-mutuel skill-contest markets", "Devnet only", "Offshore-future entity (not yet formed)"],
-            ]} />
-            <P>
-              <strong style={{color:"#14F195"}}>Why split?</strong> Single-player skill-arcade microtxn is an established legal category (Pac-Man / chess.com puzzles / Skillz). Wagered head-to-head and pari-mutuel skill-contests are a separate, more carefully-regulated category. We treat them as separate businesses operated by separate entities, with separate Squads multisigs and separate operational responsibility — the same pattern Uniswap Labs and Uniswap front-end operators use.
-            </P>
-            <P>
-              <strong style={{color:"#e0b3ff"}}>What this means in practice:</strong>
-            </P>
-            <List items={[
-              <><strong>gamerplex.com is mainnet-bound.</strong> The arcade contract has been hardened, stress-tested (170/170 on devnet), security-txt&apos;d, T&amp;C-gated, and geofenced. It awaits a Squads multisig and Ledger custody before mainnet flip.</>,
-              <><strong>contention.markets stays on devnet</strong> until the offshore operating entity is formed. No mainnet wagered frontend is operated by Gamerplex Pty Ltd, by design.</>,
-              <><strong>The two surfaces share on-chain reads only.</strong> The resolver is a public data layer; cross-links are presentational; no shared auth, no shared treasury, no embedded UI.</>,
-              <><strong>Programs are open-source from the gamerplex/ org.</strong> Operating any of them as a wagered frontend is the operator&apos;s legal responsibility — publication is not authorization.</>,
+              { label: "Arcade Games Live", value: "4" },
+              { label: "Payment Tokens", value: "5" },
             ]} />
           </Section>
 
@@ -210,7 +186,7 @@ export default function DocsPage() {
           <Section id="architecture" title="Architecture">
             <P>Three layers:</P>
             <List items={[
-              <><strong style={{color:"#14F195"}}>Layer 1 — Protocol (on-chain, trustless):</strong> 9 Solana programs. Chess rules, wagering, tokens, leaderboards. Immutable.</>,
+              <><strong style={{color:"#14F195"}}>Layer 1 — Protocol (on-chain, trustless):</strong> Solana programs. Score memos, multi-token payments, leaderboards. Immutable.</>,
               <><strong style={{color:"#9945FF"}}>Layer 2 — Services (centralized convenience):</strong> Resolver API for ER pool management, AI opponents, matchmaking. Can be replaced.</>,
               <><strong style={{color:"#00f0ff"}}>Layer 3 — Applications:</strong> gamerplex.com frontend, third-party game clients, SDKs.</>,
             ]} />
@@ -221,56 +197,26 @@ export default function DocsPage() {
           </Section>
 
           <Section id="programs" title="Smart Contracts">
-            <P>Mainnet launches with 3 games on one unified stack. Ancillary experiments (Aim Duel, Snake, Sea Battle, Token Swap) are archived — see <Link href="#forever-games" style={{color:"#9945FF"}}>Forever Games</Link> for the post-launch scale path.</P>
+            <P>The Gamerplex Arcade ships on a single upgradeable program. Each game registers a <code>game_id</code> against the arcade registry.</P>
             <CodeBlock>
-{`Magic Chess              3LVg8uUsHtq6fusjrSfyGUCLQ83TFegDKmY3bCNz3QYr
-Blockwords               (Anchor program, devnet deploy pending)
-Pet Legends Arena        (rewrite onto unified stack in progress)
-Contention Markets v2.1  69YfcveAbLbJ5LNERjq6k5wnszfZbXMYVzx2j8Ca1Xo8
+{`Gamerplex Arcade v1.4    4FVwdxxBp6PTax2tAcPyHE9rYt8tyNf2YBGrSnSqmx8t
+Magic Chess              3LVg8uUsHtq6fusjrSfyGUCLQ83TFegDKmY3bCNz3QYr
 Gamerplex Orchestrator   tsHnDDmYyqpcRyQejKcvai6fECRWyNQ4F87QgKcHg4d
-Flipcash                 FLip3dQVfpeUKg5fUNfFhcHvQvG3HoXqYw5XDDx8Wo9i
 SOAR                     SoarNNzwQHMwcfdkdLc6kvbkoMSxcHy89gTHrjhJYkk
 $GAME Token (MAINNET ✅)  7TTBUfDomCKBMemv7FF37Tg3y52cRkAxn8vJnvKD4rsE
 $GAME Token (devnet)     8eGnj5jkW6zTGYieGhtejPjLtGmnKfCdk7FamoJ5LLvD
-Mock USDF (devnet)       9Lc5ftsVbVS1T8c6D9Yan83fNaPryo3xpKp4DgKtyKhK
-PoolBacker PDA          FNKPP6q2qk3wqMd7ErkWYk98etrZfuMnvGh2EQKdrrcJ`}
+Mock USDF (devnet)       9Lc5ftsVbVS1T8c6D9Yan83fNaPryo3xpKp4DgKtyKhK`}
             </CodeBlock>
-            <P><strong>Chess program instructions:</strong></P>
+            <P><strong>Arcade program instructions:</strong></P>
             <List items={[
-              <><code>create_game</code> — L1 PDA creation (legacy, fallback)</>,
-              <><code>create_ephemeral_game</code> — ephemeral account on ER, 109x cheaper, PoolBacker pays rent</>,
-              <><code>join_game</code> — join as black (AI or player)</>,
-              <><code>make_move</code> — full chess rules validated on-chain</>,
-              <><code>delegate_game</code> — send L1 PDA to ER</>,
-              <><code>finish_game</code> — commit + undelegate back to L1</>,
-              <><code>init_pool_backer</code> / <code>topup_pool_backer</code> / <code>delegate_pool_backer</code> — one-time setup for free play funding</>,
+              <><code>open_player_profile</code> — one-time per wallet, optional referrer attribution</>,
+              <><code>record_payment</code> — pays in USDC / SOL / $GAME / USDT / USDF; quotes via on-chain ExchangeRatesConfig</>,
+              <><code>submit_score</code> — emits <code>GPX5|&lt;slug&gt;|&lt;variant&gt;|&lt;player&gt;|&lt;score&gt;|...</code> memo on-chain</>,
+              <><code>register_game</code> — admin-only; binds game_id to a slug + display name</>,
+              <><code>update_exchange_rates</code> / <code>update_accepted_stablecoins</code> — admin, deadline-gated</>,
             ]} />
             <P>
-              <strong>PoolBacker PDA:</strong> <code style={{fontSize:11}}>FNKPP6q2qk3wqMd7ErkWYk98etrZfuMnvGh2EQKdrrcJ</code> — delegated to MagicBlock ER with 1.5 SOL (~44,000 concurrent ephemeral accounts at capacity).
-            </P>
-          </Section>
-
-          <Section id="cm-v2" title="Contention Markets v2 + Gamerplex Orchestrator">
-            <P>
-              Two upgrades shipping this week. Both on devnet, both gated behind the <Link href="#mainnet-gate" style={{color:"#9945FF"}}>40-item mainnet readiness checklist</Link> before real money flows.
-            </P>
-            <P><strong style={{color:"#14F195"}}>Contention Markets v2</strong> — in-place upgrade (same program ID via BPFLoaderUpgradeable). 5 surgical changes:</P>
-            <List items={[
-              <><code>resolve_market_from_game_pda</code> — <strong>permissionless resolve</strong>. Any keeper can settle a match if a registered game program says it&apos;s over. No partner key required.</>,
-              <><code>ProtocolConfig.pool_backer</code> — new optional field routes a slice of every fee to the free-play pool.</>,
-              <>Fee split: <strong>0.80% protocol / 1.00% partner / 0.20% PoolBacker</strong>. Winner still nets 98%.</>,
-              <>Idempotency guards — prevents double-payout from concurrent resolve races.</>,
-              <><code>close_market_permissionless</code> — rent reclaim on expired/resolved markets (24hr cooldown, rent to creator not caller).</>,
-            ]} />
-            <P><strong style={{color:"#e0b3ff"}}>Gamerplex Orchestrator</strong> — new program (~300 lines Anchor). Instructions:</P>
-            <List items={[
-              <><code>claim_challenge</code> — ed25519 precompile verifies creator&apos;s signed URL payload. Zero on-chain cost to <em>create</em> a challenge; first player opens the link and triggers the only on-chain tx. PoolBacker pays ephemeral rent.</>,
-              <><code>revoke_challenge</code> — creator-only. Mark own nonce used.</>,
-              <><code>replenish_pool_backer</code> — keeper-callable. Routes protocol treasury slice to PoolBacker. Small bounty covers tx fees.</>,
-              <><code>register_game</code> — permissionless on-chain game registry. Any frontend can <code>getProgramAccounts</code> to list games.</>,
-            ]} />
-            <P>
-              Combined effect: <strong>new games deploy sovereign by default</strong> — challenges are free signed URLs, settlement is permissionless, the free-play pool self-funds from volume, and any frontend can surface any game. The chess resolver still runs for legacy, but new games don&apos;t need it.
+              <strong>$GAME 20% discount:</strong> paying score-save in $GAME charges $0.04 instead of $0.05. Discount enforced inside <code>record_payment</code> via the <code>required_amount(category, payment_mint)</code> helper.
             </P>
           </Section>
 
@@ -305,7 +251,7 @@ PoolBacker PDA          FNKPP6q2qk3wqMd7ErkWYk98etrZfuMnvGh2EQKdrrcJ`}
               <><strong>Glicko-2</strong> (public domain) — confidence-weighted ratings for infrequent players</>,
               <><strong>OpenSkill</strong> (MIT) — multiplayer free-for-all, battle royale, team games</>,
               <><strong>MagicBlock SOAR</strong> — raw score storage, permanent, trustless</>,
-              <><strong>Contention Markets</strong> — settlement that validates scores can&apos;t be self-reported</>,
+              <><strong>SOAR + arcade memo</strong> — settlement that validates scores can&apos;t be self-reported (on-chain GPX5 memo per save)</>,
             ]} />
             <P>
               <em>Avoid TrueSkill</em> — it&apos;s patented by Microsoft. We stick to royalty-free algorithms.
@@ -336,7 +282,7 @@ Pet Legends: GPX1|pla|BEzD...|GYYw...|w|12|8|15|atk,blk,spc,atk,...`}</CodeBlock
               <><strong>SOAR</strong> = WHO has what score (leaderboard, on-chain, queryable)</>,
               <><strong>GPX1</strong> = WHAT happened (moves, opponent, result — permanent in tx ledger)</>,
               <><strong>ER Validator</strong> = LIVE feed (real-time moves during gameplay, free)</>,
-              <><strong>Contention Markets</strong> = SETTLEMENT (atomic wagering payout)</>,
+              <><strong>Arcade contract</strong> = SETTLEMENT (atomic score-save + payment)</>,
             ]} />
             <P>
               If Gamerplex disappears, anyone can rebuild the full match database by scanning Solana transactions
@@ -382,7 +328,7 @@ Pet Legends: GPX1|pla|BEzD...|GYYw...|w|12|8|15|atk,blk,spc,atk,...`}</CodeBlock
             <CodeBlock>https://github.com/gamerplex/gamerplex-dev</CodeBlock>
             <P>Two registration tiers:</P>
             <Table cols={["Tier", "Who", "What you get"]} rows={[
-              ["Tier 1 — Self-disclosed", "Any developer", "PR against tournament-config.json, wallet appears at /bots within 10 min. Excluded from human leaderboard, can play wagered matches immediately."],
+              ["Tier 1 — Self-disclosed", "Any developer", "PR against tournament-config.json, wallet appears at /bots within 10 min. Excluded from human leaderboard."],
               ["Tier 2 — VERIFIED (post-June)", "Third-party creators on mainnet", "X OAuth attestation + reproducible-build proof. Eligible for 10% game-token rake split under CM v2.2 creator program."],
             ]} />
             <P>Three hard rules (non-negotiable, bannable):</P>
@@ -469,17 +415,18 @@ Pet Legends: GPX1|pla|BEzD...|GYYw...|w|12|8|15|atk,blk,spc,atk,...`}</CodeBlock
           </Section>
 
           {/* Games */}
-          <Section id="three-games" title="Three Games, One Stack">
+          <Section id="three-games" title="Four Games, One Stack">
             <P>
-              The launch plan: <strong>three diverse games, all on the same unified Gamerplex stack</strong>, proving the protocol works across very different game types. Every game uses CM v2 for wagering, the Orchestrator for challenge links, PoolBacker for free play, SOAR for leaderboards, and GPX1 for permanent memos. <strong style={{color:"#14F195"}}>Same stack, same economics, different games.</strong>
+              The launch plan: <strong>four diverse games, all on the same unified Gamerplex Arcade stack</strong>, proving the protocol works across very different game types. Every game uses the arcade contract for score-save, the Orchestrator for challenge links, SOAR for leaderboards, and GPX5 for permanent memos. <strong style={{color:"#14F195"}}>Same stack, same economics, different games.</strong>
             </P>
             <List items={[
+              <><strong>Cyber Snake</strong> — classic Tron-style snake. Solo arcade flavor live on devnet.</>,
               <><strong>Magic Chess</strong> — deep skill strategy. ER-native. 1.2M positions verified.</>,
-              <><strong>Blockwords</strong> — hidden-information puzzle on a Private Ephemeral Rollup (Intel TDX).</>,
-              <><strong>Pet Legends Arena</strong> — NFT auto-battler with deterministic skill-based combat.</>,
+              <><strong>Blockwords</strong> — Wordle-style word sprint. Daily puzzle + free-play.</>,
+              <><strong>Flipball</strong> — pinball with on-chain leaderboard. Live on devnet.</>,
             ]} />
             <P>
-              All three are proving the stack on devnet. When the <Link href="#mainnet-gate" style={{color:"#9945FF"}}>40-item mainnet gate</Link> is green across all three, they launch together on mainnet. Then we scale: one new game a week from the Forever Games list — Cyber Snake, Go, Reversi, Four in a Row, Checkers, Poker, Backgammon — each plugging into the same stack and earning protocol fees from day one.
+              All four are proving the stack on devnet. When the <Link href="#mainnet-gate" style={{color:"#9945FF"}}>arcade mainnet gate</Link> is green, they launch together on mainnet. Then we scale: more games from the Forever Games list — Go, Reversi, Four in a Row, Checkers, Backgammon — each plugging into the same stack from day one.
             </P>
           </Section>
 
@@ -507,29 +454,29 @@ Pet Legends: GPX1|pla|BEzD...|GYYw...|w|12|8|15|atk,blk,spc,atk,...`}</CodeBlock
               The word lives inside Intel TDX hardware. <strong>Nobody — not the validator, not MagicBlock, not us — can see the word.</strong> A SHA256 hash is committed on L1 when the game starts. When the word is revealed, anyone can verify it was never changed.
             </P>
             <List items={[
-              "3 modes: Classic Duel (2-player wagered), One-vs-Many (host vs up to 20 guessers), Word Bomb (party-mode scattergories)",
+              "Daily-puzzle arcade flavor: pick the secret 5-letter word in 6 guesses, 90s timer",
               "Hash commitment on L1 → provable fairness",
               "PER permissions: host WRITE, program READ, everyone else NO ACCESS, reveal at game-end",
-              "Settlement via Contention Markets v2 (atomic, on-chain)",
-              "Challenge links via Orchestrator (zero-cost creation, PoolBacker pays claim rent)",
+              "Score-save via arcade contract (atomic, on-chain GPX5 memo)",
+              "Challenge links via Orchestrator (zero-cost creation, ephemeral rent on claim)",
             ]} />
             <P>
-              Status: design complete, build target ~2 weeks. To be built on-camera via the sovereign MCP.
+              Status: arcade flavor live on devnet; gamerplex-com/app/arcade/blockwords/ is the playable surface.
             </P>
           </Section>
 
           <Section id="pet-legends" title="Pet Legends Arena">
             <P>
-              NFT auto-battler. Pick a PFP Trainer NFT (Mad Lads, Famous Foxes — passive class buffs), a Battle Pet NFT (unique base stats), and stake partner memecoins as equipment items. Watch the deterministic simulation play out in real time.
+              NFT pet RPG. Pick a PFP Trainer NFT (Mad Lads, Famous Foxes — passive class buffs), a Pet NFT (unique base stats), and equip partner memecoins as items. Watch the deterministic simulation play out in real time.
             </P>
             <List items={[
-              <><strong>Pure skill, zero RNG</strong> — battles are mathematically certain based on inputs. Preserves Skillz-style legal skill-game exemption.</>,
-              <>200ms ER tick rate for smooth animations; settlement back to L1 via <code>BattleOutcome</code> PDA that triggers Contention Markets resolution.</>,
-              <>Existing brand: <strong style={{color:"#ff69b4"}}>@PetLegends_com</strong> — 4,000 X followers, domain owned since 2021.</>,
-              <>Full rewrite in progress to unify on the Gamerplex stack (CM v2, Orchestrator, PoolBacker, SOAR, GPX1).</>,
+              <><strong>Pure skill, zero RNG</strong> — outcomes are mathematically certain based on inputs. Preserves Skillz-style legal skill-game exemption.</>,
+              <>200ms ER tick rate for smooth animations; final outcome commits to L1 via <code>BattleOutcome</code> PDA → SOAR leaderboard.</>,
+              <>Existing brand: <strong style={{color:"#ff69b4"}}>@PetLegends_com</strong> — 4,000 X followers, domain owned since 2021. Operated by Pet Legends LLC-FZ (UAE), separate from Gamerplex Pty Ltd.</>,
+              <>Full rewrite in progress to unify on the Gamerplex Arcade stack (arcade contract, Orchestrator, SOAR, GPX5).</>,
             ]} />
             <P>
-              Status: existing Anchor workspace (457-line program). Rewrite in progress. Ships on devnet with the unified stack, launches on mainnet with the other two.
+              Status: existing Anchor workspace. Rewrite in progress. Ships on devnet with the unified stack.
             </P>
           </Section>
 
@@ -588,47 +535,27 @@ SF3000  — Superhuman (Stockfish skill 20)`}
 
           <Section id="fees" title="Fees & Revenue">
             <P>
-              <strong style={{color:"#14F195"}}>Skill arcade (gamerplex.com — this surface, mainnet-bound):</strong> the player pays a flat fee per action. ~98% of fees flow to the Gamerplex Pty Ltd treasury after Solana network costs. No rake, no pot — it&apos;s pay-to-save, like an arcade machine.
+              <strong style={{color:"#14F195"}}>Pay-to-save microtxn.</strong> The player pays a flat fee per action. ~98% flows to the Gamerplex Pty Ltd treasury after Solana network costs. No rake, no pot — it&apos;s pay-to-save, like an arcade machine.
             </P>
-            <Table cols={["Action", "Fee", "Destination"]} rows={[
-              ["Save score (T1)", "$0.05", "Gamerplex treasury"],
-              ["Verified replay (T2)", "$0.15", "Gamerplex treasury"],
-              ["ReplayReceipt PDA (T3)", "$0.25", "Gamerplex treasury (rent refundable on close)"],
-              ["cNFT wrap (T4, v1.3)", "$0.50", "Gamerplex treasury"],
+            <Table cols={["Action", "Fee (USDC)", "Fee in $GAME (−20%)", "Destination"]} rows={[
+              ["Save score (T1)", "$0.05", "$0.04", "Gamerplex treasury"],
+              ["Verified replay (T2)", "$0.15", "$0.12", "Gamerplex treasury"],
+              ["ReplayReceipt PDA (T3)", "$0.25", "$0.20", "Gamerplex treasury (rent refundable on close)"],
+              ["cNFT wrap (T4, v1.3)", "$0.50", "$0.40", "Gamerplex treasury"],
             ]} />
             <P>
-              <strong style={{color:"#9945FF"}}>Wagered Battle + pari-mutuel skill-contests (contention.markets — separate surface, devnet only):</strong> on settlement, a <strong>2% protocol rake</strong> splits four ways. Winner nets 98% of the pot. The Gamerplex Pty Ltd entity operates this surface only at the level of being the <em>game developer</em> — the protocol-level fee accrues to the offshore operator entity (not Gamerplex Pty Ltd) once that entity is formed and mainnet ships.
+              <strong>Multi-token accepted:</strong> USDC, SOL, $GAME (mainnet + devnet), USDT, USDF. $GAME gets the 20% discount; the contract enforces it via <code>required_amount(category, payment_mint)</code>.
             </P>
-            <Table cols={["Component", "Rate", "Destination"]} rows={[
-              ["Protocol", "0.80%", "CM operator entity (offshore-future)"],
-              ["Game creator", "1.00%", "Creator's wallet (Gamerplex when game is Gamerplex-developed — arms-length developer rev share)"],
-              ["PoolBacker (free play)", "0.20%", "CM-owned PDA (self-funding ER infrastructure)"],
-              ["Winner payout", "98.00%", "Winner's wallet"],
-            ]} />
-            <P>Other fee streams on the protocol:</P>
+            <P>Other fee streams:</P>
             <Table cols={["Stream", "Rate", "Paid by"]} rows={[
-              ["Token swap (Flipcash curves)", "0.5%", "Swappers"],
-              ["Flipcash sell burn", "1%", "Sellers (burned, not collected)"],
-              ["Referral fees", "20% of protocol fee", "Protocol → referrer (on-chain, atomic)"],
-              ["Tournament entry fees", "Varies", "Players (burned $GAME/$CHESS)"],
-              ["Tipping (optional)", "0%", "Tippers"],
+              ["Affiliate referrals", "20% of payment", "Protocol → referrer (on-chain, accrual; min $0.15)"],
+              ["Tipping (optional)", "0%", "Tippers — direct wallet-to-wallet"],
             ]} />
-            <P>
-              <strong>Self-sustaining economics:</strong> each match contributes 0.20% to PoolBacker while costing ~33k lamports in ephemeral rent. At any pot size above ~$1, PoolBacker inflow &gt; outflow. The free-play pool grows with volume instead of being topped up manually.
-            </P>
-            <P>Break-even: ~25 wagered matches/day at $5 stake covers infrastructure costs.</P>
           </Section>
 
           <Section id="mainnet-gate" title="Mainnet Readiness Gate">
             <P>
-              <strong style={{color:"#14F195"}}>Two separate gates, two separate networks.</strong> Skill arcade ships to mainnet first, on its own narrow gate. Wagered Battle stays on devnet behind a much larger gate until the offshore operator entity is formed.
-            </P>
-            <Table cols={["Surface", "Gate", "Network plan"]} rows={[
-              ["Skill arcade (this site)", "12-item Arcade Gate — T&C, geofence, hardware-wallet custody, devnet stress-test, contract hardening, monitoring", "Mainnet candidate when gate is ✅. Devnet hardened today (170/170 stress-tested)."],
-              ["Wagered Battle (contention.markets)", "Full 64-item Readiness Gate — multisig, timelock, audit, soak, treasury, creator-program defenses, geofence, KYC where required", "Devnet only until offshore entity forms + gate ✅."],
-            ]} />
-            <P>
-              <strong style={{color:"#e0b3ff"}}>Skill arcade — Arcade Gate (12 items):</strong>
+              <strong style={{color:"#14F195"}}>Arcade Gate — 12 items.</strong> Narrow, focused, AU-legal. When all 12 are green the arcade contract flips to mainnet.
             </P>
             <List items={[
               "Arcade program deployed to mainnet (devnet program ID will be reused)",
@@ -645,9 +572,6 @@ SF3000  — Superhuman (Stockfish skill 20)`}
               "Profile pages live (✅ shipped)",
             ]} />
             <P>
-              <strong style={{color:"#e0b3ff"}}>Wagered Battle — full Readiness Gate (64 items):</strong> three sub-gates testing PROVEN (it works at scale), PROFITABLE (unit economics positive on devnet first), and CYBERSECURE (independent attacker can&apos;t extract value). Includes 100-concurrent-match load, 24-hour soak, fee-split audit to 1-lamport precision, double-resolve attack, forged game PDA, replayed nonce, multisig, timelock, independent code review, wash-trade detector, treasury operations, creator-program defenses. Mainnet only after the gate is ✅ <strong>and</strong> the offshore CM entity is formed.
-            </P>
-            <P>
               Mainnet funding for the arcade ceremony is incoming. The current state maps to our <a href="https://github.com/gamerplex" target="_blank" rel="noopener noreferrer" style={{color:"#9945FF"}}>open-source repos</a> — every item references specific tests or code.
             </P>
           </Section>
@@ -655,14 +579,14 @@ SF3000  — Superhuman (Stockfish skill 20)`}
           {/* Roadmap */}
           <Section id="roadmap" title="Roadmap">
             <P>
-              Two parallel tracks, two networks. Arcade ships to mainnet on its own gate; Battle hardens on devnet until the offshore operator entity forms.
+              Single track: skill arcade to mainnet, then scale the catalog.
             </P>
             <div style={{display:"flex",flexDirection:"column",gap:16,marginTop:16}}>
-              <RoadmapCard phase="Now (May 2026)" status="Live on Devnet" color="#14F195" items={[
-                "Skill arcade live on devnet — Cyber Snake Solo playable, 4-tier permanence, 170/170 stress test green",
-                "Hardened arcade contract v1.2 (instructions-sysvar introspection, stablecoin allowlist, deadline gating)",
+              <RoadmapCard phase="Now (June 2026)" status="Live on Devnet" color="#14F195" items={[
+                "Skill arcade live on devnet — 4 games playable, 4-tier permanence, 170/170 stress test green",
+                "Hardened arcade contract v1.4 ($GAME 20% discount, multi-token: USDC/SOL/$GAME/USDT/USDF, affiliate referrals)",
+                "@gamerplex/sdk v0.3.0 shipped (github URL install)",
                 "Challenge links + dynamic OG image for X/Discord previews",
-                "contention.markets dashboard wired to real on-chain CM v2.1 data (166 markets indexed)",
                 "Sovereign MCP + dev server (gamerplex-mcp, gamerplex-dev)",
               ]} />
               <RoadmapCard phase="Track A — Arcade to Mainnet" status="Funds Pending" color="#ffd740" items={[
@@ -674,33 +598,11 @@ SF3000  — Superhuman (Stockfish skill 20)`}
                 "Smoke test 1 paid save end-to-end on mainnet",
                 "Counsel memo on file (skill-arcade framing)",
               ]} />
-              <RoadmapCard phase="Track B — Battle on Devnet" status="Architecturally Complete" color="#e0b3ff" items={[
-                "gamerplex-battle shell program (skeleton shipped, settlement orchestration via CM v2.1 CPI)",
-                "Per-game rules engines (magic-chess-rules, snake-duel-rules, blockwords-rules) — 3-ix CPI ABI",
-                "Full devnet integration test: lobby → ER session → settle → winner paid (target this week)",
-                "Cost saving: new battle game ~$60 instead of ~$510 — 8.5× cheaper than standalone programs",
-                "Stays devnet-only until contention-markets offshore entity is formed",
-              ]} />
-              <RoadmapCard phase="Track C — Backer Surface" status="Devnet Live" color="#9945FF" items={[
-                "contention.markets dashboard live on devnet — 166 markets, real on-chain reads",
-                "cm-website and cm-contract repos split (cm-website public, cm-contract private during pre-mainnet hardening)",
-                "Pari-mutuel skill-contest markets (2% rake, 0.80/1.00/0.20 split)",
-                "Mainnet pending offshore entity formation",
-              ]} />
-              <RoadmapCard phase="Mainnet Battle + Backer Surface — when entity ✅ and gate ✅" status="Gated" color="#00f0ff" items={[
-                "Offshore CM operating entity formed (Cayman / BVI / UAE FZE TBD)",
-                "Independent security audit complete",
-                "Two-Squads multisig live (Gamerplex Pty Ltd ↔ CM operator entity)",
-                "48hr admin timelock on CM v2.1",
-                "All 64 items in the Wagered Readiness Gate green",
-                "$GAME token launches alongside (Flipcash bonding curve)",
-              ]} />
               <RoadmapCard phase="Post-Mainnet — Scale" status="Planned" color="#888" items={[
                 "One new arcade game a week (Time Gate, Tetris-Arcade, Math Drills, etc.)",
-                "Battle Mode UIs for stack-proven programs (Cyber Snake, Blockwords)",
                 "SNS identity integration",
                 "IPFS/Arweave frontend mirror",
-                "Publish @gamerplex/mcp-server + @gamerplex/dev to npm",
+                "Publish @gamerplex/sdk to npm (currently github-installable)",
               ]} />
             </div>
           </Section>
@@ -712,16 +614,15 @@ SF3000  — Superhuman (Stockfish skill 20)`}
               .
             </P>
             <List items={[
+              <><strong>gamerplex-arcade</strong> — Anchor program: multi-token score-save, $GAME discount, affiliate referrals</>,
+              <><strong>gamerplex-sdk</strong> — TypeScript client (<code>@gamerplex/sdk</code>) — install from github</>,
               <><strong>magic-chess</strong> — Chess program + 3D frontend + ER pool + tests</>,
-              <><strong>contention-markets</strong> — Wagering settlement protocol (v1 live, v2 shipping)</>,
-              <><strong>gamerplex-orchestrator</strong> — Signed-URL challenges + on-chain game registry (shipping)</>,
-              <><strong>flipcash-program</strong> — USD-backed bonding curve token launcher</>,
-              <><strong>gamerplex-mcp</strong> — 12 MCP tools for sovereign game dev (<code>npm i @gamerplex/mcp-server</code>)</>,
-              <><strong>gamerplex-dev</strong> — Localhost:42069 dev server + sovereign agent (<code>npx @gamerplex/dev</code>)</>,
-              <><strong>gamerplex-sdk</strong> — TypeScript client for on-chain programs</>,
-              <><strong>gamerplex-resolver</strong> — Legacy chess backend (portable: GCP / Oracle / Fly.io / self-host)</>,
-              <><strong>gamerplex-tests</strong> — E2E test suite (100+ tests, real devnet, zero mocks)</>,
-              <><strong>pet-legends-arena</strong> — NFT auto-battler (rewrite in progress)</>,
+              <><strong>cyber-snake</strong> / <strong>blockwords</strong> / <strong>flipball</strong> — first arcade titles</>,
+              <><strong>gamerplex-orchestrator</strong> — Signed-URL challenge links + on-chain game registry</>,
+              <><strong>gamerplex-mcp</strong> — 12 MCP tools for sovereign game dev</>,
+              <><strong>gamerplex-dev</strong> — Localhost:42069 dev server + sovereign agent</>,
+              <><strong>gamerplex-resolver</strong> — Server-side data layer (leaderboards, score memos)</>,
+              <><strong>gamerplex-tests</strong> — E2E test suite (170+ tests, real devnet, zero mocks)</>,
             ]} />
             <P>
               MIT licensed. Fork it. Build on it. Host your own instance. We&apos;re building a public good.
@@ -764,8 +665,8 @@ function Section({ id, title, children }: { id: string; title: string; children:
   );
 }
 
-function P({ children }: { children: React.ReactNode }) {
-  return <p style={{ fontSize: 14, color: "#aaa", lineHeight: 1.75, marginBottom: 14 }}>{children}</p>;
+function P({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
+  return <p style={{ fontSize: 14, color: "#aaa", lineHeight: 1.75, marginBottom: 14, ...style }}>{children}</p>;
 }
 
 function List({ items }: { items: React.ReactNode[] }) {

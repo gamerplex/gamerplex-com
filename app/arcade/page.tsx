@@ -12,23 +12,21 @@ const ARCADE_GAMES = [
     id: "cyber-snake",
     slug: "cyber-snake",
     name: "Cyber Snake",
-    tagline: "Classic Snake with a Tron aesthetic. Eat, grow, don't crash. Battle Mode (1v1, devnet) also live.",
+    tagline: "Classic Snake with a Tron aesthetic. Eat, grow, don't crash.",
     emoji: "🐍",
     color: "#4fc3f7",
     status: "playable",
     controls: "arrow keys · WASD · V for view",
-    battleHref: "/play/cyber-snake?mode=battle",
   },
   {
     id: "magic-chess",
     slug: "magic-chess",
     name: "Magic Chess",
-    tagline: "Full chess vs ELO bots. Free to play, save score on-chain. Battle Mode (1v1 skill contest, devnet) also live.",
+    tagline: "Full chess vs ELO bots. Free to play, save score on-chain.",
     emoji: "♟️",
     color: "#c99aff",
     status: "playable",
     controls: "click piece · click destination",
-    battleHref: "/play/magic-chess",
   },
   {
     id: "blockwords",
@@ -39,7 +37,6 @@ const ARCADE_GAMES = [
     color: "#ffd24a",
     status: "playable",
     controls: "A–Z to type · ENTER submit · BACKSPACE erase",
-    battleHref: "/play/blockwords?mode=battle",
   },
   {
     id: "beeline",
@@ -152,11 +149,6 @@ export default function ArcadePage() {
                     <div style={{ fontSize: 20, fontWeight: 800, color: "#f0f0ff" }}>{game.name}</div>
                     <div style={{ fontSize: 10, color: game.color, letterSpacing: 1, textTransform: "uppercase", marginTop: 2 }}>
                       Arcade · Solo
-                      {(game as any).battleHref && (
-                        <span style={{ marginLeft: 6, color: "#9945FF", fontWeight: 700 }}>
-                          + Battle (devnet)
-                        </span>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -187,12 +179,6 @@ export default function ArcadePage() {
           </div>
         </div>
 
-        {/* Not-for-arcade callout */}
-        <div style={{ marginTop: 20, fontSize: 12, color: "#6a6a80", textAlign: "center", lineHeight: 1.6 }}>
-          Looking for 1v1 matches with prize pools? → <Link href="/games" style={{ color: "#9945FF", textDecoration: "underline" }}>Tournaments</Link>
-          <br />
-          Arcade leaderboards are cosmetic prizes only. Cash prizes live on Tournaments (skill-contest doctrine, geofenced where required).
-        </div>
       </div>
     </div>
   );

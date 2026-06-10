@@ -10,12 +10,6 @@ const RESOLVER =
 // Launch-stack programs — what a viewer expects to see live.
 const PROGRAMS: { name: string; addr: string; tag: string; accent: string }[] = [
   {
-    name: "Contention Markets v2.1",
-    addr: "69YfcveAbLbJ5LNERjq6k5wnszfZbXMYVzx2j8Ca1Xo8",
-    tag: "settlement",
-    accent: "#9945FF",
-  },
-  {
     name: "Gamerplex Orchestrator",
     addr: "tsHnDDmYyqpcRyQejKcvai6fECRWyNQ4F87QgKcHg4d",
     tag: "challenges",

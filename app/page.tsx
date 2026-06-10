@@ -56,6 +56,62 @@ function GameArt({ src, emoji, alt, big }: { src: string; emoji: string; alt: st
   );
 }
 
+// Partner-card art with inline emoji fallback (cf-art-fallback is
+// coverflow-specific, so we inline our own fallback here).
+function PartnerArt({ src, emoji, alt }: { src: string; emoji: string; alt: string }) {
+  const [errored, setErrored] = useState(false);
+  if (errored) {
+    return (
+      <span style={{fontSize:72,lineHeight:1,filter:"drop-shadow(0 0 12px rgba(255,215,64,0.4))"}}>
+        {emoji}
+      </span>
+    );
+  }
+  return (
+    <img
+      src={src}
+      alt={alt}
+      onError={() => setErrored(true)}
+      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+    />
+  );
+}
+
+// ─── Partner Games (Sledgit) ────────────────────────────────────────────────
+// Manifest-shape data so this can swap to a fetch from
+// https://www.sledgit.com/api/v1/games-manifest with minimal change. Hardcoded
+// today because the Sledgit endpoint isn't shipped yet. New partner games drop
+// in by editing this array.
+type PartnerGame = {
+  slug: string;
+  title: string;
+  blurb: string;
+  emoji: string;
+  cover_url: string;
+  play_url: string;
+  tags: string[];
+};
+const PARTNER_GAMES: PartnerGame[] = [
+  {
+    slug: "pika-set-quiz",
+    title: "Pika-Set Quiz",
+    blurb: "Which set is this Pikachu from? 115 EN sets, 10 random rounds.",
+    emoji: "⚡",
+    cover_url: "/games/sledgit/pika-set-quiz.png",
+    play_url: "https://www.sledgit.com/prototype/puzzle.html",
+    tags: ["puzzle", "pokemon"],
+  },
+  {
+    slug: "shinji-quiz",
+    title: "Shinji Kanda Quiz",
+    blurb: "26 source-linked questions about Pokémon's secret art-history MVP.",
+    emoji: "🎨",
+    cover_url: "/games/sledgit/shinji-quiz.png",
+    play_url: "https://www.sledgit.com/prototype/shinji-quiz.html",
+    tags: ["trivia", "art", "pokemon"],
+  },
+];
+
 // ─── Component ──────────────────────────────────────────────────────────────
 export default function Home() {
   const [mounted, setMounted] = useState(false);
@@ -81,7 +137,6 @@ export default function Home() {
   const [liveGames, setLiveGames] = useState<any[]>([]);
   const [selectedGame, setSelectedGame] = useState<string | null>(null);
   const [agentLeaderboard, setAgentLeaderboard] = useState<any[]>([]);
-  const [coverMode, setCoverMode] = useState<"arcade" | "battle">("arcade");
 
   useEffect(() => {
     const c = readHomeCache();
@@ -234,42 +289,23 @@ export default function Home() {
         </div>
       </section>
 
-      {/* GAMES GRID — 3 cards, mode toggle above */}
+      {/* GAMES GRID — 3 cards */}
       <section className="coverflow-section" id="featured">
-        <div className="mode-switcher" style={{marginBottom:24}}>
-          <div className="mode-pill" data-active={coverMode}>
-            <button
-              className={`mode-opt ${coverMode === "arcade" ? "active" : ""}`}
-              onClick={() => setCoverMode("arcade")}
-              aria-pressed={coverMode === "arcade"}
-            >
-              ARCADE
-            </button>
-            <button
-              className={`mode-opt ${coverMode === "battle" ? "active" : ""}`}
-              onClick={() => setCoverMode("battle")}
-              aria-pressed={coverMode === "battle"}
-            >
-              BATTLE
-            </button>
-          </div>
-        </div>
-
         <div className="coverflow">
           {/* LEFT — Cyber Snake */}
-          <a href={`/play/cyber-snake?mode=${coverMode}`} className="cf-card cf-left" aria-label={`Play Cyber Snake — ${coverMode}`}>
+          <a href="/play/cyber-snake?mode=arcade" className="cf-card cf-left" aria-label="Play Cyber Snake">
             <div className="cf-art cf-snake-art">
               <GameArt src="/games/cyber-snake/banner.png" emoji="🐍" alt="Cyber Snake" />
               <div className="cf-art-overlay"></div>
             </div>
             <div className="cf-meta">
               <div className="cf-name">Cyber Snake</div>
-              <div className="cf-cta">{coverMode === "arcade" ? "PLAY FREE →" : "$0.50 STAKE →"}</div>
+              <div className="cf-cta">PLAY FREE →</div>
             </div>
           </a>
 
           {/* CENTER — Magic Chess */}
-          <a href={`/play/magic-chess?mode=${coverMode}`} className="cf-card cf-center" aria-label={`Play Magic Chess — ${coverMode}`}>
+          <a href="/play/magic-chess?mode=arcade" className="cf-card cf-center" aria-label="Play Magic Chess">
             <div className="cf-art cf-chess-art">
               <GameArt src="/games/magic-chess/banner.png" emoji="♟" alt="Magic Chess" big />
               <div className="cf-art-overlay"></div>
@@ -277,19 +313,19 @@ export default function Home() {
             </div>
             <div className="cf-meta">
               <div className="cf-name">Magic Chess</div>
-              <div className="cf-cta cf-cta-primary">{coverMode === "arcade" ? "PLAY FREE →" : "$0.50 STAKE →"}</div>
+              <div className="cf-cta cf-cta-primary">PLAY FREE →</div>
             </div>
           </a>
 
           {/* RIGHT — Blockwords */}
-          <a href={`/play/blockwords?mode=${coverMode}`} className="cf-card cf-right" aria-label={`Play Blockwords — ${coverMode}`}>
+          <a href="/play/blockwords?mode=arcade" className="cf-card cf-right" aria-label="Play Blockwords">
             <div className="cf-art cf-words-art">
               <GameArt src="/games/blockwords/banner.png" emoji="🔮" alt="Blockwords" />
               <div className="cf-art-overlay"></div>
             </div>
             <div className="cf-meta">
               <div className="cf-name">Blockwords</div>
-              <div className="cf-cta">{coverMode === "arcade" ? "PLAY FREE →" : "$0.50 STAKE →"}</div>
+              <div className="cf-cta">PLAY FREE →</div>
             </div>
           </a>
         </div>
@@ -321,6 +357,96 @@ export default function Home() {
         loaded={lbLoaded}
       />
 
+      {/* PARTNER GAMES — Sledgit puzzle + trivia. Loose-coupled (own content,
+          partner brand). Click → opens on sledgit.com. Same data shape as the
+          future /api/v1/games-manifest fetch on sledgit. */}
+      <section style={{padding:"40px 20px 24px",maxWidth:1080,margin:"0 auto"}}>
+        <div style={{display:"flex",alignItems:"baseline",justifyContent:"space-between",gap:12,marginBottom:18,flexWrap:"wrap"}}>
+          <h2 style={{fontSize:18,fontWeight:800,letterSpacing:1,margin:0,color:"#fff",textTransform:"uppercase"}}>
+            Partner Games
+          </h2>
+          <a
+            href="https://www.sledgit.com/play"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{fontSize:11,color:"#ffd740",fontWeight:600,letterSpacing:0.6,textDecoration:"none",textTransform:"uppercase"}}
+          >
+            Made by Sledgit · Runs on Gamerplex →
+          </a>
+        </div>
+        <div style={{
+          display:"grid",
+          gridTemplateColumns:"repeat(auto-fit, minmax(280px, 1fr))",
+          gap:14,
+        }}>
+          {PARTNER_GAMES.map((game) => (
+            <a
+              key={game.slug}
+              href={game.play_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`Play ${game.title} on Sledgit`}
+              style={{
+                display:"flex",
+                flexDirection:"column",
+                gap:10,
+                padding:14,
+                textDecoration:"none",
+                color:"inherit",
+                borderRadius:12,
+                border:"1px solid rgba(255,255,255,0.08)",
+                background:"linear-gradient(135deg, rgba(255,215,64,0.04), rgba(60,30,100,0.18))",
+                transition:"border-color 0.2s, transform 0.2s",
+              }}
+            >
+              <div style={{
+                aspectRatio:"16 / 9",
+                borderRadius:8,
+                overflow:"hidden",
+                background:"radial-gradient(circle at center, rgba(255,215,64,0.08), rgba(0,0,0,0.4))",
+                display:"flex",
+                alignItems:"center",
+                justifyContent:"center",
+                position:"relative",
+              }}>
+                <PartnerArt src={game.cover_url} emoji={game.emoji} alt={game.title} />
+              </div>
+              <div>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginBottom:4}}>
+                  <div style={{fontSize:15,fontWeight:700,color:"#fff"}}>{game.title}</div>
+                  <div style={{fontSize:10,color:"#ffd740",fontWeight:700,letterSpacing:0.4,whiteSpace:"nowrap"}}>PLAY →</div>
+                </div>
+                <div style={{fontSize:12,color:"var(--dim)",lineHeight:1.45,marginBottom:8}}>{game.blurb}</div>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                  {game.tags.map((t) => (
+                    <span
+                      key={t}
+                      style={{
+                        fontSize:9,
+                        fontWeight:700,
+                        letterSpacing:0.6,
+                        padding:"2px 8px",
+                        borderRadius:999,
+                        background:"rgba(255,215,64,0.08)",
+                        border:"1px solid rgba(255,215,64,0.2)",
+                        color:"#ffd740",
+                        textTransform:"uppercase",
+                      }}
+                    >
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </a>
+          ))}
+        </div>
+        <p style={{fontSize:11,color:"var(--dim)",marginTop:14,textAlign:"center",opacity:0.7}}>
+          Sledgit games run as standalone HTML on www.sledgit.com. On-chain scoring via Gamerplex Arcade
+          ships in a follow-up.
+        </p>
+      </section>
+
       {/* PET LEGENDS — slim strip, not a hero */}
       <section style={{padding:"24px 20px 40px",maxWidth:920,margin:"0 auto"}}>
         <a
@@ -342,7 +468,7 @@ export default function Home() {
           <div style={{width:36,height:36,borderRadius:8,background:"rgba(255,215,64,0.12)",border:"1px solid rgba(255,215,64,0.4)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>🔒</div>
           <div style={{flex:1,minWidth:0}}>
             <div style={{fontSize:9,fontWeight:800,letterSpacing:2,color:"#ffd740",textTransform:"uppercase"}}>Game #4 · In stealth</div>
-            <div style={{fontSize:14,fontWeight:700,color:"#fff",marginTop:2}}>Pet Legends Arena <span style={{color:"var(--dim)",fontWeight:400,fontSize:12}}>· battle pets · on-chain duels</span></div>
+            <div style={{fontSize:14,fontWeight:700,color:"#fff",marginTop:2}}>Pet Legends Arena <span style={{color:"var(--dim)",fontWeight:400,fontSize:12}}>· pet RPG · on-chain combat</span></div>
           </div>
           <div style={{fontSize:11,color:"#ffd740",fontWeight:700,letterSpacing:0.5,whiteSpace:"nowrap"}}>Follow →</div>
         </a>
