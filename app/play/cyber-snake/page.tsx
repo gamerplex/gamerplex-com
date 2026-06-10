@@ -24,42 +24,10 @@ function pickFirst(v: string | string[] | undefined): string | undefined {
 export async function generateMetadata({
   searchParams,
 }: {
-  searchParams: Promise<{ mode?: string | string[]; challenge?: string | string[]; match?: string | string[] }>;
+  searchParams: Promise<{ challenge?: string | string[] }>;
 }): Promise<Metadata> {
   const sp = await searchParams;
-  const mode = pickFirst(sp?.mode) === "battle" ? "battle" : "arcade";
   const sig = pickFirst(sp?.challenge);
-  const match = pickFirst(sp?.match);
-
-  if (mode === "battle") {
-    const ogImage = `${SITE}/api/og/snake-challenge`;
-    if (match) {
-      const title = "🐍⚡ Cyber Snake Battle — join the match";
-      const desc = `A live 1v1 Cyber Snake match is waiting for you on Solana devnet. First to crash loses.`;
-      return {
-        title,
-        description: desc,
-        openGraph: { title, description: desc, images: [{ url: ogImage, width: 1200, height: 630 }], type: "website" },
-        twitter: { card: "summary_large_image", title, description: desc, images: [ogImage] },
-      };
-    }
-    return {
-      title: "Cyber Snake Battle — gamerplex.com",
-      description: "Two snakes. One grid. Real-time on Solana devnet via MagicBlock ER. Last cycle wins.",
-      openGraph: {
-        title: "Cyber Snake Battle — gamerplex.com",
-        description: "Two snakes. One grid. Real-time on Solana devnet via MagicBlock ER. Last cycle wins.",
-        images: [{ url: ogImage, width: 1200, height: 630 }],
-        type: "website",
-      },
-      twitter: {
-        card: "summary_large_image",
-        title: "Cyber Snake Battle — gamerplex.com",
-        description: "Two snakes. One grid. Real-time on Solana devnet via MagicBlock ER. Last cycle wins.",
-        images: [ogImage],
-      },
-    };
-  }
 
   let challengerScore: number | null = null;
   let challengerPlayer: string | null = null;
