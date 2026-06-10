@@ -554,7 +554,7 @@ export default function CyberSnakeBattle() {
         <ModeToggle
           gameLabel="Cyber Snake"
           active="battle"
-          arcade={{ status: "live-mainnet-soon", href: "/play/cyber-snake?mode=arcade" }}
+          arcade={{ status: "live-devnet", href: "/play/cyber-snake?mode=arcade" }}
           battle={{ status: "live-devnet", href: "/play/cyber-snake?mode=battle", programId: CYBER_SNAKE_PROGRAM_ID.toBase58() }}
         />
         <div className="nav-links">

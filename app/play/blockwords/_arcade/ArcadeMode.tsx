@@ -34,6 +34,7 @@ import {
 } from "../../../../lib/arcade/client";
 import { buildSaveScorePaymentIxs } from "../../../../lib/arcade/save-score-payment";
 import { PAYMENT_TOKENS, type PaymentTokenDef } from "../../../../lib/arcade/tokens";
+import PaymentMethodPicker from "../../../../components/arcade/PaymentMethodPicker";
 import { WORDS, isAcceptableGuess } from "./words";
 import {
   answerForSeed,

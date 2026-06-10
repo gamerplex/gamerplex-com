@@ -41,6 +41,7 @@ import {
 } from "../../../../lib/arcade/client";
 import { buildSaveScorePaymentIxs } from "../../../../lib/arcade/save-score-payment";
 import { PAYMENT_TOKENS, type PaymentTokenDef } from "../../../../lib/arcade/tokens";
+import PaymentMethodPicker from "../../../../components/arcade/PaymentMethodPicker";
 import { ArcadeLeaderboard } from "../../../arcade/_components/ArcadeLeaderboard";
 
 const EXPLORER_SUFFIX = ARCADE_NETWORK === "mainnet" ? "" : `?cluster=${ARCADE_NETWORK}`;
@@ -935,7 +936,7 @@ export default function CyberSnakeSolo() {
                   <ModeToggle
                     gameLabel="Cyber Snake"
                     active="arcade"
-                    arcade={{ status: "live-mainnet-soon", href: "/play/cyber-snake?mode=arcade" }}
+                    arcade={{ status: "live-devnet", href: "/play/cyber-snake?mode=arcade" }}
                     battle={{ status: "live-devnet", href: "/play/cyber-snake?mode=battle", programId: "EK8gFE1ojW61QuLTvy6dHyLxCq5yjCnauJz8eisNPTk3" }}
                   />
                 </div>
