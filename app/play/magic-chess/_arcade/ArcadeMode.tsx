@@ -21,6 +21,7 @@ import {
   MAGIC_CHESS_GAME_ID, ARCADE_NETWORK,
 } from "../../../../lib/arcade/client";
 import { getStoredReferrer } from "../../../../lib/arcade/referral";
+import { submitReplay } from "@gamerplex/sdk/arcade";
 import ReferrerBanner from "../../../../components/arcade/ReferrerBanner";
 import { buildSaveScorePaymentIxs } from "../../../../lib/arcade/save-score-payment";
 import { PAYMENT_TOKENS, type PaymentTokenDef } from "../../../../lib/arcade/tokens";
@@ -275,6 +276,7 @@ export default function ArcadeMode() {
 
       const sig = await program.provider.sendAndConfirm!(tx, [], { skipPreflight: false });
       setLastSaveSig(sig); setSavedThisRun(true); setProfileExists(true);
+      void submitReplay(sig, moveLogBytes).catch(() => {});
     } catch (e: any) {
       console.error("save failed:", e);
       setOnchainError(e?.message || "Save failed");

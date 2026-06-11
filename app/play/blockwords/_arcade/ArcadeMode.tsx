@@ -36,6 +36,7 @@ import { buildSaveScorePaymentIxs } from "../../../../lib/arcade/save-score-paym
 import { PAYMENT_TOKENS, type PaymentTokenDef } from "../../../../lib/arcade/tokens";
 import PaymentMethodPicker from "../../../../components/arcade/PaymentMethodPicker";
 import { getStoredReferrer } from "../../../../lib/arcade/referral";
+import { submitReplay } from "@gamerplex/sdk/arcade";
 import ReferrerBanner from "../../../../components/arcade/ReferrerBanner";
 import { WORDS, isAcceptableGuess } from "./words";
 import {
@@ -341,6 +342,7 @@ export default function ArcadeMode() {
       setLastSaveSig(sig);
       setSavedThisRun(true);
       setProfileExists(true);
+      void submitReplay(sig, moveLogBytes).catch(() => {});
     } catch (e: any) {
       console.error("save on-chain failed:", e);
       setOnchainError(e?.message || "Save failed");
