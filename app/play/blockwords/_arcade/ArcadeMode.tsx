@@ -42,6 +42,7 @@ import {
   answerForSeed,
   computeScore,
   encodeGuessLog,
+  encodeGuessLogV2,
   gradeGuess,
   isWinningGuess,
   LetterState,
@@ -81,6 +82,9 @@ interface RunState {
   endedAt: number | null;
   answer: string;
   guesses: string[];
+  /** Per-guess delta (seconds) since previous guess (or run start for [0]).
+   *  Parallel to `guesses` — same length. Used for v2 move-log encoding. */
+  guessDeltasSec: number[];
   current: string;
   solved: boolean;
   invalidUntil: number;
@@ -96,6 +100,7 @@ function startRun(seed: Uint8Array): RunState {
     endedAt: null,
     answer,
     guesses: [],
+    guessDeltasSec: [],
     current: "",
     solved: false,
     invalidUntil: 0,
@@ -224,6 +229,13 @@ export default function ArcadeMode() {
     }
     if (r.guesses.length >= MAX_GUESSES) return;
 
+    // Track per-guess delta in seconds since previous guess (or run start for first).
+    const nowMs = Date.now();
+    const prevMs = r.guesses.length === 0
+      ? r.startedAt
+      : r.startedAt + r.guessDeltasSec.reduce((sum, d) => sum + d * 1000, 0);
+    const deltaSec = Math.max(0, Math.min(255, Math.floor((nowMs - prevMs) / 1000)));
+    r.guessDeltasSec.push(deltaSec);
     r.guesses.push(guess);
     r.current = "";
     r.lastFlippedRow = r.guesses.length - 1;
@@ -304,7 +316,7 @@ export default function ArcadeMode() {
       );
       paymentIxs.forEach((ix) => tx.add(ix));
 
-      const moveLogBytes = encodeGuessLog(r.guesses);
+      const moveLogBytes = encodeGuessLogV2(r.guesses, r.guessDeltasSec);
       const moveHash = await sha256(moveLogBytes);
       const durationSec = Math.max(1, secondsUsed(r));
       const score = computeScore(r.solved, r.guesses.length, secondsUsed(r));
@@ -373,7 +385,7 @@ export default function ArcadeMode() {
         }),
       );
 
-      const moveLog = encodeGuessLog(r.guesses);
+      const moveLog = encodeGuessLogV2(r.guesses, r.guessDeltasSec);
       if (moveLog.length > 400) {
         throw new Error(
           `Move log too long for inline storage (${moveLog.length}B > 400B).`,
@@ -437,7 +449,7 @@ export default function ArcadeMode() {
       );
 
       const nonce = new BN(r.startedAt);
-      const moveLogBytes = encodeGuessLog(r.guesses);
+      const moveLogBytes = encodeGuessLogV2(r.guesses, r.guessDeltasSec);
       const moveHash = await sha256(moveLogBytes);
       const durationSec = Math.max(1, secondsUsed(r));
       const score = computeScore(r.solved, r.guesses.length, secondsUsed(r));

@@ -65,6 +65,27 @@ export function encodeMoveLog(moves: MoveLogEntry[]): Uint8Array {
   return buf;
 }
 
+/** v2 move log: 5 bytes per move = [from, to, promotion, delta_sec, _pad].
+ *  Mirror @gamerplex/sdk/verify/chess/decoder.ts decodeV2. 50 moves × 5 = 250B
+ *  under the 400B memo cap. Used for statistical timing anti-cheat. */
+export function encodeMoveLogV2(moves: MoveLogEntry[], deltasSec: number[]): Uint8Array {
+  if (deltasSec.length !== moves.length) {
+    throw new Error(`encodeMoveLogV2: deltas length ${deltasSec.length} != moves length ${moves.length}`);
+  }
+  const trimmed = moves.slice(0, MAX_MOVES_INLINE);
+  const trimmedDeltas = deltasSec.slice(0, MAX_MOVES_INLINE);
+  const buf = new Uint8Array(trimmed.length * 5);
+  for (let i = 0; i < trimmed.length; i++) {
+    const m = trimmed[i];
+    buf[i * 5] = m.from & 0xff;
+    buf[i * 5 + 1] = m.to & 0xff;
+    buf[i * 5 + 2] = m.promotion & 0xff;
+    buf[i * 5 + 3] = Math.min(255, Math.max(0, Math.floor(trimmedDeltas[i]))) & 0xff;
+    buf[i * 5 + 4] = 0;
+  }
+  return buf;
+}
+
 export function generateSeed(): Uint8Array {
   const s = new Uint8Array(32);
   if (typeof window !== "undefined" && window.crypto) {

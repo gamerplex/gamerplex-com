@@ -11,7 +11,7 @@ import ModeToggle from "../../../../components/games/ModeToggle";
 import {
   PIECES, isW, isB, pt, initBoard, getValid, isAttacked, execMove,
 } from "../_shared/chess-engine";
-import { ARCADE_BOTS, botById, computeScore, encodeMoveLog, generateSeed, type MoveLogEntry } from "./score";
+import { ARCADE_BOTS, botById, computeScore, encodeMoveLog, encodeMoveLogV2, generateSeed, type MoveLogEntry } from "./score";
 import {
   makeProgram, buildOpenProfileIx, buildSubmitScoreIx, buildRecordPaymentIx,
   USDC_MINT,
@@ -72,6 +72,10 @@ export default function ArcadeMode() {
   const [seed, setSeed] = useState<Uint8Array | null>(null);
   const [startedAt, setStartedAt] = useState<number>(0);
   const moveLogRef = useRef<MoveLogEntry[]>([]);
+  // Parallel to moveLogRef — per-move deltas in seconds (since previous move,
+  // or since startedAt for moves[0]). Used for v2 move-log encoding + timing-stats anti-cheat.
+  const moveDeltasRef = useRef<number[]>([]);
+  const lastMoveAtRef = useRef<number>(0);
 
   const [busy, setBusy] = useState<null | "save" | "verify" | "receipt">(null);
   const [savedThisRun, setSavedThisRun] = useState(false);
@@ -118,6 +122,8 @@ export default function ArcadeMode() {
     setStatus("Your turn"); setWon(null); setEp(255); setCastle(0b1111);
     setHist([]); setCheck(false); setTimer(MOVE_TIME);
     moveLogRef.current = [];
+    moveDeltasRef.current = [];
+    lastMoveAtRef.current = 0;
     setSavedThisRun(false); setVerifiedThisRun(false); setOwnedThisRun(false);
     setLastSaveSig(null); setLastVerifySig(null); setLastReceiptSig(null);
     setOnchainError(null);
@@ -126,16 +132,28 @@ export default function ArcadeMode() {
   const startGame = useCallback(() => {
     reset();
     setSeed(generateSeed());
-    setStartedAt(Date.now());
+    const now = Date.now();
+    setStartedAt(now);
+    lastMoveAtRef.current = now;
     setPhase("playing");
   }, [reset]);
+
+  /** Push a move + its delta_sec since previous move (or game start). */
+  const recordMove = useCallback((entry: MoveLogEntry) => {
+    const now = Date.now();
+    const prev = lastMoveAtRef.current || now;
+    const deltaSec = Math.max(0, Math.min(255, Math.floor((now - prev) / 1000)));
+    moveLogRef.current.push(entry);
+    moveDeltasRef.current.push(deltaSec);
+    lastMoveAtRef.current = now;
+  }, []);
 
   const click = useCallback((idx: number) => {
     if (phase !== "playing" || !wTurn) return;
     if (sel !== null && valid.includes(idx)) {
       const piece = board[sel];
       const isPromotion = pt(piece) === 2 && ((idx >> 3) === 7);
-      moveLogRef.current.push({ from: sel, to: idx, promotion: isPromotion ? 10 : 0 });
+      recordMove({ from: sel, to: idx, promotion: isPromotion ? 10 : 0 });
 
       const r = execMove(sel, idx, board, ep, castle);
       setBoard(r.nb); setLast({ f: sel, t: idx }); setSel(null); setValid([]);
@@ -175,7 +193,7 @@ export default function ArcadeMode() {
         if (!am.length) { setWon(true); setPhase("gameover"); setStatus("Bot has no moves!"); return; }
         am.sort((a, b) => b.s - a.s);
         const pick = am[Math.floor(Math.random() * Math.min(3, am.length))];
-        moveLogRef.current.push({ from: pick.f, to: pick.t, promotion: 0 });
+        recordMove({ from: pick.f, to: pick.t, promotion: 0 });
         const r2 = execMove(pick.f, pick.t, r.nb, r.nep, r.nc);
         setBoard(r2.nb); setLast({ f: pick.f, t: pick.t }); setEp(r2.nep); setCastle(r2.nc);
         if (r2.cap > 0) setCap(c => [...c, r2.cap]);
@@ -237,11 +255,13 @@ export default function ArcadeMode() {
       );
       paymentIxs.forEach((ix) => tx.add(ix));
 
-      const moveLogBytes = encodeMoveLog(moveLogRef.current);
+      const moveLogBytes = encodeMoveLogV2(moveLogRef.current, moveDeltasRef.current);
       const moveHash = await sha256(moveLogBytes);
       const dur = Math.max(1, Math.floor((Date.now() - startedAt) / 1000));
       tx.add(await buildSubmitScoreIx(program, publicKey, {
-        variant: bot.id,
+        // Variant format: `<botId>|<moveTimeSec>` — enables exact-score validation
+        // in @gamerplex/sdk/verify/chess. v0.4.1+ validators parse this.
+        variant: `${bot.id}|${MOVE_TIME}`,
         score: new BN(finalScore),
         continuesUsed: 0,
         powerupsUsed: 0,
@@ -284,7 +304,7 @@ export default function ArcadeMode() {
         gameId: MAGIC_CHESS_GAME_ID,
       }));
 
-      const moveLog = encodeMoveLog(moveLogRef.current);
+      const moveLog = encodeMoveLogV2(moveLogRef.current, moveDeltasRef.current);
       if (moveLog.length > 400) throw new Error(`Move log ${moveLog.length}B exceeds 400B inline budget`);
       tx.add(await buildCommitReplayIx(program, publicKey, {
         scoreNonce: new BN(startedAt),
@@ -324,7 +344,7 @@ export default function ArcadeMode() {
       }));
 
       const nonce = new BN(startedAt);
-      const moveLogBytes = encodeMoveLog(moveLogRef.current);
+      const moveLogBytes = encodeMoveLogV2(moveLogRef.current, moveDeltasRef.current);
       const moveHash = await sha256(moveLogBytes);
       const dur = Math.max(1, Math.floor((Date.now() - startedAt) / 1000));
       tx.add(await buildMintReceiptIx(program, publicKey, {

@@ -77,8 +77,12 @@ export function isWinningGuess(answer: string, guess: string): boolean {
   return answer.toUpperCase() === guess.toUpperCase();
 }
 
+// v1 = 5 bytes per guess (just letters). v2 = 6 bytes per guess (letters + 1-byte delta_sec).
+const V1_BYTES_PER_GUESS = WORD_LENGTH;
+const V2_BYTES_PER_GUESS = WORD_LENGTH + 1;
+
 export function encodeGuessLog(guesses: string[]): Uint8Array {
-  const buf = new Uint8Array(guesses.length * WORD_LENGTH);
+  const buf = new Uint8Array(guesses.length * V1_BYTES_PER_GUESS);
   for (let i = 0; i < guesses.length; i++) {
     const g = guesses[i].toUpperCase();
     if (g.length !== WORD_LENGTH) {
@@ -92,13 +96,38 @@ export function encodeGuessLog(guesses: string[]): Uint8Array {
   return buf;
 }
 
+/** v2: each guess carries delta_sec (u8) since previous guess.
+ *  Mirrored in @gamerplex/sdk/verify/blockwords/engine.ts — keep in sync. */
+export function encodeGuessLogV2(guesses: string[], deltas: number[]): Uint8Array {
+  if (deltas.length !== guesses.length) {
+    throw new Error(`encodeGuessLogV2: deltas length ${deltas.length} != guesses length ${guesses.length}`);
+  }
+  const buf = new Uint8Array(guesses.length * V2_BYTES_PER_GUESS);
+  for (let i = 0; i < guesses.length; i++) {
+    const g = guesses[i].toUpperCase();
+    if (g.length !== WORD_LENGTH) {
+      throw new Error(`encodeGuessLogV2: guess[${i}] must be ${WORD_LENGTH} letters`);
+    }
+    for (let j = 0; j < WORD_LENGTH; j++) {
+      const code = g.charCodeAt(j);
+      buf[i * V2_BYTES_PER_GUESS + j] = code >= 65 && code <= 90 ? code : 65;
+    }
+    buf[i * V2_BYTES_PER_GUESS + WORD_LENGTH] = Math.min(255, Math.max(0, Math.floor(deltas[i])));
+  }
+  return buf;
+}
+
 export function decodeGuessLog(buf: Uint8Array): string[] {
-  const n = Math.floor(buf.length / WORD_LENGTH);
+  // Backward-compat: prefer v2 (mod 6 + NOT mod 5) over v1, fall back appropriately.
+  const okV1 = buf.length % V1_BYTES_PER_GUESS === 0;
+  const okV2 = buf.length % V2_BYTES_PER_GUESS === 0;
+  const stride = (okV2 && !okV1) ? V2_BYTES_PER_GUESS : V1_BYTES_PER_GUESS;
+  const n = Math.floor(buf.length / stride);
   const out: string[] = [];
   for (let i = 0; i < n; i++) {
     let s = "";
     for (let j = 0; j < WORD_LENGTH; j++) {
-      const code = buf[i * WORD_LENGTH + j];
+      const code = buf[i * stride + j];
       s += code >= 65 && code <= 90 ? String.fromCharCode(code) : "A";
     }
     out.push(s);
