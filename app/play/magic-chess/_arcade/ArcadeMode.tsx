@@ -11,7 +11,7 @@ import ModeToggle from "../../../../components/games/ModeToggle";
 import {
   PIECES, isW, isB, pt, initBoard, getValid, isAttacked, execMove,
 } from "../_shared/chess-engine";
-import { ARCADE_BOTS, botById, computeScore, encodeMoveLog, encodeMoveLogV2, generateSeed, type MoveLogEntry } from "./score";
+import { ARCADE_BOTS, botById, computeScore, encodeMoveLog, encodeMoveLogV2, generateSeed, TIMER_PRESETS, DEFAULT_TIMER_SEC, type MoveLogEntry } from "./score";
 import {
   makeProgram, buildOpenProfileIx, buildSubmitScoreIx, buildRecordPaymentIx,
   USDC_MINT,
@@ -33,9 +33,6 @@ const Chess3DBoard = dynamic(() => import("../_shared/Chess3DBoard"), { ssr: fal
 const EXPLORER_SUFFIX = ARCADE_NETWORK === "mainnet" ? "" : `?cluster=${ARCADE_NETWORK}`;
 
 type Phase = "ready" | "playing" | "gameover";
-// 5-second blitz per move — keeps games to ~60-90s, hits the fun-in-60s arcade norm.
-// Future: full classical time controls move to the cm-sdk Phase-2 ER live mode.
-const MOVE_TIME = 5;
 
 export default function ArcadeMode() {
   const { publicKey } = useWallet();
@@ -64,7 +61,8 @@ export default function ArcadeMode() {
   const [status, setStatus] = useState("");
   const [ep, setEp] = useState(255);
   const [castle, setCastle] = useState(0b1111);
-  const [timer, setTimer] = useState(MOVE_TIME);
+  const [turnTimeSec, setTurnTimeSec] = useState(DEFAULT_TIMER_SEC);
+  const [timer, setTimer] = useState(turnTimeSec);
   const [check, setCheck] = useState(false);
   const [experience, setExperience] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"3d" | "2d">("3d");
@@ -73,8 +71,6 @@ export default function ArcadeMode() {
   const [seed, setSeed] = useState<Uint8Array | null>(null);
   const [startedAt, setStartedAt] = useState<number>(0);
   const moveLogRef = useRef<MoveLogEntry[]>([]);
-  // Parallel to moveLogRef — per-move deltas in seconds (since previous move,
-  // or since startedAt for moves[0]). Used for v2 move-log encoding + timing-stats anti-cheat.
   const moveDeltasRef = useRef<number[]>([]);
   const lastMoveAtRef = useRef<number>(0);
 
@@ -99,7 +95,7 @@ export default function ArcadeMode() {
 
   useEffect(() => {
     if (phase !== "playing") return;
-    setTimer(MOVE_TIME);
+    setTimer(turnTimeSec);
     timerRef.current = setInterval(() => {
       setTimer(t => {
         if (t <= 1) {
@@ -121,7 +117,7 @@ export default function ArcadeMode() {
     setBoard(initBoard());
     setCap([]); setMc(0); setWTurn(true); setSel(null); setValid([]);
     setStatus("Your turn"); setWon(null); setEp(255); setCastle(0b1111);
-    setHist([]); setCheck(false); setTimer(MOVE_TIME);
+    setHist([]); setCheck(false); setTimer(turnTimeSec);
     moveLogRef.current = [];
     moveDeltasRef.current = [];
     lastMoveAtRef.current = 0;
@@ -139,7 +135,6 @@ export default function ArcadeMode() {
     setPhase("playing");
   }, [reset]);
 
-  /** Push a move + its delta_sec since previous move (or game start). */
   const recordMove = useCallback((entry: MoveLogEntry) => {
     const now = Date.now();
     const prev = lastMoveAtRef.current || now;
@@ -160,7 +155,7 @@ export default function ArcadeMode() {
       setBoard(r.nb); setLast({ f: sel, t: idx }); setSel(null); setValid([]);
       setEp(r.nep); setCastle(r.nc);
       if (r.cap > 0) setCap(c => [...c, r.cap]);
-      setHist(h => [...h, r.alg]); setMc(m => m + 1); setTimer(MOVE_TIME);
+      setHist(h => [...h, r.alg]); setMc(m => m + 1); setTimer(turnTimeSec);
 
       if (r.go) {
         setWon(r.win === 1); setPhase("gameover");
@@ -198,7 +193,7 @@ export default function ArcadeMode() {
         const r2 = execMove(pick.f, pick.t, r.nb, r.nep, r.nc);
         setBoard(r2.nb); setLast({ f: pick.f, t: pick.t }); setEp(r2.nep); setCastle(r2.nc);
         if (r2.cap > 0) setCap(c => [...c, r2.cap]);
-        setHist(h => [...h, r2.alg]); setMc(m => m + 1); setTimer(MOVE_TIME);
+        setHist(h => [...h, r2.alg]); setMc(m => m + 1); setTimer(turnTimeSec);
         if (r2.go) {
           setWon(r2.win === 1 ? true : r2.win === 2 ? false : null);
           setPhase("gameover");
@@ -221,8 +216,8 @@ export default function ArcadeMode() {
   const finalScore = useMemo(() => {
     if (!bot || phase !== "gameover") return 0;
     const dur = Math.max(1, Math.floor((Date.now() - startedAt) / 1000));
-    return computeScore(bot.elo, won === true, mc, dur);
-  }, [bot, won, mc, startedAt, phase]);
+    return computeScore(bot.elo, won === true, mc, dur, turnTimeSec);
+  }, [bot, won, mc, startedAt, phase, turnTimeSec]);
 
   // v1.4: default to USDC. Token picker UI ships in the next commit.
   const [paymentToken, setPaymentToken] = useState<PaymentTokenDef>(
@@ -260,9 +255,7 @@ export default function ArcadeMode() {
       const moveHash = await sha256(moveLogBytes);
       const dur = Math.max(1, Math.floor((Date.now() - startedAt) / 1000));
       tx.add(await buildSubmitScoreIx(program, publicKey, {
-        // Variant format: `<botId>|<moveTimeSec>` — enables exact-score validation
-        // in @gamerplex/sdk/verify/chess. v0.4.1+ validators parse this.
-        variant: `${bot.id}|${MOVE_TIME}`,
+        variant: `${bot.id}|${turnTimeSec}`,
         score: new BN(finalScore),
         continuesUsed: 0,
         powerupsUsed: 0,
@@ -421,6 +414,32 @@ export default function ArcadeMode() {
 
             {!experience && (
               <div style={{ marginBottom: 20 }}>
+                <p style={{ color: "#888", fontSize: 12, marginBottom: 8 }}>Select speed</p>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 4, marginBottom: 14 }}>
+                  {TIMER_PRESETS.map(p => {
+                    const active = p.sec === turnTimeSec;
+                    return (
+                      <button
+                        key={p.sec}
+                        onClick={() => setTurnTimeSec(p.sec)}
+                        style={{
+                          padding: "8px 4px",
+                          background: active ? "rgba(20,241,149,0.18)" : "#14141f",
+                          border: `1px solid ${active ? "#14F195" : "#252540"}`,
+                          borderRadius: 6,
+                          cursor: "pointer",
+                          color: active ? "#14F195" : "#e8e8f0",
+                          fontSize: 11,
+                          textAlign: "center",
+                        }}
+                      >
+                        <div style={{ fontSize: 16, lineHeight: 1 }}>{p.icon}</div>
+                        <div style={{ fontWeight: 700, marginTop: 4 }}>{p.sec}s</div>
+                        <div style={{ fontSize: 9, opacity: 0.7, marginTop: 2 }}>{p.label}</div>
+                      </button>
+                    );
+                  })}
+                </div>
                 <p style={{ color: "#888", fontSize: 12, marginBottom: 10 }}>Choose your opponent</p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {ARCADE_BOTS.map(e => (
@@ -447,7 +466,7 @@ export default function ArcadeMode() {
             {experience && (
               <div>
                 <p style={{ color: "#888", fontSize: 11, marginBottom: 4 }}>
-                  Bot: {bot?.label} (~{bot?.elo} ELO) · {MOVE_TIME}s/move blitz
+                  Bot: {bot?.label} (~{bot?.elo} ELO) · {turnTimeSec}s/turn
                 </p>
                 <p style={{ color: "#555", fontSize: 10, marginBottom: 16 }}>Free to play · Optional on-chain save after the game</p>
                 <button onClick={startGame} className="magic-chess-btn" style={{ padding: "16px 48px", borderRadius: 10, fontSize: 18, cursor: "pointer" }}>

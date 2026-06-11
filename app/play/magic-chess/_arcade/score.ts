@@ -25,22 +25,17 @@ export const TIMER_PRESETS = [
 
 export const DEFAULT_TIMER_SEC = 5;
 
-// Speed-chess scoring.
-//   win base       = 1000
-//   bot ELO        = + bot.elo            (tougher bot, more points)
-//   speed bonus    = + max(0, 60 - dur) * 50
-//   pressure bonus = + (60 - moveTimeSec) * 20    (harder timer = more points)
-//   loss/draw      = 0 / 250
+// Speed-chess scoring: win=1000+bot.elo+speedBonus+pressureBonus; draw=250; loss=0.
 export function computeScore(
   botElo: number,
   won: boolean | null,
   _movesUsed: number,
   durationSec: number,
-  moveTimeSec: number = DEFAULT_TIMER_SEC,
+  turnTimeSec: number = DEFAULT_TIMER_SEC,
 ): number {
   if (won === true) {
     const speedBonus = Math.max(0, 60 - durationSec) * 50;
-    const pressureBonus = Math.max(0, 60 - moveTimeSec) * 20;
+    const pressureBonus = Math.max(0, 60 - turnTimeSec) * 20;
     return 1000 + botElo + speedBonus + pressureBonus;
   }
   if (won === false) return 0;
