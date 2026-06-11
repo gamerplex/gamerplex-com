@@ -36,6 +36,7 @@ import { buildSaveScorePaymentIxs } from "../../../../lib/arcade/save-score-paym
 import { PAYMENT_TOKENS, type PaymentTokenDef } from "../../../../lib/arcade/tokens";
 import PaymentMethodPicker from "../../../../components/arcade/PaymentMethodPicker";
 import { getStoredReferrer } from "../../../../lib/arcade/referral";
+import ReferrerBanner from "../../../../components/arcade/ReferrerBanner";
 import { WORDS, isAcceptableGuess } from "./words";
 import {
   answerForSeed,
@@ -581,6 +582,10 @@ export default function ArcadeMode() {
                   </span>
                   <span style={{ color: "#555" }}>·</span>
                   <span>{r.guesses.length} {r.guesses.length === 1 ? "guess" : "guesses"} · {secondsUsed(r)}s</span>
+                </div>
+
+                <div style={{ width: "100%", maxWidth: 420, marginTop: 8 }}>
+                  <ReferrerBanner connectedWallet={publicKey ?? null} />
                 </div>
 
                 {connected ? (

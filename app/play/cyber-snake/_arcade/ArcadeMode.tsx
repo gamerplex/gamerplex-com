@@ -43,6 +43,7 @@ import { buildSaveScorePaymentIxs } from "../../../../lib/arcade/save-score-paym
 import { PAYMENT_TOKENS, type PaymentTokenDef } from "../../../../lib/arcade/tokens";
 import PaymentMethodPicker from "../../../../components/arcade/PaymentMethodPicker";
 import { getStoredReferrer } from "../../../../lib/arcade/referral";
+import ReferrerBanner from "../../../../components/arcade/ReferrerBanner";
 import { ArcadeLeaderboard } from "../../../arcade/_components/ArcadeLeaderboard";
 
 const EXPLORER_SUFFIX = ARCADE_NETWORK === "mainnet" ? "" : `?cluster=${ARCADE_NETWORK}`;
@@ -1107,6 +1108,10 @@ export default function CyberSnakeSolo() {
                 <div style={{ fontSize: 11, color: "#8a8aa0", letterSpacing: 1.5, textTransform: "uppercase", fontWeight: 700, marginBottom: 8 }}>
                   Your score
                   {g.ticksSinceLastFood >= FOOD_STARVATION_TICKS && <span style={{ marginLeft: 8, color: "#ff9a40" }}>· hunger killed you</span>}
+                </div>
+
+                <div style={{ width: "100%", maxWidth: 420, marginBottom: 4 }}>
+                  <ReferrerBanner connectedWallet={publicKey ?? null} />
                 </div>
 
                 {connected ? (

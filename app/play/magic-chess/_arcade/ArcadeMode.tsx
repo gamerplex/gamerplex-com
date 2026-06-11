@@ -21,6 +21,7 @@ import {
   MAGIC_CHESS_GAME_ID, ARCADE_NETWORK,
 } from "../../../../lib/arcade/client";
 import { getStoredReferrer } from "../../../../lib/arcade/referral";
+import ReferrerBanner from "../../../../components/arcade/ReferrerBanner";
 import { buildSaveScorePaymentIxs } from "../../../../lib/arcade/save-score-payment";
 import { PAYMENT_TOKENS, type PaymentTokenDef } from "../../../../lib/arcade/tokens";
 import PaymentMethodPicker from "../../../../components/arcade/PaymentMethodPicker";
@@ -532,6 +533,7 @@ export default function ArcadeMode() {
 
                   {/* SAVE TIERS */}
                   <div style={{ marginTop: 16, padding: 12, background: "rgba(153,69,255,0.06)", borderRadius: 8, border: "1px solid rgba(153,69,255,0.2)" }}>
+                    <ReferrerBanner connectedWallet={publicKey ?? null} />
                     {!publicKey ? (
                       <>
                         <button
