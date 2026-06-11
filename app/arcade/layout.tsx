@@ -22,6 +22,7 @@ import {
   makeProgram,
 } from "../../lib/arcade/client";
 import { assertNetworkMatchesHostname } from "../../lib/arcade/safety";
+import { getStoredReferrer, pickReferrerFromUrl } from "../../lib/arcade/referral";
 
 import "@solana/wallet-adapter-react-ui/styles.css";
 
@@ -69,11 +70,14 @@ function ProfileGuard({ children }: { children: React.ReactNode }) {
 
     (async () => {
       try {
+        // Capture any ?referrer= / ?sig= from the landing URL into sessionStorage
+        // before reading. Re-validates self-referral against the connected wallet.
+        await pickReferrerFromUrl(publicKey);
         const existing = await fetchProfile(connection, publicKey);
         if (existing) return; // already has a profile
         setCreating(true);
         const program = makeProgram(connection, anchorWallet);
-        const ix = await buildOpenProfileIx(program, publicKey, PublicKey.default);
+        const ix = await buildOpenProfileIx(program, publicKey, getStoredReferrer(publicKey));
         const tx = new Transaction().add(ix);
         const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
         tx.recentBlockhash = blockhash;

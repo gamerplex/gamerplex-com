@@ -126,7 +126,10 @@ export default async function ChallengePage({
   }
 
   const game = GAME_META[score.gameSlug] ?? { label: score.gameSlug, emoji: "🎮", route: "/", accent: "#9945ff" };
-  const playUrl = `${game.route}${game.route.includes("?") ? "&" : "?"}referrer=${encodeURIComponent(score.player)}`;
+  const sep = game.route.includes("?") ? "&" : "?";
+  const playUrl =
+    `${game.route}${sep}referrer=${encodeURIComponent(score.player)}` +
+    `&sig=${encodeURIComponent(score.tx)}`;
   const isExternal = game.route.startsWith("http");
   const ageDays = score.blockTime ? Math.floor((Date.now() / 1000 - score.blockTime) / 86400) : null;
 

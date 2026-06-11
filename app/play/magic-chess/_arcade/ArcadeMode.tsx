@@ -20,6 +20,7 @@ import {
   CATEGORY, SCORE_COMMIT_MICRO_USD, VERIFIED_COMMIT_MICRO_USD, REPLAY_RECEIPT_MICRO_USD,
   MAGIC_CHESS_GAME_ID, ARCADE_NETWORK,
 } from "../../../../lib/arcade/client";
+import { getStoredReferrer } from "../../../../lib/arcade/referral";
 import { buildSaveScorePaymentIxs } from "../../../../lib/arcade/save-score-payment";
 import { PAYMENT_TOKENS, type PaymentTokenDef } from "../../../../lib/arcade/tokens";
 import PaymentMethodPicker from "../../../../components/arcade/PaymentMethodPicker";
@@ -215,7 +216,7 @@ export default function ArcadeMode() {
       const tx = new Transaction();
 
       if (profileExists === false || profileExists === null) {
-        tx.add(await buildOpenProfileIx(program, publicKey, PublicKey.default));
+        tx.add(await buildOpenProfileIx(program, publicKey, getStoredReferrer(publicKey)));
       }
 
       // v1.4: shared multi-token helper. Routes USDC/SOL/$GAME and applies

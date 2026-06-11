@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import ReferralCapture from "../components/arcade/ReferralCapture";
 
 export const metadata: Metadata = {
   title: "GAMERPLEX | The Gaming Protocol",
@@ -55,6 +56,7 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
       </head>
       <body style={{ backgroundColor: '#0d001a', margin: 0, padding: 0 }}>
+        <ReferralCapture />
         {/* Top banner — hackathon voting */}
         <div style={{
           background: "linear-gradient(90deg, #9945FF, #14F195)",

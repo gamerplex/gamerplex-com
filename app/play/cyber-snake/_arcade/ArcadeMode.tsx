@@ -42,6 +42,7 @@ import {
 import { buildSaveScorePaymentIxs } from "../../../../lib/arcade/save-score-payment";
 import { PAYMENT_TOKENS, type PaymentTokenDef } from "../../../../lib/arcade/tokens";
 import PaymentMethodPicker from "../../../../components/arcade/PaymentMethodPicker";
+import { getStoredReferrer } from "../../../../lib/arcade/referral";
 import { ArcadeLeaderboard } from "../../../arcade/_components/ArcadeLeaderboard";
 
 const EXPLORER_SUFFIX = ARCADE_NETWORK === "mainnet" ? "" : `?cluster=${ARCADE_NETWORK}`;
@@ -449,7 +450,7 @@ export default function CyberSnakeSolo() {
 
       if (profileExists === false || profileExists === null) {
         tx.add(
-          await buildOpenProfileIx(program, publicKey, PublicKey.default)
+          await buildOpenProfileIx(program, publicKey, getStoredReferrer(publicKey))
         );
       }
 
