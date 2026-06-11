@@ -8,7 +8,7 @@ const InterstellarSymphony = dynamic(() => import("../components/InterstellarSym
   loading: () => null,
 });
 const Chess3DBoard = dynamic(() => import("./play/magic-chess/_shared/Chess3DBoard"), { ssr: false });
-const OnchainPreview = dynamic(() => import("./_components/OnchainPreview"), { ssr: false });
+const OnchainPreview = dynamic(() => import("./_components/ArcadeOnchainPreview"), { ssr: false });
 
 // localStorage cache helpers — keep the home page feeling instant on repeat visits.
 const CACHE_KEY_HOME = "gp.home.v1";

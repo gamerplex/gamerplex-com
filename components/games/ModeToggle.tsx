@@ -157,10 +157,14 @@ export default function ModeToggle({
     );
   };
 
+  // Suppress unused-prop warnings for fields kept on the type so callers
+  // don't have to change; battle mode is intentionally not rendered.
+  void battle;
+
   return (
     <div
       role="tablist"
-      aria-label={`${gameLabel} — Arcade vs Battle mode`}
+      aria-label={`${gameLabel} — Arcade mode`}
       style={{
         display: "inline-flex",
         gap: 0,
@@ -171,7 +175,6 @@ export default function ModeToggle({
       }}
     >
       {renderChip("arcade", "Arcade", "🐍", arcade)}
-      {renderChip("battle", "Battle", "⚡", battle)}
       <style>{`
         @keyframes modeStatusPulse {
           0%, 100% { opacity: 1; }
