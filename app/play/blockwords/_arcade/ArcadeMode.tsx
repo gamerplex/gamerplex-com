@@ -76,9 +76,61 @@ function generateSeed(): Uint8Array {
   return s;
 }
 
+function todayYmd(): string {
+  const t = new Date();
+  return `${t.getUTCFullYear()}-${String(t.getUTCMonth() + 1).padStart(2, "0")}-${String(t.getUTCDate()).padStart(2, "0")}`;
+}
+
+function yesterdayYmd(): string {
+  const t = new Date();
+  t.setUTCDate(t.getUTCDate() - 1);
+  return `${t.getUTCFullYear()}-${String(t.getUTCMonth() + 1).padStart(2, "0")}-${String(t.getUTCDate()).padStart(2, "0")}`;
+}
+
+function dailySeed(ymd: string): Uint8Array {
+  const str = `gpx-blockwords-daily-${ymd}`;
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  const s = new Uint8Array(32);
+  for (let i = 0; i < 32; i++) {
+    h ^= h << 13; h >>>= 0;
+    h ^= h >>> 7;  h >>>= 0;
+    h ^= h << 17; h >>>= 0;
+    s[i] = h & 0xff;
+  }
+  return s;
+}
+
+const STREAK_KEY = "gpx-blockwords-daily-streak";
+const LAST_PLAYED_KEY = "gpx-blockwords-daily-last";
+
+function loadStreak(): { lastPlayedYmd: string | null; streak: number; playedToday: boolean } {
+  if (typeof window === "undefined") return { lastPlayedYmd: null, streak: 0, playedToday: false };
+  const last = localStorage.getItem(LAST_PLAYED_KEY);
+  const streak = parseInt(localStorage.getItem(STREAK_KEY) || "0", 10);
+  return { lastPlayedYmd: last, streak, playedToday: last === todayYmd() };
+}
+
+function recordDailyWin(): { streak: number } {
+  if (typeof window === "undefined") return { streak: 0 };
+  const today = todayYmd();
+  const last = localStorage.getItem(LAST_PLAYED_KEY);
+  if (last === today) return { streak: parseInt(localStorage.getItem(STREAK_KEY) || "0", 10) };
+  let streak = parseInt(localStorage.getItem(STREAK_KEY) || "0", 10);
+  streak = last === yesterdayYmd() ? streak + 1 : 1;
+  localStorage.setItem(LAST_PLAYED_KEY, today);
+  localStorage.setItem(STREAK_KEY, String(streak));
+  return { streak };
+}
+
 type RunStatus = "idle" | "active" | "ended";
+type RunMode = "random" | "daily";
 interface RunState {
   seed: Uint8Array;
+  mode: RunMode;
   startedAt: number;
   endedAt: number | null;
   answer: string;
@@ -93,10 +145,11 @@ interface RunState {
   lastFlippedRow: number;
 }
 
-function startRun(seed: Uint8Array): RunState {
+function startRun(seed: Uint8Array, mode: RunMode = "random"): RunState {
   const answer = answerForSeed(seed);
   return {
     seed,
+    mode,
     startedAt: Date.now(),
     endedAt: null,
     answer,
@@ -173,8 +226,10 @@ export default function ArcadeMode() {
       .catch(() => setProfileExists(null));
   }, [publicKey, connection]);
 
-  const startNewRun = useCallback(() => {
-    runRef.current = startRun(generateSeed());
+  const [streakInfo, setStreakInfo] = useState(loadStreak);
+  const startNewRun = useCallback((mode: RunMode = "random") => {
+    const seed = mode === "daily" ? dailySeed(todayYmd()) : generateSeed();
+    runRef.current = startRun(seed, mode);
     setSavedThisRun(false);
     setVerifiedThisRun(false);
     setOwnedThisRun(false);
@@ -245,6 +300,10 @@ export default function ArcadeMode() {
       r.solved = true;
       r.status = "ended";
       r.endedAt = Date.now();
+      if (r.mode === "daily") {
+        const { streak } = recordDailyWin();
+        setStreakInfo({ lastPlayedYmd: todayYmd(), streak, playedToday: true });
+      }
     } else if (r.guesses.length >= MAX_GUESSES) {
       r.status = "ended";
       r.endedAt = Date.now();
@@ -323,7 +382,7 @@ export default function ArcadeMode() {
       const score = computeScore(r.solved, r.guesses.length, secondsUsed(r));
       tx.add(
         await buildSubmitScoreIx(program, publicKey, {
-          variant: "-",
+          variant: r.mode === "daily" ? `daily|${todayYmd()}` : "random",
           score: new BN(score),
           continuesUsed: 0,
           powerupsUsed: 0,
@@ -535,7 +594,7 @@ export default function ArcadeMode() {
 
           <div className="bw-board-frame" style={{ position: "relative", width: "100%", borderRadius: 16, overflow: "hidden", border: "1px solid rgba(255,210,74,0.4)", background: "linear-gradient(135deg, rgba(40,30,5,0.95), rgba(2,6,20,0.95))", boxShadow: "0 0 40px rgba(255,210,74,0.18)" }}>
             {!r ? (
-              <IntroOverlay onStart={startNewRun} />
+              <IntroOverlay onStart={startNewRun} streak={streakInfo} />
             ) : (
               <div style={{ display: "flex", flexDirection: "column" }}>
                 <RunHud
@@ -625,7 +684,7 @@ export default function ArcadeMode() {
                       onVerify={onVerifyRun}
                       onMintReceipt={onMintReceipt}
                       onWrapCnft={() => setOnchainError("T4 cNFT wrap ships in v1.3 — Metaplex Bubblegum integration pending.")}
-                      onRestart={startNewRun}
+                      onRestart={() => startNewRun(r.mode)}
                     />
                   </>
                 ) : (
@@ -654,7 +713,7 @@ export default function ArcadeMode() {
                       First save free on devnet · GPX5 memo on Solana, permanent
                     </div>
                     <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center", marginTop: 4 }}>
-                      <button onClick={startNewRun} style={{ ...btnSecondary, minHeight: 40 }}>↻ Play Again</button>
+                      <button onClick={() => startNewRun("random")} style={{ ...btnSecondary, minHeight: 40 }}>↻ Play Again</button>
                       <a href="/arcade" style={{ ...btnSecondary, textDecoration: "none", display: "inline-flex", alignItems: "center", minHeight: 40 }}>
                         ← Back
                       </a>
@@ -779,7 +838,13 @@ export default function ArcadeMode() {
   );
 }
 
-function IntroOverlay({ onStart }: { onStart: () => void }) {
+function IntroOverlay({
+  onStart,
+  streak,
+}: {
+  onStart: (mode: RunMode) => void;
+  streak: { streak: number; playedToday: boolean };
+}) {
   return (
     <div className="bw-intro-overlay" style={{ position: "relative", minHeight: 420, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 18, padding: 20, overflow: "hidden" }}>
       <div
@@ -801,30 +866,52 @@ function IntroOverlay({ onStart }: { onStart: () => void }) {
         Pick the secret 5-letter word in <strong style={{ color: "#ffd24a" }}>6 guesses</strong>, against a{" "}
         <strong style={{ color: "#ffd24a" }}>{RUN_DURATION_SEC}s</strong> timer. Faster + fewer guesses = higher score.
       </div>
-      <button
-        onClick={onStart}
-        style={{
-          marginTop: 6,
-          padding: "14px 36px",
-          fontSize: 16,
-          fontWeight: 800,
-          letterSpacing: 2,
-          textTransform: "uppercase",
-          background: "linear-gradient(135deg, #ffd24a, #ff8a40)",
-          color: "#1a0a00",
-          border: "none",
-          borderRadius: 10,
-          cursor: "pointer",
-          boxShadow: "0 0 28px rgba(255,210,74,0.45), inset 0 1px 0 rgba(255,255,255,0.2)",
-          animation: "bwStartPulse 2s ease-in-out infinite",
-          fontFamily: "'Space Grotesk', sans-serif",
-          zIndex: 1,
-        }}
-      >
-        ▶ Start Run
-      </button>
-      <div style={{ fontSize: 11, color: "#6a6a80", zIndex: 1 }}>
-        Free to play — on-chain scoring optional at game over.
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 6, zIndex: 1, alignItems: "stretch", width: "min(320px, 90%)" }}>
+        <button
+          onClick={() => onStart("daily")}
+          style={{
+            padding: "14px 24px",
+            fontSize: 15,
+            fontWeight: 800,
+            letterSpacing: 2,
+            textTransform: "uppercase",
+            background: streak.playedToday
+              ? "linear-gradient(135deg, #14F195, #0fa572)"
+              : "linear-gradient(135deg, #ffd24a, #ff8a40)",
+            color: "#1a0a00",
+            border: "none",
+            borderRadius: 10,
+            cursor: "pointer",
+            boxShadow: "0 0 28px rgba(255,210,74,0.45), inset 0 1px 0 rgba(255,255,255,0.2)",
+            animation: streak.playedToday ? "none" : "bwStartPulse 2s ease-in-out infinite",
+            fontFamily: "'Space Grotesk', sans-serif",
+          }}
+        >
+          {streak.playedToday ? "✓ Today's Challenge" : "📅 Today's Challenge"}
+        </button>
+        <button
+          onClick={() => onStart("random")}
+          style={{
+            padding: "12px 24px",
+            fontSize: 14,
+            fontWeight: 700,
+            letterSpacing: 2,
+            textTransform: "uppercase",
+            background: "transparent",
+            color: "#ffd24a",
+            border: "1px solid #ffd24a",
+            borderRadius: 10,
+            cursor: "pointer",
+            fontFamily: "'Space Grotesk', sans-serif",
+          }}
+        >
+          ▶ Random Run
+        </button>
+      </div>
+      <div style={{ fontSize: 11, color: "#6a6a80", zIndex: 1, textAlign: "center" }}>
+        {streak.streak > 0
+          ? `🔥 ${streak.streak}-day streak${streak.playedToday ? " (today solved)" : ""}`
+          : "Free to play — on-chain scoring optional at game over."}
       </div>
     </div>
   );
