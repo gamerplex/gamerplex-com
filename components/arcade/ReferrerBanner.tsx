@@ -4,10 +4,6 @@ import { useEffect, useState } from "react";
 import { PublicKey } from "@solana/web3.js";
 import { getStoredReferrerInfo, pickReferrerFromUrl } from "../../lib/arcade/referral";
 
-// Renders the active referral attribution above any save-score CTA.
-// Returns null when no referrer is stored. Re-reads sessionStorage on
-// every connectedWallet change so a wallet swap clears self-referrals.
-
 function shortPk(pk: PublicKey): string {
   const b = pk.toBase58();
   return `${b.slice(0, 4)}…${b.slice(-4)}`;

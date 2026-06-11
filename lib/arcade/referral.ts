@@ -1,9 +1,5 @@
 import { PublicKey } from "@solana/web3.js";
 
-// Referral attribution helpers. Hardened per
-// ENGINEERING/SECURITY_LEARNINGS.md "Pre-launch referrer-wiring threat model".
-// Mirror of gamerplex-games/flipball/src/arcade/referral.ts.
-
 const REFERRAL_SS_KEY = "gamerplex:referrer:v2";
 const REFERRAL_TTL_MS = 30 * 60 * 1000;
 const RESOLVER_BASE =
