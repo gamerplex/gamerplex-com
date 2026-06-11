@@ -12,13 +12,39 @@ export function botById(id: string | null): typeof ARCADE_BOTS[number] | null {
   return ARCADE_BOTS.find(b => b.id === id) || null;
 }
 
-export function computeScore(botElo: number, won: boolean, movesUsed: number, durationSec: number): number {
-  return (
-    (botElo * 100) +
-    (won ? 500 : 0) +
-    Math.max(0, 60 - movesUsed) * 10 +
-    Math.max(0, 600 - durationSec)
-  );
+// Per-move timer presets. Per-move (not per-game) keeps UX simple: one clear
+// countdown, no hidden clock management. Labels borrow from chess.com/lichess
+// time-class vocabulary even though the standard is per-game there.
+export const TIMER_PRESETS = [
+  { sec: 3,  label: "Bullet",    icon: "⚡", desc: "hyper-fast" },
+  { sec: 5,  label: "Blitz",     icon: "🔥", desc: "fast (default)" },
+  { sec: 10, label: "Rapid",     icon: "⚡", desc: "quick" },
+  { sec: 30, label: "Standard",  icon: "🧠", desc: "normal" },
+  { sec: 60, label: "Classical", icon: "🐢", desc: "thoughtful" },
+] as const;
+
+export const DEFAULT_TIMER_SEC = 5;
+
+// Speed-chess scoring.
+//   win base       = 1000
+//   bot ELO        = + bot.elo            (tougher bot, more points)
+//   speed bonus    = + max(0, 60 - dur) * 50
+//   pressure bonus = + (60 - moveTimeSec) * 20    (harder timer = more points)
+//   loss/draw      = 0 / 250
+export function computeScore(
+  botElo: number,
+  won: boolean | null,
+  _movesUsed: number,
+  durationSec: number,
+  moveTimeSec: number = DEFAULT_TIMER_SEC,
+): number {
+  if (won === true) {
+    const speedBonus = Math.max(0, 60 - durationSec) * 50;
+    const pressureBonus = Math.max(0, 60 - moveTimeSec) * 20;
+    return 1000 + botElo + speedBonus + pressureBonus;
+  }
+  if (won === false) return 0;
+  return 250; // draw
 }
 
 export interface MoveLogEntry { from: number; to: number; promotion: number }

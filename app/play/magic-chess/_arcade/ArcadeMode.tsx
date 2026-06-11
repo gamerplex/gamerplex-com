@@ -32,7 +32,9 @@ const Chess3DBoard = dynamic(() => import("../_shared/Chess3DBoard"), { ssr: fal
 const EXPLORER_SUFFIX = ARCADE_NETWORK === "mainnet" ? "" : `?cluster=${ARCADE_NETWORK}`;
 
 type Phase = "ready" | "playing" | "gameover";
-const MOVE_TIME = 120;
+// 5-second blitz per move — keeps games to ~60-90s, hits the fun-in-60s arcade norm.
+// Future: full classical time controls move to the cm-sdk Phase-2 ER live mode.
+const MOVE_TIME = 5;
 
 export default function ArcadeMode() {
   const { publicKey } = useWallet();
@@ -384,7 +386,7 @@ export default function ArcadeMode() {
           <div style={{ textAlign: "center", maxWidth: 460, padding: 16 }}>
             <div style={{ fontSize: 64, marginBottom: 8 }}>♟️</div>
             <h1 className="magic-chess-title magic-pulse" style={{ fontSize: 38, fontWeight: 700, marginBottom: 8 }}>✨ MAGIC CHESS 🪄</h1>
-            <p className="magic-chess-text" style={{ fontSize: 13, marginBottom: 4 }}>Solo vs Stockfish. Free to play. Save your score on Solana.</p>
+            <p className="magic-chess-text" style={{ fontSize: 13, marginBottom: 4 }}>⚡ 5-second blitz vs Stockfish. Free to play. Save your score on Solana.</p>
 
             <div style={{ display: "flex", justifyContent: "center", margin: "12px 0 14px" }}>
               <ModeToggle
@@ -423,7 +425,7 @@ export default function ArcadeMode() {
             {experience && (
               <div>
                 <p style={{ color: "#888", fontSize: 11, marginBottom: 4 }}>
-                  Bot: {bot?.label} (~{bot?.elo} ELO) · {MOVE_TIME / 60} min/move
+                  Bot: {bot?.label} (~{bot?.elo} ELO) · {MOVE_TIME}s/move blitz
                 </p>
                 <p style={{ color: "#555", fontSize: 10, marginBottom: 16 }}>Free to play · Optional on-chain save after the game</p>
                 <button onClick={startGame} className="magic-chess-btn" style={{ padding: "16px 48px", borderRadius: 10, fontSize: 18, cursor: "pointer" }}>
