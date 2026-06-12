@@ -109,6 +109,58 @@ export default function PaymentMethodPicker({
           );
         })}
       </div>
+      {!compact && <FlipcashCta />}
+    </div>
+  );
+}
+
+const flipcashWrap: CSSProperties = {
+  marginTop: 6,
+  padding: "10px 12px",
+  borderRadius: 12,
+  background: "linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02))",
+  border: "1px solid rgba(255,255,255,0.08)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 10,
+};
+
+const flipcashBtn: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  padding: "7px 14px",
+  borderRadius: 999,
+  background: "rgba(255,255,255,0.14)",
+  border: "1px solid rgba(255,255,255,0.18)",
+  color: "#fff",
+  fontFamily: "'Space Grotesk', sans-serif",
+  fontSize: 12,
+  fontWeight: 700,
+  letterSpacing: 0.3,
+  textDecoration: "none",
+  cursor: "pointer",
+  whiteSpace: "nowrap",
+};
+
+function FlipcashCta() {
+  return (
+    <div style={flipcashWrap}>
+      <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.3 }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: "#e8e8f0" }}>No USDC?</span>
+        <span style={{ fontSize: 10, color: "#8a8aa0" }}>Apple / Google Pay → USDC via Flipcash</span>
+      </div>
+      <a
+        href="https://www.flipcash.com/"
+        target="_blank"
+        rel="noopener noreferrer"
+        style={flipcashBtn}
+        aria-label="Pay with Flipcash"
+      >
+        <span aria-hidden style={{ fontSize: 13, fontWeight: 900 }}>F</span>
+        Pay with Flipcash
+      </a>
     </div>
   );
 }
