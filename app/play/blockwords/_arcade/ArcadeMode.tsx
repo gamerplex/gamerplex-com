@@ -37,6 +37,7 @@ import { PAYMENT_TOKENS, type PaymentTokenDef } from "../../../../lib/arcade/tok
 import PaymentMethodPicker from "../../../../components/arcade/PaymentMethodPicker";
 import { getStoredReferrer } from "../../../../lib/arcade/referral";
 import { submitReplay } from "@gamerplex/sdk/arcade";
+import { track, identifyWallet } from "../../../../lib/analytics";
 import ReferrerBanner from "../../../../components/arcade/ReferrerBanner";
 import { WORDS, isAcceptableGuess } from "./words";
 import {
@@ -230,6 +231,7 @@ export default function ArcadeMode() {
   const startNewRun = useCallback((mode: RunMode = "random") => {
     const seed = mode === "daily" ? dailySeed(todayYmd()) : generateSeed();
     runRef.current = startRun(seed, mode);
+    track("game_started", { game: "blockwords", mode });
     setSavedThisRun(false);
     setVerifiedThisRun(false);
     setOwnedThisRun(false);
@@ -350,6 +352,8 @@ export default function ArcadeMode() {
     if (!r || !anchorWallet || !publicKey) return;
     setBusy("save");
     setOnchainError(null);
+    track("score_save_attempted", { game: "blockwords", mode: r.mode, score: computeScore(r.solved, r.guesses.length, secondsUsed(r)), token: paymentToken.symbol });
+    identifyWallet(publicKey.toBase58());
     try {
       const program = makeProgram(connection, anchorWallet);
       const treasury = await getTreasuryWallet(program);
@@ -401,10 +405,12 @@ export default function ArcadeMode() {
       setLastSaveSig(sig);
       setSavedThisRun(true);
       setProfileExists(true);
+      track("score_save_succeeded", { game: "blockwords", mode: r.mode, sig, score });
       void submitReplay(sig, moveLogBytes).catch(() => {});
     } catch (e: any) {
       console.error("save on-chain failed:", e);
       setOnchainError(e?.message || "Save failed");
+      track("score_save_failed", { game: "blockwords", error: e?.message || String(e) });
     } finally {
       setBusy(null);
     }

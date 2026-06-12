@@ -13,6 +13,7 @@ import type { CSSProperties } from "react";
 import { BN } from "@coral-xyz/anchor";
 import { PAYMENT_TOKENS, type PaymentTokenDef } from "../../lib/arcade/tokens";
 import { formatPrice } from "../../lib/arcade/save-score-payment";
+import { track } from "../../lib/analytics";
 
 interface Props {
   value: PaymentTokenDef;
@@ -157,6 +158,7 @@ function FlipcashCta() {
         rel="noopener noreferrer"
         style={flipcashBtn}
         aria-label="Pay with Flipcash"
+        onClick={() => track("flipcash_cta_clicked", { surface: "payment_picker" })}
       >
         <span aria-hidden style={{ fontSize: 13, fontWeight: 900 }}>F</span>
         Pay with Flipcash

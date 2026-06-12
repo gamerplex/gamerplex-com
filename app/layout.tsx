@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import ReferralCapture from "../components/arcade/ReferralCapture";
+import PostHogProvider from "../components/PostHogProvider";
 
 export const metadata: Metadata = {
   title: "GAMERPLEX | The Gaming Protocol",
@@ -56,6 +57,7 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
       </head>
       <body style={{ backgroundColor: '#0d001a', margin: 0, padding: 0 }}>
+        <PostHogProvider>
         <ReferralCapture />
         {/* Top banner — hackathon voting */}
         <div style={{
@@ -75,6 +77,7 @@ export default function RootLayout({
             __html: `if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{})}`,
           }}
         />
+        </PostHogProvider>
       </body>
     </html>
   );

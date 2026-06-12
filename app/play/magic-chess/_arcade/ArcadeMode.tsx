@@ -22,6 +22,7 @@ import {
 } from "../../../../lib/arcade/client";
 import { getStoredReferrer } from "../../../../lib/arcade/referral";
 import { submitReplay } from "@gamerplex/sdk/arcade";
+import { track, identifyWallet } from "../../../../lib/analytics";
 import ReferrerBanner from "../../../../components/arcade/ReferrerBanner";
 import { buildSaveScorePaymentIxs } from "../../../../lib/arcade/save-score-payment";
 import { PAYMENT_TOKENS, type PaymentTokenDef } from "../../../../lib/arcade/tokens";
@@ -227,6 +228,8 @@ export default function ArcadeMode() {
   const onSaveOnChain = useCallback(async () => {
     if (!seed || !anchorWallet || !publicKey || !bot) return;
     setBusy("save"); setOnchainError(null);
+    track("score_save_attempted", { game: "magic-chess", bot: bot.id, turn_time_sec: turnTimeSec, score: finalScore, token: paymentToken.symbol });
+    identifyWallet(publicKey.toBase58());
     try {
       const program = makeProgram(connection, anchorWallet);
       const treasury = await getTreasuryWallet(program);
@@ -269,10 +272,12 @@ export default function ArcadeMode() {
 
       const sig = await program.provider.sendAndConfirm!(tx, [], { skipPreflight: false });
       setLastSaveSig(sig); setSavedThisRun(true); setProfileExists(true);
+      track("score_save_succeeded", { game: "magic-chess", bot: bot.id, sig, score: finalScore });
       void submitReplay(sig, moveLogBytes).catch(() => {});
     } catch (e: any) {
       console.error("save failed:", e);
       setOnchainError(e?.message || "Save failed");
+      track("score_save_failed", { game: "magic-chess", error: e?.message || String(e) });
     } finally { setBusy(null); }
   }, [anchorWallet, publicKey, connection, profileExists, seed, bot, startedAt, finalScore, paymentToken]);
 

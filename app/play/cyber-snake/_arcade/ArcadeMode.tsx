@@ -44,6 +44,7 @@ import { PAYMENT_TOKENS, type PaymentTokenDef } from "../../../../lib/arcade/tok
 import PaymentMethodPicker from "../../../../components/arcade/PaymentMethodPicker";
 import { getStoredReferrer } from "../../../../lib/arcade/referral";
 import { submitReplay } from "@gamerplex/sdk/arcade";
+import { track, identifyWallet } from "../../../../lib/analytics";
 import ReferrerBanner from "../../../../components/arcade/ReferrerBanner";
 import { ArcadeLeaderboard } from "../../../arcade/_components/ArcadeLeaderboard";
 
@@ -445,6 +446,8 @@ export default function CyberSnakeSolo() {
     if (!g || !anchorWallet || !publicKey) return;
     setBusy("save");
     setOnchainError(null);
+    track("score_save_attempted", { game: "cyber-snake", score: g.score, continues: g.continuesUsed, token: paymentToken.symbol });
+    identifyWallet(publicKey.toBase58());
     try {
       const program = makeProgram(connection, anchorWallet);
       const treasury = await getTreasuryWallet(program);
@@ -493,10 +496,12 @@ export default function CyberSnakeSolo() {
       setLastSaveSig(sig);
       setSavedThisRun(true);
       setProfileExists(true);
+      track("score_save_succeeded", { game: "cyber-snake", sig, score: g.score });
       void submitReplay(sig, moveLogBytes).catch(() => {});
     } catch (e: any) {
       console.error("save on-chain failed:", e);
       setOnchainError(e?.message || "Save failed");
+      track("score_save_failed", { game: "cyber-snake", error: e?.message || String(e) });
     } finally {
       setBusy(null);
     }
