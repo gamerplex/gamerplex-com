@@ -17,6 +17,7 @@ export default function PostHogProvider({ children }: { children: React.ReactNod
       capture_pageview: true,
       capture_pageleave: true,
     });
+    posthog.register({ product: "gamerplex", surface: "gamerplex-com" });
     (window as any).__posthog_initialized = true;
   }, []);
   return <>{children}</>;
