@@ -648,6 +648,99 @@
       ]
     },
     {
+      "name": "open_session",
+      "docs": [
+        "Open a play Session bound to a player + game, carrying a server-issued",
+        "random seed. The resolver service-account funds + signs this — the",
+        "player does not see a wallet popup. The returned PDA is then passed as",
+        "the `session` account on submit_score; for daily / challenge variants",
+        "the on-chain seed must match the seed actually used in play.",
+        "",
+        "Without this binding, daily / challenge leaderboards are grindable —",
+        "any client could refresh until it got a lucky deterministic seed, then",
+        "submit only the best score. The Session PDA makes the seed an on-chain",
+        "commitment that's auditable forever."
+      ],
+      "discriminator": [
+        130,
+        54,
+        124,
+        7,
+        236,
+        20,
+        104,
+        104
+      ],
+      "accounts": [
+        {
+          "name": "session",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  101,
+                  115,
+                  115,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "player"
+              },
+              {
+                "kind": "arg",
+                "path": "nonce"
+              }
+            ]
+          }
+        },
+        {
+          "name": "player",
+          "docs": [
+            "opens on their behalf so player UX stays one-click."
+          ]
+        },
+        {
+          "name": "funder",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "nonce",
+          "type": "u64"
+        },
+        {
+          "name": "game_id",
+          "type": "u8"
+        },
+        {
+          "name": "seed",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "lifetime_sec",
+          "type": "u32"
+        }
+      ]
+    },
+    {
       "name": "record_payment",
       "docs": [
         "Record a payment made via Solana Pay / Flipcash, tied to a specific",
@@ -1356,6 +1449,21 @@
         {
           "name": "memo_program",
           "address": "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"
+        },
+        {
+          "name": "instructions_sysvar",
+          "docs": [
+            "record_payment(SCORE_COMMIT)."
+          ],
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        },
+        {
+          "name": "session",
+          "docs": [
+            "Optional — REQUIRED when variant starts with \"daily\" or \"challenge\"",
+            "(P0-3 grinding defense). Server opens this via open_session."
+          ],
+          "optional": true
         }
       ],
       "args": [
@@ -1849,6 +1957,19 @@
       ]
     },
     {
+      "name": "Session",
+      "discriminator": [
+        243,
+        81,
+        72,
+        115,
+        214,
+        188,
+        72,
+        144
+      ]
+    },
+    {
       "name": "StablecoinConfig",
       "discriminator": [
         127,
@@ -2095,6 +2216,19 @@
         172,
         94,
         109
+      ]
+    },
+    {
+      "name": "SessionOpened",
+      "discriminator": [
+        34,
+        79,
+        77,
+        95,
+        195,
+        207,
+        104,
+        223
       ]
     },
     {
@@ -2417,6 +2551,36 @@
       "code": 6055,
       "name": "OldHandleClaimUnexpected",
       "msg": "Wallet has no current handle — do not pass an old HandleClaim."
+    },
+    {
+      "code": 6056,
+      "name": "SessionRequired",
+      "msg": "Daily / challenge variant requires a Session PDA."
+    },
+    {
+      "code": 6057,
+      "name": "SessionOwnerMismatch",
+      "msg": "Session was opened for a different player."
+    },
+    {
+      "code": 6058,
+      "name": "SessionGameMismatch",
+      "msg": "Session was opened for a different game_id."
+    },
+    {
+      "code": 6059,
+      "name": "SessionSeedMismatch",
+      "msg": "Submitted session_seed does not match the on-chain Session seed."
+    },
+    {
+      "code": 6060,
+      "name": "SessionExpired",
+      "msg": "Session has expired (clock > expires_at)."
+    },
+    {
+      "code": 6061,
+      "name": "InvalidSessionLifetime",
+      "msg": "Invalid session lifetime (must be MIN..=MAX seconds)."
     }
   ],
   "types": [
@@ -3319,6 +3483,82 @@
           {
             "name": "new_season",
             "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Session",
+      "docs": [
+        "Session — server-issued play binding for grind-resistant daily challenges.",
+        "",
+        "Opened by the resolver on the player's behalf (server funds rent + signs the",
+        "open_session tx). Carries a cryptographically random seed that is then used",
+        "to drive game RNG. At submit_score time, if the variant is \"daily*\" or",
+        "\"challenge*\", the submitted seed MUST match this PDA's seed exactly, and",
+        "the session must not be expired. Without this binding, a client could",
+        "refresh until the daily seed produced a lucky board, then submit only the",
+        "best score (seed grinding attack)."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "player",
+            "type": "pubkey"
+          },
+          {
+            "name": "game_id",
+            "type": "u8"
+          },
+          {
+            "name": "seed",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "nonce",
+            "type": "u64"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "expires_at",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SessionOpened",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "player",
+            "type": "pubkey"
+          },
+          {
+            "name": "game_id",
+            "type": "u8"
+          },
+          {
+            "name": "nonce",
+            "type": "u64"
+          },
+          {
+            "name": "expires_at",
+            "type": "i64"
           }
         ]
       }

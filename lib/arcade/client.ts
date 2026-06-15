@@ -234,12 +234,14 @@ export async function buildSubmitScoreIx(
     meta: string;
     vsChallenger: PublicKey; // PublicKey.default if none
     gameId?: number;
+    /** Required when variant starts with "daily" or "challenge". */
+    session?: PublicKey;
   }
 ): Promise<TransactionInstruction> {
   const [cfg] = configPda();
   const [game] = gamePda(params.gameId ?? CYBER_SNAKE_GAME_ID);
   const [profile] = profilePda(player);
-  return await program.methods
+  return await (program.methods as any)
     .submitScore(
       params.variant,
       params.score,
@@ -251,13 +253,15 @@ export async function buildSubmitScoreIx(
       params.meta,
       params.vsChallenger
     )
-    .accounts({
+    .accountsPartial({
       config: cfg,
       game,
       profile,
       wallet: player,
       player,
       memoProgram: SPL_MEMO_ID,
+      instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
+      session: params.session ?? null,
     })
     .instruction();
 }

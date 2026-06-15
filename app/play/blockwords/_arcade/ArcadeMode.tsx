@@ -36,7 +36,7 @@ import { buildSaveScorePaymentIxs } from "../../../../lib/arcade/save-score-paym
 import { PAYMENT_TOKENS, type PaymentTokenDef } from "../../../../lib/arcade/tokens";
 import PaymentMethodPicker from "../../../../components/arcade/PaymentMethodPicker";
 import { getStoredReferrer } from "../../../../lib/arcade/referral";
-import { submitReplay } from "@gamerplex/sdk/arcade";
+import { submitReplay, openSession } from "@gamerplex/sdk/arcade";
 import { track, identifyWallet } from "../../../../lib/analytics";
 import ReferrerBanner from "../../../../components/arcade/ReferrerBanner";
 import { WORDS, isAcceptableGuess } from "./words";
@@ -131,6 +131,8 @@ type RunStatus = "idle" | "active" | "ended";
 type RunMode = "random" | "daily";
 interface RunState {
   seed: Uint8Array;
+  /** On-chain session binding for daily mode (server-issued, grind-resistant). */
+  sessionPda: PublicKey | null;
   mode: RunMode;
   startedAt: number;
   endedAt: number | null;
@@ -146,10 +148,11 @@ interface RunState {
   lastFlippedRow: number;
 }
 
-function startRun(seed: Uint8Array, mode: RunMode = "random"): RunState {
+function startRun(seed: Uint8Array, mode: RunMode = "random", sessionPda: PublicKey | null = null): RunState {
   const answer = answerForSeed(seed);
   return {
     seed,
+    sessionPda,
     mode,
     startedAt: Date.now(),
     endedAt: null,
@@ -228,9 +231,24 @@ export default function ArcadeMode() {
   }, [publicKey, connection]);
 
   const [streakInfo, setStreakInfo] = useState(loadStreak);
-  const startNewRun = useCallback((mode: RunMode = "random") => {
-    const seed = mode === "daily" ? dailySeed(todayYmd()) : generateSeed();
-    runRef.current = startRun(seed, mode);
+  const startNewRun = useCallback(async (mode: RunMode = "random") => {
+    let seed: Uint8Array;
+    let sessionPda: PublicKey | null = null;
+    if (mode === "daily" && publicKey) {
+      try {
+        const opened = await openSession({ player: publicKey, gameId: BLOCKWORDS_ARCADE_GAME_ID });
+        seed = opened.seed;
+        sessionPda = opened.sessionPda;
+      } catch (e) {
+        console.warn("openSession failed, falling back to local daily seed:", e);
+        seed = dailySeed(todayYmd());
+      }
+    } else if (mode === "daily") {
+      seed = dailySeed(todayYmd());
+    } else {
+      seed = generateSeed();
+    }
+    runRef.current = startRun(seed, mode, sessionPda);
     track("game_started", { game: "blockwords", mode });
     setSavedThisRun(false);
     setVerifiedThisRun(false);
@@ -240,7 +258,7 @@ export default function ArcadeMode() {
     setLastReceiptSig(null);
     setOnchainError(null);
     setTick((t) => t + 1);
-  }, []);
+  }, [publicKey]);
 
   useEffect(() => {
     loopRef.current = setInterval(() => {
@@ -396,6 +414,7 @@ export default function ArcadeMode() {
           meta: "",
           vsChallenger: PublicKey.default,
           gameId: BLOCKWORDS_ARCADE_GAME_ID,
+          session: r.sessionPda ?? undefined,
         }),
       );
 
