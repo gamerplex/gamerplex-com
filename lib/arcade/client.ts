@@ -38,10 +38,19 @@ import idlJson from "./idl.json";
 export const ARCADE_NETWORK =
   (process.env.NEXT_PUBLIC_SOLANA_NETWORK as "mainnet" | "devnet") || "devnet";
 
-export const ARCADE_PROGRAM_ID = new PublicKey(
-  // Same program ID on devnet + mainnet (deterministic keypair redeploy).
+// Per-network program IDs (mainnet ≠ devnet). NEXT_PUBLIC_ARCADE_PROGRAM_ID
+// overrides; otherwise selected by network, defaulting to devnet.
+export const ARCADE_PROGRAM_ID_MAINNET = new PublicKey(
+  "GAMEbo12FjDbrobsgy8RbPhMs5kAQtJce3pARCi1cakV"
+);
+export const ARCADE_PROGRAM_ID_DEVNET = new PublicKey(
   "4FVwdxxBp6PTax2tAcPyHE9rYt8tyNf2YBGrSnSqmx8t"
 );
+export const ARCADE_PROGRAM_ID = process.env.NEXT_PUBLIC_ARCADE_PROGRAM_ID
+  ? new PublicKey(process.env.NEXT_PUBLIC_ARCADE_PROGRAM_ID)
+  : ARCADE_NETWORK === "mainnet"
+    ? ARCADE_PROGRAM_ID_MAINNET
+    : ARCADE_PROGRAM_ID_DEVNET;
 
 // USDC mints per network. Mainnet = Circle official, devnet = Circle official devnet.
 export const USDC_MAINNET_MINT = new PublicKey(
