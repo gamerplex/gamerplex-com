@@ -27,14 +27,14 @@ import { getStoredReferrer, pickReferrerFromUrl } from "../../lib/arcade/referra
 import "@solana/wallet-adapter-react-ui/styles.css";
 
 // RPC endpoint follows NEXT_PUBLIC_SOLANA_NETWORK. Operators should override
-// with a paid endpoint (Helius/Triton/Alchemy) on mainnet via NEXT_PUBLIC_SOLANA_RPC
-// to avoid rate-limit hiccups on the public default.
+// with the same-origin /api/rpc proxy via NEXT_PUBLIC_RPC_URL (the keyed
+// endpoint stays SERVER-only in SOLANA_RPC_URL — never in this client bundle).
 const NETWORK = process.env.NEXT_PUBLIC_SOLANA_NETWORK || "devnet";
 const DEFAULT_RPC =
   NETWORK === "mainnet"
     ? "https://api.mainnet-beta.solana.com"
     : "https://api.devnet.solana.com";
-const RPC_URL = process.env.NEXT_PUBLIC_SOLANA_RPC || DEFAULT_RPC;
+const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL || DEFAULT_RPC;
 
 function TosGuard({ children }: { children: React.ReactNode }) {
   const { publicKey, connected } = useWallet();
