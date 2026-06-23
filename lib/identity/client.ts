@@ -86,17 +86,37 @@ export async function getCredits(): Promise<CreditsBalance | null> {
   }
 }
 
-// Grant the daily "you played" engagement credit. SAME-ORIGIN call to our own
-// server route (which holds the IDENTITY_API_KEY) — never hits identity-service
-// directly from the browser. Idempotent server-side (one credit per game/day).
-// Returns the new gamerplex balance, or null if not signed in / failed.
-export async function awardPlay(gameId: number): Promise<number | null> {
+// Call at game START: mint a proof-of-play token bound to this user+game. Hold
+// the returned token until game end and pass it to awardPlay. Returns null if
+// not signed in / failed (caller should just skip the credit).
+export async function startPlaySession(gameId: number): Promise<string | null> {
+  try {
+    const r = await fetch('/api/credits/play-token', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ gameId }),
+    });
+    if (!r.ok) return null;
+    const j = await r.json();
+    return typeof j.token === 'string' ? j.token : null;
+  } catch {
+    return null;
+  }
+}
+
+// Grant the daily "you played" engagement credit at game END. SAME-ORIGIN call
+// to our own server route (which holds the IDENTITY_API_KEY) — never hits
+// identity-service directly from the browser. Requires the play token from
+// startPlaySession (proof of play). Idempotent server-side (one credit per
+// game/day). Returns the new gamerplex balance, or null if not awarded.
+export async function awardPlay(gameId: number, playToken: string): Promise<number | null> {
   try {
     const r = await fetch('/api/credits/award-play', {
       method: 'POST',
       credentials: 'include',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ gameId }),
+      body: JSON.stringify({ gameId, playToken }),
     });
     if (!r.ok) return null;
     const j = await r.json();
