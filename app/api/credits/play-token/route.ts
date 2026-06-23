@@ -1,0 +1,68 @@
+// POST /api/credits/play-token — mint a proof-of-play token at game start.
+//
+// Server-side only. Resolves the caller from their gpx_id cookie, then returns a
+// short-lived HMAC token bound to (user, gameId). The token must be presented to
+// /api/credits/award-play at game end, after the minimum play duration. This is
+// what makes the daily engagement credit require actual play, not a bare POST.
+//
+// Body: { gameId: number }  Returns: { ok, token } | { error }
+
+import { NextRequest, NextResponse } from 'next/server';
+import { randomUUID } from 'crypto';
+import { mintPlayToken } from '../../../../lib/credits/play-token';
+
+export const dynamic = 'force-dynamic';
+
+const IDENTITY_URL =
+  process.env.IDENTITY_URL || process.env.NEXT_PUBLIC_IDENTITY_URL || 'https://auth.gamerplex.com';
+
+const ALLOWED_ORIGINS = (process.env.AWARD_ALLOWED_ORIGINS
+  ? process.env.AWARD_ALLOWED_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean)
+  : ['https://gamerplex.com', 'https://www.gamerplex.com']
+).concat(process.env.NODE_ENV !== 'production' ? ['http://localhost:3000', 'http://127.0.0.1:3000'] : []);
+
+function badOrigin(req: NextRequest): boolean {
+  let origin = req.headers.get('origin');
+  if (!origin) {
+    const ref = req.headers.get('referer');
+    try {
+      origin = ref ? new URL(ref).origin : null;
+    } catch {
+      origin = null;
+    }
+  }
+  return !origin || !ALLOWED_ORIGINS.includes(origin);
+}
+
+const GAME_SLUGS: Record<number, string> = { 1: 'cyber-snake', 3: 'magic-chess', 4: 'blockwords', 5: 'flipball' };
+
+export async function POST(req: NextRequest) {
+  if (badOrigin(req)) {
+    return NextResponse.json({ error: 'bad_origin' }, { status: 403 });
+  }
+
+  let body: { gameId?: unknown };
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: 'invalid_json' }, { status: 400 });
+  }
+  const gameId = body.gameId;
+  if (typeof gameId !== 'number' || !GAME_SLUGS[gameId]) {
+    return NextResponse.json({ error: 'bad_game' }, { status: 400 });
+  }
+
+  const cookie = req.headers.get('cookie') ?? '';
+  const meRes = await fetch(`${IDENTITY_URL}/api/auth/me`, { headers: { cookie }, cache: 'no-store' });
+  const me = await meRes.json().catch(() => ({}));
+  const userId: string | undefined = me?.user?.id;
+  if (!userId) {
+    return NextResponse.json({ error: 'not_signed_in' }, { status: 401 });
+  }
+
+  const token = mintPlayToken(userId, gameId, randomUUID(), Date.now());
+  if (!token) {
+    return NextResponse.json({ error: 'misconfigured' }, { status: 500 });
+  }
+  return NextResponse.json({ ok: true, token });
+}

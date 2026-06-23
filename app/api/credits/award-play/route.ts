@@ -9,6 +9,7 @@
 // Body: { gameId: number }  Returns: { ok, app, appBalance } | { error }
 
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyPlayToken, redeemOnce } from '../../../../lib/credits/play-token';
 
 export const dynamic = 'force-dynamic';
 
@@ -59,7 +60,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'misconfigured' }, { status: 500 });
   }
 
-  let body: { gameId?: unknown };
+  let body: { gameId?: unknown; playToken?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -80,6 +81,18 @@ export async function POST(req: NextRequest) {
   const userId: string | undefined = me?.user?.id;
   if (!userId) {
     return NextResponse.json({ error: 'not_signed_in' }, { status: 401 });
+  }
+
+  // Proof of play: a token minted at game start (/api/credits/play-token), bound
+  // to this user+game and only valid after the minimum play duration. Without it
+  // the daily credit was farmable with a bare POST and zero gameplay.
+  const verdict = verifyPlayToken(body.playToken, userId, gameId, Date.now());
+  if (!verdict.ok) {
+    const status = verdict.reason === 'misconfigured' ? 500 : 403;
+    return NextResponse.json({ error: `no_proof_of_play:${verdict.reason}` }, { status });
+  }
+  if (!verdict.jti || !redeemOnce(verdict.jti, Date.now())) {
+    return NextResponse.json({ error: 'token_already_used' }, { status: 409 });
   }
 
   // Award the daily play credit (idempotent per game per UTC day).
