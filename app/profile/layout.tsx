@@ -14,7 +14,7 @@ const DEFAULT_RPC =
   NETWORK === "mainnet"
     ? "https://api.mainnet-beta.solana.com"
     : "https://api.devnet.solana.com";
-const RPC_URL = process.env.NEXT_PUBLIC_SOLANA_RPC || DEFAULT_RPC;
+const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL || DEFAULT_RPC;
 
 export default function ProfileLayout({ children }: { children: React.ReactNode }) {
   const wallets = useMemo(() => [new PhantomWalletAdapter()], []);

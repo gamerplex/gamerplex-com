@@ -14,8 +14,11 @@ import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 
 const ARCADE_PROGRAM_ID = new PublicKey("4FVwdxxBp6PTax2tAcPyHE9rYt8tyNf2YBGrSnSqmx8t");
 const NETWORK = process.env.NEXT_PUBLIC_SOLANA_NETWORK || "devnet";
+// Server-side: use the SERVER-only keyed endpoint (never the NEXT_PUBLIC one,
+// which would bundle the key into the client — audit G-1).
 const RPC =
-  process.env.NEXT_PUBLIC_SOLANA_RPC ||
+  process.env.SOLANA_RPC_URL ||
+  process.env.NEXT_PUBLIC_SOLANA_RPC || // transition fallback
   (NETWORK === "mainnet"
     ? "https://api.mainnet-beta.solana.com"
     : "https://api.devnet.solana.com");
