@@ -9,6 +9,7 @@
 // client uses WS, give the Connection an explicit keyless `wsEndpoint`.
 
 import { NextRequest, NextResponse } from 'next/server';
+import { originForbidden, methodAllowed } from '../../../lib/rpc-guard';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -24,33 +25,9 @@ const ALLOWLIST = (process.env.RPC_ALLOWED_METHODS || '')
   .split(',').map((s) => s.trim()).filter(Boolean);
 const DENYLIST = new Set(['getProgramAccounts']);
 
-// Stop other websites from scripting our RPC quota. Same-origin browser POSTs
-// carry an Origin (and usually Referer). Fail CLOSED: a request with NEITHER
-// header (curl / server scripts) is treated as foreign and rejected.
-function foreignOrigin(req: NextRequest): boolean {
-  const src = req.headers.get('origin') || req.headers.get('referer');
-  if (!src) return true;
-  try {
-    const h = new URL(src).hostname;
-    return !(
-      h === 'localhost' ||
-      h === '127.0.0.1' ||
-      h === 'gamerplex.com' ||
-      h.endsWith('.gamerplex.com')
-    );
-  } catch {
-    return true;
-  }
-}
-
-function methodAllowed(method: unknown): boolean {
-  if (typeof method !== 'string') return false;
-  if (ALLOWLIST.length > 0) return ALLOWLIST.includes(method);
-  return !DENYLIST.has(method);
-}
-
 export async function POST(req: NextRequest) {
-  if (foreignOrigin(req)) {
+  const src = req.headers.get('origin') || req.headers.get('referer');
+  if (originForbidden(src)) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
   const body = await req.text();
@@ -68,7 +45,7 @@ export async function POST(req: NextRequest) {
   if (Array.isArray(parsed)) {
     return NextResponse.json({ error: 'batch_not_allowed' }, { status: 400 });
   }
-  if (!methodAllowed((parsed as { method?: unknown })?.method)) {
+  if (!methodAllowed((parsed as { method?: unknown })?.method, ALLOWLIST, DENYLIST)) {
     return NextResponse.json({ error: 'method_not_allowed' }, { status: 403 });
   }
 
