@@ -11,24 +11,42 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 const UPSTREAM =
   process.env.SOLANA_RPC_URL ||
   process.env.NEXT_PUBLIC_SOLANA_RPC || // transition fallback; prefer SOLANA_RPC_URL
   'https://api.devnet.solana.com';
 
-// Stop other websites from scripting our (paid) RPC quota. Same-origin browser
-// requests carry a gamerplex.com Origin/Referer; a request with NEITHER header
-// is allowed (fail-open) so a stray same-origin fetch never breaks wallet reads.
+// Expensive methods that let one caller burn the (paid) quota. Blocked by
+// default; override the whole policy with a strict allowlist via env.
+const ALLOWLIST = (process.env.RPC_ALLOWED_METHODS || '')
+  .split(',').map((s) => s.trim()).filter(Boolean);
+const DENYLIST = new Set(['getProgramAccounts']);
+
+// Stop other websites from scripting our RPC quota. Same-origin browser POSTs
+// carry an Origin (and usually Referer). Fail CLOSED: a request with NEITHER
+// header (curl / server scripts) is treated as foreign and rejected.
 function foreignOrigin(req: NextRequest): boolean {
   const src = req.headers.get('origin') || req.headers.get('referer');
-  if (!src) return false;
+  if (!src) return true;
   try {
     const h = new URL(src).hostname;
-    return !(h === 'localhost' || h === '127.0.0.1' || h.endsWith('gamerplex.com'));
+    return !(
+      h === 'localhost' ||
+      h === '127.0.0.1' ||
+      h === 'gamerplex.com' ||
+      h.endsWith('.gamerplex.com')
+    );
   } catch {
     return true;
   }
+}
+
+function methodAllowed(method: unknown): boolean {
+  if (typeof method !== 'string') return false;
+  if (ALLOWLIST.length > 0) return ALLOWLIST.includes(method);
+  return !DENYLIST.has(method);
 }
 
 export async function POST(req: NextRequest) {
@@ -39,11 +57,27 @@ export async function POST(req: NextRequest) {
   if (body.length > 200_000) {
     return NextResponse.json({ error: 'too_large' }, { status: 413 });
   }
+
+  // Single JSON-RPC request only (no batch arrays), with an allowed method.
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return NextResponse.json({ error: 'invalid_json' }, { status: 400 });
+  }
+  if (Array.isArray(parsed)) {
+    return NextResponse.json({ error: 'batch_not_allowed' }, { status: 400 });
+  }
+  if (!methodAllowed((parsed as { method?: unknown })?.method)) {
+    return NextResponse.json({ error: 'method_not_allowed' }, { status: 403 });
+  }
+
   const upstream = await fetch(UPSTREAM, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body,
     cache: 'no-store',
+    redirect: 'error',
   });
   const text = await upstream.text();
   return new NextResponse(text, {
