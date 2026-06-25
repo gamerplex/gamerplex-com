@@ -1,10 +1,10 @@
 export const ARCADE_BOTS = [
-  { id: "molty",   icon: "🦞", label: "Molty",   elo: 600,  desc: "Just learning, makes mistakes" },
-  { id: "coral",   icon: "🪸", label: "Coral",   elo: 900,  desc: "Plays safe, good for warming up" },
-  { id: "shadow",  icon: "🥷", label: "Shadow",  elo: 1200, desc: "Club level, punishes blunders" },
-  { id: "neon",    icon: "⚡", label: "Neon",    elo: 1600, desc: "Tournament level, fast and sharp" },
-  { id: "quantum", icon: "🐡", label: "Quantum", elo: 2000, desc: "Near-master, deep calculation" },
-  { id: "zero",    icon: "🛡️", label: "Zero",    elo: 2400, desc: "Grandmaster level. Good luck." },
+  { id: "600",  icon: "🦞", label: "ELO 600",  elo: 600,  desc: "Just learning, makes mistakes" },
+  { id: "900",  icon: "🪸", label: "ELO 900",  elo: 900,  desc: "Plays safe, good for warming up" },
+  { id: "1200", icon: "🥷", label: "ELO 1200", elo: 1200, desc: "Club level, punishes blunders" },
+  { id: "1600", icon: "⚡", label: "ELO 1600", elo: 1600, desc: "Tournament level, fast and sharp" },
+  { id: "2000", icon: "🐡", label: "ELO 2000", elo: 2000, desc: "Near-master, deep calculation" },
+  { id: "2400", icon: "🛡️", label: "ELO 2400", elo: 2400, desc: "Grandmaster level. Good luck." },
 ] as const;
 
 export function botById(id: string | null): typeof ARCADE_BOTS[number] | null {
