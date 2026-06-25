@@ -535,7 +535,7 @@ export default function ArcadeMode() {
                         else if (isKC) bg = "rgba(255,23,68,0.35)";
                         else if (isLast) bg = th.lastMove;
                         const pieceColor = piece && isW(piece) ? th.wp : th.bp;
-                        return <div key={idx} onClick={() => click(idx)} style={{ width: cellSize, height: cellSize, background: bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: piece ? Math.round(cellSize * 0.6) : 0, cursor: phase === "playing" ? "pointer" : "default", position: "relative", color: pieceColor, transition: "all 0.1s" }}>
+                        return <div key={idx} data-sq={`${"abcdefgh"[col]}${row + 1}`} onClick={() => click(idx)} style={{ width: cellSize, height: cellSize, background: bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: piece ? Math.round(cellSize * 0.6) : 0, cursor: phase === "playing" ? "pointer" : "default", position: "relative", color: pieceColor, transition: "all 0.1s" }}>
                           {PIECES[piece] || ""}
                           {isVal && !piece && <div style={{ width: cellSize * 0.2, height: cellSize * 0.2, borderRadius: "50%", background: "rgba(20,241,149,0.5)", position: "absolute", boxShadow: "0 0 8px rgba(20,241,149,0.4)" }} />}
                           {isVal && piece && <div style={{ position: "absolute", inset: 2, borderRadius: 3, border: "2px solid rgba(153,69,255,0.7)", boxShadow: "inset 0 0 10px rgba(153,69,255,0.3)" }} />}
