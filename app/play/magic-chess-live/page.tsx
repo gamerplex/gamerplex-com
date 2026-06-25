@@ -1,148 +1,159 @@
 "use client";
 
-// Live PvP (arena) — interactive, player-funded. The player clicks to play White;
-// every move is signed by their wallet and submitted to the MagicBlock ER. Black
-// is played on-chain by a wallet-funded ephemeral key (v1 single-browser: auto-
-// moves a legal reply). On game end: finish + commit to L1 → resolver validates.
-// Real 2-human matchmaking (a lobby that pairs two wallets) is the next step.
-import { useCallback, useRef, useState } from "react";
+// Live PvP (arena) — REAL 2-player. Find-a-match queue pairs two humans; each
+// plays their own colour, signing moves with their own wallet to the MagicBlock
+// ER; the opponent's moves arrive by polling the match on the ER. On game end,
+// the resolver (match creator) settles to L1. Player-funded (each signs their
+// own moves; needs a devnet-funded wallet).
+import { useEffect, useReducer, useRef } from "react";
 import { useWallet, useConnection } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
-import { Keypair, SystemProgram, Transaction, LAMPORTS_PER_SOL } from "@solana/web3.js";
-import {
-  initBoard, getValid, execMove, isW, isB, pt, PIECES,
-} from "../magic-chess/_shared/chess-engine";
-import {
-  ixSubmitAction, ixFinishMatch, ixCommitMatch, signAndSend, requestMatch, validateMatch,
-  matchPda, erConnection, type SignTx,
-} from "../../../lib/arena/client";
-import { track } from "../../../lib/analytics";
+import { initBoard, getValid, execMove, isW, PIECES } from "../magic-chess/_shared/chess-engine";
+import { ixSubmitAction, signAndSend, decodeMatch, matchPda, erConnection, type SignTx } from "../../../lib/arena/client";
 
 const ARENA_CHESS_GAME_ID = Number(process.env.NEXT_PUBLIC_ARENA_CHESS_GAME_ID || "1");
 const RESOLVER = process.env.NEXT_PUBLIC_RESOLVER_URL || "https://resolver.gamerplex.com";
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-const keypairSigner = (kp: Keypair): SignTx => async (tx: Transaction) => { tx.partialSign(kp); return tx; };
 const FILES = "abcdefgh";
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-type Phase = "idle" | "starting" | "playing" | "settling" | "done";
+type Phase = "idle" | "searching" | "syncing" | "playing" | "done";
+interface Match { gameId: number; matchId: number; color: "white" | "black"; opponent: string }
 
 export default function LivePvPPage() {
   const { publicKey, signTransaction } = useWallet();
   const { connection } = useConnection();
   const er = useRef(erConnection());
-  const black = useRef<Keypair | null>(null);
-  const game = useRef<{ gameId: number; matchId: number } | null>(null);
-  const actionLog = useRef<number[][]>([]);
-  const st = useRef({ ep: 255, castle: 0b1111 }); // ep square + castling rights
+  const match = useRef<Match | null>(null);
+  // authoritative game state (refs to avoid stale closures in poll/click)
+  const gs = useRef({ board: initBoard(), applied: 0, ep: 255, castle: 0b1111, log: [] as number[][] });
+  const sel = useRef<number | null>(null);
+  const valid = useRef<number[]>([]);
+  const phase = useRef<Phase>("idle");
+  const status = useRef("Connect a devnet-funded wallet, then find a match.");
+  const result = useRef<string | null>(null);
+  const [, render] = useReducer((x) => x + 1, 0);
+  const set = (p: Partial<{ phase: Phase; status: string; result: string | null }>) => {
+    if (p.phase !== undefined) phase.current = p.phase;
+    if (p.status !== undefined) status.current = p.status;
+    if (p.result !== undefined) result.current = p.result;
+    render();
+  };
 
-  const [board, setBoard] = useState<number[]>(initBoard());
-  const [sel, setSel] = useState<number | null>(null);
-  const [valid, setValid] = useState<number[]>([]);
-  const [phase, setPhase] = useState<Phase>("idle");
-  const [status, setStatus] = useState("Connect a devnet-funded wallet to start.");
-  const [result, setResult] = useState<string | null>(null);
+  const myColor = () => match.current?.color ?? "white";
+  const myTurn = () => (gs.current.applied % 2 === 0) === (myColor() === "white");
 
-  const submit = useCallback(async (player: "white" | "black", from: number, to: number, promo: number) => {
-    const g = game.current!;
-    const signerPk = player === "white" ? publicKey! : black.current!.publicKey;
-    const sign = player === "white" ? (signTransaction as SignTx) : keypairSigner(black.current!);
-    await signAndSend(er.current, signerPk, sign, ixSubmitAction(signerPk, g.gameId, g.matchId, Uint8Array.from([from, to, promo])));
-    actionLog.current.push([from, to, promo]);
-    track("arena_action_submitted", { game: "magic-chess", surface: "live-pvp", game_id: g.gameId, match_id: g.matchId, side: player, ply: actionLog.current.length });
-  }, [publicKey, signTransaction]);
+  async function settle() {
+    const m = match.current!;
+    set({ phase: "done", status: "Settling on-chain…" });
+    try {
+      const r = await fetch(`${RESOLVER}/arena/settle/${m.gameId}/${m.matchId}`, {
+        method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ actionLog: gs.current.log }),
+      }).then((x) => x.json());
+      set({ result: r?.ok ? `✓ ${r.winner} wins — settled on-chain` : `game over — ${JSON.stringify(r)}` });
+    } catch (e: any) { set({ result: `game over (settle: ${e?.message ?? e})` }); }
+  }
 
-  const settle = useCallback(async (winner: "white" | "black" | "draw") => {
-    setPhase("settling"); setStatus("Settling on-chain (finish + commit)…");
-    const g = game.current!;
-    const w = winner === "white" ? publicKey! : winner === "black" ? black.current!.publicKey : null;
-    await signAndSend(er.current, publicKey!, signTransaction as SignTx, ixFinishMatch(publicKey!, g.gameId, g.matchId, w));
-    await signAndSend(er.current, publicKey!, signTransaction as SignTx, ixCommitMatch(publicKey!, g.gameId, g.matchId));
-    setStatus("Validating off-chain…");
-    const v = await validateMatch(RESOLVER, g.gameId, g.matchId, actionLog.current);
-    setResult(v?.ok && v.valid ? `✓ ${v.winner} wins — validated on-chain (${v.plies} plies)` : `result: ${JSON.stringify(v)}`);
-    track("arena_match_finished", { game: "magic-chess", surface: "live-pvp", game_id: g.gameId, match_id: g.matchId, winner, valid: !!(v?.ok && v.valid), plies: actionLog.current.length });
-    setPhase("done");
-  }, [publicKey, signTransaction]);
+  function applyMove(from: number, to: number, promo: number) {
+    const g = gs.current;
+    const r = execMove(from, to, g.board, g.ep, g.castle);
+    g.board = r.nb; g.ep = r.nep; g.castle = r.nc; g.applied += 1; g.log.push([from, to, promo]);
+    sel.current = null; valid.current = [];
+    if (r.go) { void settle(); return; }
+    set({ status: myTurn() ? "Your move." : "Opponent's move…" });
+  }
 
-  // Black's on-chain reply: pick a legal move, submit via the ephemeral key.
-  const playBlack = useCallback(async (b: number[]) => {
-    const moves: [number, number][] = [];
-    for (let i = 0; i < 64; i++) if (isB(b[i])) for (const t of getValid(b, i, st.current.ep, st.current.castle)) moves.push([i, t]);
-    if (moves.length === 0) return; // no legal moves handled by execMove.go on white's side
-    const [from, to] = moves[Math.floor(moves.length / 2)] || moves[0]; // deterministic-ish reply
-    const promo = pt(b[from]) === 2 && (to >> 3) === 0 ? 11 : 0;
-    const r = execMove(from, to, b, st.current.ep, st.current.castle);
-    st.current = { ep: r.nep, castle: r.nc };
-    setBoard(r.nb);
-    await submit("black", from, to, promo);
-    if (r.go) { await settle(r.win === 2 ? "black" : r.win === 1 ? "white" : "draw"); return; }
-    setStatus("Your move (White).");
-  }, [submit, settle]);
-
-  const click = useCallback(async (idx: number) => {
-    if (phase !== "playing") return;
-    if (sel !== null && valid.includes(idx)) {
-      const promo = pt(board[sel]) === 2 && (idx >> 3) === 7 ? 10 : 0;
-      const r = execMove(sel, idx, board, st.current.ep, st.current.castle);
-      st.current = { ep: r.nep, castle: r.nc };
-      setBoard(r.nb); setSel(null); setValid([]);
-      setStatus("Submitting your move on-chain…");
+  // click to move (only on my turn)
+  async function click(idx: number) {
+    if (phase.current !== "playing" || !myTurn() || !publicKey || !signTransaction) return;
+    const g = gs.current;
+    if (sel.current !== null && valid.current.includes(idx)) {
+      const from = sel.current;
+      const piece = g.board[from];
+      const promo = (piece & 0xfe) === 2 && (idx >> 3) === (isW(piece) ? 7 : 0) ? (isW(piece) ? 10 : 11) : 0;
+      set({ status: "Submitting your move…" });
       try {
-        await submit("white", sel, idx, promo);
-      } catch (e: any) { setStatus(`✗ ${e?.message ?? e}`); return; }
-      if (r.go) { await settle(r.win === 1 ? "white" : r.win === 2 ? "black" : "draw"); return; }
-      setStatus("Black is replying on-chain…");
-      await playBlack(r.nb);
+        const m = match.current!;
+        await signAndSend(er.current, publicKey, signTransaction as SignTx, ixSubmitAction(publicKey, m.gameId, m.matchId, Uint8Array.from([from, idx, promo])));
+      } catch (e: any) { set({ status: `✗ ${e?.message ?? e}` }); return; }
+      applyMove(from, idx, promo);
       return;
     }
-    if (isW(board[idx])) { setSel(idx); setValid(getValid(board, idx, st.current.ep, st.current.castle)); }
-  }, [phase, sel, valid, board, submit, settle, playBlack]);
+    const p = g.board[idx];
+    const mine = myColor() === "white" ? isW(p) : (p > 0 && !isW(p));
+    if (mine) { sel.current = idx; valid.current = getValid(g.board, idx, g.ep, g.castle); render(); }
+  }
 
-  const start = useCallback(async () => {
-    if (!publicKey || !signTransaction) return;
-    setPhase("starting"); setResult(null); actionLog.current = []; st.current = { ep: 255, castle: 0b1111 };
-    setBoard(initBoard()); setSel(null); setValid([]);
+  // poll the ER for the opponent's move when it's their turn
+  useEffect(() => {
+    if (phase.current !== "playing") return;
+    const id = setInterval(async () => {
+      if (phase.current !== "playing" || myTurn()) return;
+      try {
+        const m = match.current!;
+        const info = await er.current.getAccountInfo(matchPda(m.gameId, m.matchId));
+        if (!info) return;
+        const st = decodeMatch(info.data);
+        if (st.actionCount === gs.current.applied + 1) {
+          const [from, to, promo] = Array.from(st.lastAction);
+          applyMove(from, to, promo);
+        }
+      } catch { /* transient */ }
+    }, 1500);
+    return () => clearInterval(id);
+  }, [phase.current === "playing", match.current?.matchId]);
+
+  async function findMatch() {
+    if (!publicKey) return;
+    set({ phase: "searching", status: "Finding an opponent…", result: null });
+    gs.current = { board: initBoard(), applied: 0, ep: 255, castle: 0b1111, log: [] };
+    const me = publicKey.toBase58();
     try {
-      const b = Keypair.generate(); black.current = b;
-      setStatus("Funding the opponent key…");
-      await signAndSend(connection, publicKey, signTransaction as SignTx,
-        SystemProgram.transfer({ fromPubkey: publicKey, toPubkey: b.publicKey, lamports: 0.02 * LAMPORTS_PER_SOL }));
-      setStatus("Creating the match on arena…");
-      const m = await requestMatch(RESOLVER, ARENA_CHESS_GAME_ID, [publicKey.toBase58(), b.publicKey.toBase58()]);
-      game.current = { gameId: m.gameId, matchId: m.matchId };
-      track("arena_match_created", { game: "magic-chess", surface: "live-pvp", game_id: m.gameId, match_id: m.matchId });
-      for (let i = 0; i < 25; i++) { if (await er.current.getAccountInfo(matchPda(m.gameId, m.matchId))) break; await sleep(1500); }
-      setPhase("playing"); setStatus("Your move (White).");
-    } catch (e: any) { setStatus(`✗ ${e?.message ?? e} (needs a funded devnet wallet)`); setPhase("idle"); }
-  }, [publicKey, signTransaction, connection]);
+      const join = await fetch(`${RESOLVER}/arena/queue/join`, {
+        method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ gameId: ARENA_CHESS_GAME_ID, player: me }),
+      }).then((x) => x.json());
+      let assign = join.status === "matched" ? join.assignment : null;
+      // poll until matched
+      for (let i = 0; i < 120 && !assign; i++) {
+        await sleep(2000);
+        const s = await fetch(`${RESOLVER}/arena/queue/status?player=${me}`).then((x) => x.json());
+        if (s.status === "matched") assign = s.assignment;
+      }
+      if (!assign) { set({ phase: "idle", status: "No opponent found — try again." }); return; }
+      match.current = { gameId: assign.gameId, matchId: assign.matchId, color: assign.color, opponent: assign.opponent };
+      set({ phase: "syncing", status: "Match found — syncing the board…" });
+      for (let i = 0; i < 25; i++) { if (await er.current.getAccountInfo(matchPda(assign.gameId, assign.matchId))) break; await sleep(1500); }
+      set({ phase: "playing", status: myTurn() ? "Your move." : "Opponent's move…" });
+    } catch (e: any) { set({ phase: "idle", status: `✗ ${e?.message ?? e}` }); }
+  }
 
+  const board = gs.current.board;
   return (
     <div style={{ padding: 24, color: "#e8e8f0", maxWidth: 560, margin: "0 auto" }}>
       <h1 style={{ fontSize: 20 }}>Magic Chess — Live PvP (arena, devnet)</h1>
       <div style={{ margin: "12px 0" }}><WalletMultiButton /></div>
-      <button data-testid="start-live" onClick={start} disabled={!publicKey || phase === "starting" || phase === "playing"}
+      <button data-testid="find-match" onClick={findMatch} disabled={!publicKey || phase.current === "searching" || phase.current === "playing"}
         className="magic-chess-btn" style={{ padding: "10px 22px", borderRadius: 8, cursor: publicKey ? "pointer" : "not-allowed", opacity: publicKey ? 1 : 0.5 }}>
-        {phase === "playing" ? "Match in progress" : phase === "starting" ? "Starting…" : "▶ Start Live match"}
+        {phase.current === "playing" ? `Playing (${myColor()})` : phase.current === "searching" ? "Searching…" : "▶ Find a match"}
       </button>
-      <p data-testid="live-status" style={{ color: "#9aa", fontSize: 13, margin: "12px 0" }}>{status}</p>
+      <p data-testid="live-status" style={{ color: "#9aa", fontSize: 13, margin: "12px 0" }}>{status.current}</p>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(8, 1fr)", maxWidth: 400, border: "1px solid #252540" }}>
         {Array.from({ length: 8 }, (_, dr) => 7 - dr).flatMap((row) =>
           Array.from({ length: 8 }, (_, col) => {
             const idx = row * 8 + col, p = board[idx];
-            const dark = (row + col) % 2 === 0, isSel = sel === idx, isVal = valid.includes(idx);
+            const dark = (row + col) % 2 === 0, isSel = sel.current === idx, isVal = valid.current.includes(idx);
             return (
               <div key={idx} data-sq={`${FILES[col]}${row + 1}`} onClick={() => click(idx)}
                 style={{ aspectRatio: "1", display: "flex", alignItems: "center", justifyContent: "center",
                   background: isSel ? "#14F195" : isVal ? "rgba(20,241,149,0.25)" : dark ? "#1a0a30" : "#2a1548",
-                  color: p && isW(p) ? "#e8d0ff" : "#14F195", fontSize: 22, cursor: phase === "playing" ? "pointer" : "default" }}>
+                  color: p && isW(p) ? "#e8d0ff" : "#14F195", fontSize: 22, cursor: phase.current === "playing" && myTurn() ? "pointer" : "default" }}>
                 {PIECES[p] || ""}
               </div>
             );
           }),
         )}
       </div>
-      {result && <div data-testid="live-result" style={{ marginTop: 14, color: "#14F195", fontWeight: 700 }}>{result}</div>}
+      {result.current && <div data-testid="live-result" style={{ marginTop: 14, color: "#14F195", fontWeight: 700 }}>{result.current}</div>}
     </div>
   );
 }
