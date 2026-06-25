@@ -16,6 +16,7 @@ import {
   ixSubmitAction, ixFinishMatch, ixCommitMatch, signAndSend, requestMatch, validateMatch,
   matchPda, erConnection, type SignTx,
 } from "../../../lib/arena/client";
+import { track } from "../../../lib/analytics";
 
 const ARENA_CHESS_GAME_ID = Number(process.env.NEXT_PUBLIC_ARENA_CHESS_GAME_ID || "1");
 const RESOLVER = process.env.NEXT_PUBLIC_RESOLVER_URL || "https://resolver.gamerplex.com";
@@ -47,6 +48,7 @@ export default function LivePvPPage() {
     const sign = player === "white" ? (signTransaction as SignTx) : keypairSigner(black.current!);
     await signAndSend(er.current, signerPk, sign, ixSubmitAction(signerPk, g.gameId, g.matchId, Uint8Array.from([from, to, promo])));
     actionLog.current.push([from, to, promo]);
+    track("arena_action_submitted", { game: "magic-chess", surface: "live-pvp", game_id: g.gameId, match_id: g.matchId, side: player, ply: actionLog.current.length });
   }, [publicKey, signTransaction]);
 
   const settle = useCallback(async (winner: "white" | "black" | "draw") => {
@@ -58,6 +60,7 @@ export default function LivePvPPage() {
     setStatus("Validating off-chain…");
     const v = await validateMatch(RESOLVER, g.gameId, g.matchId, actionLog.current);
     setResult(v?.ok && v.valid ? `✓ ${v.winner} wins — validated on-chain (${v.plies} plies)` : `result: ${JSON.stringify(v)}`);
+    track("arena_match_finished", { game: "magic-chess", surface: "live-pvp", game_id: g.gameId, match_id: g.matchId, winner, valid: !!(v?.ok && v.valid), plies: actionLog.current.length });
     setPhase("done");
   }, [publicKey, signTransaction]);
 
@@ -107,6 +110,7 @@ export default function LivePvPPage() {
       setStatus("Creating the match on arena…");
       const m = await requestMatch(RESOLVER, ARENA_CHESS_GAME_ID, [publicKey.toBase58(), b.publicKey.toBase58()]);
       game.current = { gameId: m.gameId, matchId: m.matchId };
+      track("arena_match_created", { game: "magic-chess", surface: "live-pvp", game_id: m.gameId, match_id: m.matchId });
       for (let i = 0; i < 25; i++) { if (await er.current.getAccountInfo(matchPda(m.gameId, m.matchId))) break; await sleep(1500); }
       setPhase("playing"); setStatus("Your move (White).");
     } catch (e: any) { setStatus(`✗ ${e?.message ?? e} (needs a funded devnet wallet)`); setPhase("idle"); }
