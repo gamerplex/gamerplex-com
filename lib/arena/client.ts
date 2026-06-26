@@ -22,7 +22,7 @@ const DISC = {
   commitMatch: Buffer.from([175, 146, 74, 234, 39, 25, 248, 114]),
 };
 
-const u64le = (n: number): Buffer => { const b = Buffer.alloc(8); b.writeBigUInt64LE(BigInt(n)); return b; };
+const u64le = (n: number): Buffer => { const b = Buffer.alloc(8); b.writeUInt32LE(n >>> 0, 0); b.writeUInt32LE(Math.floor(n / 0x100000000) >>> 0, 4); return b; };
 const u32le = (n: number): Buffer => { const b = Buffer.alloc(4); b.writeUInt32LE(n); return b; };
 const vecBytes = (b: Uint8Array): Buffer => Buffer.concat([u32le(b.length), Buffer.from(b)]);
 const optPubkey = (k: PublicKey | null): Buffer => (k ? Buffer.concat([Buffer.from([1]), k.toBuffer()]) : Buffer.from([0]));
@@ -48,7 +48,7 @@ export function decodeMatch(data: Buffer): MatchState {
   for (let i = 0; i < n; i++) { players.push(new PublicKey(data.subarray(o, o + 32))); o += 32; }
   const turnBased = data[o] === 1; o += 1;
   const currentTurn = data[o]; o += 1;
-  const actionCount = Number(data.readBigUInt64LE(o)); o += 8;
+  const actionCount = data.readUInt32LE(o) + data.readUInt32LE(o + 4) * 0x100000000; o += 8;
   const status = data[o]; o += 1;
   const hasWinner = data[o] === 1; o += 1;
   const winner = new PublicKey(data.subarray(o, o + 32)); o += 32;
