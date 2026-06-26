@@ -5,9 +5,10 @@
 // ER; the opponent's moves arrive by polling the match on the ER. On game end,
 // the resolver (match creator) settles to L1. Player-funded (each signs their
 // own moves; needs a devnet-funded wallet).
-import { useEffect, useReducer, useRef } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 import { useWallet, useConnection } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+import { Keypair, PublicKey, Transaction } from "@solana/web3.js";
 import { initBoard, getValid, execMove, isW, PIECES } from "../magic-chess/_shared/chess-engine";
 import { ixSubmitAction, signAndSend, decodeMatch, matchPda, erConnection, type SignTx } from "../../../lib/arena/client";
 
@@ -19,8 +20,25 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 type Phase = "idle" | "searching" | "syncing" | "playing" | "done";
 interface Match { gameId: number; matchId: number; color: "white" | "black"; opponent: string }
 
+// Identity = the connected wallet, OR (test/e2e only, gated by an env flag) a
+// keypair injected on window — so Playwright can drive moves without a wallet popup.
+function useSigner(): { publicKey: PublicKey | null; signTransaction: SignTx | undefined } {
+  const wallet = useWallet();
+  const [test, setTest] = useState<Keypair | null>(null);
+  useEffect(() => {
+    if (process.env.NEXT_PUBLIC_ALLOW_TEST_WALLET !== "1") return;
+    const sk = (globalThis as unknown as { __ARENA_TEST_SK__?: number[] }).__ARENA_TEST_SK__;
+    if (Array.isArray(sk)) { try { setTest(Keypair.fromSecretKey(Uint8Array.from(sk))); } catch { /* ignore */ } }
+  }, []);
+  if (test) {
+    const signTransaction: SignTx = async (tx: Transaction) => { tx.partialSign(test); return tx; };
+    return { publicKey: test.publicKey, signTransaction };
+  }
+  return { publicKey: wallet.publicKey ?? null, signTransaction: wallet.signTransaction as SignTx | undefined };
+}
+
 export default function LivePvPPage() {
-  const { publicKey, signTransaction } = useWallet();
+  const { publicKey, signTransaction } = useSigner();
   const { connection } = useConnection();
   const er = useRef(erConnection());
   const match = useRef<Match | null>(null);
@@ -114,9 +132,13 @@ export default function LivePvPPage() {
       let assign = join.status === "matched" ? join.assignment : null;
       // poll until matched
       for (let i = 0; i < 120 && !assign; i++) {
-        await sleep(2000);
-        const s = await fetch(`${RESOLVER}/arena/queue/status?player=${me}`).then((x) => x.json());
-        if (s.status === "matched") assign = s.assignment;
+        await sleep(2500);
+        try {
+          const resp = await fetch(`${RESOLVER}/arena/queue/status?player=${me}`);
+          if (!resp.ok) continue; // transient (rate limit etc.) — keep polling
+          const s = await resp.json();
+          if (s.status === "matched") assign = s.assignment;
+        } catch { /* transient — keep polling */ }
       }
       if (!assign) { set({ phase: "idle", status: "No opponent found — try again." }); return; }
       match.current = { gameId: assign.gameId, matchId: assign.matchId, color: assign.color, opponent: assign.opponent };
