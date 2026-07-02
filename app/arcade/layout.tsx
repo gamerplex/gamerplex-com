@@ -24,6 +24,7 @@ import {
 import { assertNetworkMatchesHostname } from "../../lib/arcade/safety";
 import { getStoredReferrer, pickReferrerFromUrl } from "../../lib/arcade/referral";
 import { ArcadeIdentityBar } from "../../components/identity/ArcadeIdentityBar";
+import { track } from "../../lib/analytics";
 
 import "@solana/wallet-adapter-react-ui/styles.css";
 
@@ -36,6 +37,23 @@ const DEFAULT_RPC =
     ? "https://api.mainnet-beta.solana.com"
     : "https://api.devnet.solana.com";
 const RPC_URL = process.env.NEXT_PUBLIC_SOLANA_RPC || DEFAULT_RPC;
+
+// Fires `wallet_connected` once the first time each wallet address connects
+// (the web2→web3 funnel step). Dedupes per-address so re-renders don't re-emit.
+function WalletConnectTracker() {
+  const { publicKey, connected } = useWallet();
+  const trackedRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!connected || !publicKey) return;
+    const addr = publicKey.toBase58();
+    if (trackedRef.current === addr) return;
+    trackedRef.current = addr;
+    track("wallet_connected", { address: addr });
+  }, [connected, publicKey]);
+
+  return null;
+}
 
 function TosGuard({ children }: { children: React.ReactNode }) {
   const { publicKey, connected } = useWallet();
@@ -129,6 +147,7 @@ export default function ArcadeLayout({ children }: { children: React.ReactNode }
       <WalletProvider wallets={wallets} autoConnect>
         <WalletModalProvider>
           <ArcadeIdentityBar />
+          <WalletConnectTracker />
           <TosGuard>
             <ProfileGuard>{children}</ProfileGuard>
           </TosGuard>

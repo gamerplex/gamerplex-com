@@ -134,6 +134,7 @@ export default function ArcadeMode() {
     setStartedAt(now);
     lastMoveAtRef.current = now;
     setPhase("playing");
+    track("play_started", { game: "magic-chess" });
   }, [reset]);
 
   const recordMove = useCallback((entry: MoveLogEntry) => {
@@ -272,7 +273,7 @@ export default function ArcadeMode() {
 
       const sig = await program.provider.sendAndConfirm!(tx, [], { skipPreflight: false });
       setLastSaveSig(sig); setSavedThisRun(true); setProfileExists(true);
-      track("score_save_succeeded", { game: "magic-chess", bot: bot.id, sig, score: finalScore });
+      track("score_save_succeeded", { game: "magic-chess", bot: bot.id, sig, score: finalScore, sink_type: "save", token: paymentToken.symbol, amount: SCORE_COMMIT_MICRO_USD / 1e6 });
       void submitReplay(sig, moveLogBytes).catch(() => {});
     } catch (e: any) {
       console.error("save failed:", e);

@@ -15,6 +15,7 @@ import {
   buildSiwsMessage,
   type IdentityUser,
 } from './client';
+import { track } from '../analytics';
 
 export function useIdentity() {
   const { publicKey, signMessage, connected } = useWallet();
@@ -37,6 +38,7 @@ export function useIdentity() {
     }
     setLoading(true);
     setError(null);
+    track('signin_started', { method: 'wallet' });
     try {
       const challenge = await requestSiwsChallenge();
       const message = buildSiwsMessage({
@@ -48,10 +50,12 @@ export function useIdentity() {
       const signature = await signMessage(new TextEncoder().encode(message));
       const result = await submitSiws(publicKey.toBase58(), bs58.encode(signature));
       await refresh();
+      track('signin_success', { method: 'wallet' });
       return result;
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'sign-in failed';
       setError(msg);
+      track('signin_failed', { method: 'wallet', reason: msg });
       throw e;
     } finally {
       setLoading(false);
