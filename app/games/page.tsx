@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { useEffect } from "react";
 import { SiteNav } from "../../components/SiteNav";
+import { track } from "../../lib/analytics";
 
 const LAUNCH_GAMES = [
   {
@@ -46,6 +48,9 @@ const COMING_SOON = [
 ];
 
 export default function GamesPortal() {
+  useEffect(() => {
+    track("games_list_viewed");
+  }, []);
 
   return (
     <div style={{
@@ -77,7 +82,7 @@ export default function GamesPortal() {
         </p>
 
         {/* FEATURED: Magic Chess */}
-        <Link href="/play/magic-chess" style={{ textDecoration: "none", display: "block" }}>
+        <Link href="/play/magic-chess" onClick={() => track("game_selected", { game: "magic-chess" })} style={{ textDecoration: "none", display: "block" }}>
           <div style={{
             position: "relative", borderRadius: 16, overflow: "hidden",
             border: "1px solid rgba(153,69,255,0.3)",
@@ -154,7 +159,7 @@ export default function GamesPortal() {
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 12, marginBottom: 32 }}>
           {LAUNCH_GAMES.map(game => (
-            <Link key={game.id} href={game.path} style={{ textDecoration: "none" }}>
+            <Link key={game.id} href={game.path} onClick={() => track("game_selected", { game: game.id })} style={{ textDecoration: "none" }}>
               <div style={{
                 background: "#0c0c14", border: "1px solid #252540", borderRadius: 12,
                 padding: 20, transition: "border-color 0.2s, transform 0.2s", cursor: "pointer",

@@ -250,6 +250,7 @@ export default function ArcadeMode() {
     }
     runRef.current = startRun(seed, mode, sessionPda);
     track("game_started", { game: "blockwords", mode });
+    track("play_started", { game: "blockwords" });
     setSavedThisRun(false);
     setVerifiedThisRun(false);
     setOwnedThisRun(false);
@@ -424,7 +425,7 @@ export default function ArcadeMode() {
       setLastSaveSig(sig);
       setSavedThisRun(true);
       setProfileExists(true);
-      track("score_save_succeeded", { game: "blockwords", mode: r.mode, sig, score });
+      track("score_save_succeeded", { game: "blockwords", mode: r.mode, sig, score, sink_type: "save", token: paymentToken.symbol, amount: SCORE_COMMIT_MICRO_USD / 1e6 });
       void submitReplay(sig, moveLogBytes).catch(() => {});
     } catch (e: any) {
       console.error("save on-chain failed:", e);

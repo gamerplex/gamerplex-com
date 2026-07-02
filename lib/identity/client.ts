@@ -5,6 +5,8 @@
 // All calls are credentialed cross-origin (gamerplex.com → auth.gamerplex.com);
 // the service returns the matching CORS + sets a `.gamerplex.com` session cookie.
 
+import { track } from '../analytics';
+
 const IDENTITY_URL =
   process.env.NEXT_PUBLIC_IDENTITY_URL || 'https://auth.gamerplex.com';
 
@@ -100,7 +102,9 @@ export async function awardPlay(gameId: number): Promise<number | null> {
     });
     if (!r.ok) return null;
     const j = await r.json();
-    return typeof j.appBalance === 'number' ? j.appBalance : null;
+    const bal = typeof j.appBalance === 'number' ? j.appBalance : null;
+    track('credits_earned', { category: 'play_engagement', balance_after: bal });
+    return bal;
   } catch {
     return null;
   }

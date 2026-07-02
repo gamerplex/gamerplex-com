@@ -411,6 +411,7 @@ export default function CyberSnakeSolo() {
     prevStatusRef.current = "active";
     prevScoreRef.current = 0;
     prevDirRef.current = DIR_E;
+    track("play_started", { game: "cyber-snake" });
     setTick((t) => t + 1);
   }, [sfx]);
 
@@ -496,7 +497,7 @@ export default function CyberSnakeSolo() {
       setLastSaveSig(sig);
       setSavedThisRun(true);
       setProfileExists(true);
-      track("score_save_succeeded", { game: "cyber-snake", sig, score: g.score });
+      track("score_save_succeeded", { game: "cyber-snake", sig, score: g.score, sink_type: "save", token: paymentToken.symbol, amount: SCORE_COMMIT_MICRO_USD / 1e6 });
       void submitReplay(sig, moveLogBytes).catch(() => {});
     } catch (e: any) {
       console.error("save on-chain failed:", e);

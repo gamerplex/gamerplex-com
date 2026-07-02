@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
 import ArcadeStats from "./_components/ArcadeStats";
 import { SiteNav } from "../../components/SiteNav";
+import { track } from "../../lib/analytics";
 
 // Arcade landing — first-party solo games, F2P, microtransactions for
 // continues + powerups + score commits. Full spec: ENGINEERING/PRODUCT/GAMERPLEX_ARCADE.md
@@ -77,6 +79,10 @@ const ARCADE_GAMES = [
 ];
 
 export default function ArcadePage() {
+  useEffect(() => {
+    track("games_list_viewed");
+  }, []);
+
   return (
     <div style={{ minHeight: "100vh", background: "#050508", color: "#e8e8f0", fontFamily: "'Space Grotesk', sans-serif" }}>
       {/* 2026 minimalist top nav — matches home */}
@@ -118,6 +124,7 @@ export default function ArcadePage() {
               <Card
                 key={game.id}
                 {...(cardProps as any)}
+                onClick={isPlayable ? () => track("game_selected", { game: game.id }) : undefined}
                 style={{
                   background: "#0c0c14",
                   border: `1px solid ${isPlayable ? game.color + "60" : "#252540"}`,
