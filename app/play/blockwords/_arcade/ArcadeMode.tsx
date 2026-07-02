@@ -38,6 +38,7 @@ import PaymentMethodPicker from "../../../../components/arcade/PaymentMethodPick
 import { getStoredReferrer } from "../../../../lib/arcade/referral";
 import { submitReplay, openSession } from "@gamerplex/sdk/arcade";
 import { track, identifyWallet } from "../../../../lib/analytics";
+import { earnCredits } from "../../../../lib/identity/client";
 import ReferrerBanner from "../../../../components/arcade/ReferrerBanner";
 import { WORDS, isAcceptableGuess } from "./words";
 import {
@@ -321,6 +322,8 @@ export default function ArcadeMode() {
       r.solved = true;
       r.status = "ended";
       r.endedAt = Date.now();
+      // Web2 Credits earn on a solved win (fire-and-forget; capped + idempotent server-side, CREDITS only — never $GAME).
+      void earnCredits("game_win", `blockwords:win:${r.startedAt}`);
       if (r.mode === "daily") {
         const { streak } = recordDailyWin();
         setStreakInfo({ lastPlayedYmd: todayYmd(), streak, playedToday: true });

@@ -67,6 +67,32 @@ export async function submitSiws(
   return r.json();
 }
 
+// Email magic-link sign-in/up — the ecosystem-standard web2 entry point (same identity-service
+// the wallet SIWS flow uses). POSTs the email; the service emails a sign-in link, and
+// /verify-email issues the shared `.gamerplex.com` session. Origin-scoped server-side.
+export interface EmailSignupResult {
+  ok: boolean;
+  error?: string;
+  status?: string;
+  throttled?: boolean;
+}
+
+export async function emailSignup(email: string): Promise<EmailSignupResult> {
+  try {
+    const r = await fetch(`${IDENTITY_URL}/api/auth/email-signup`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: email.trim().toLowerCase() }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) return { ok: false, error: r.status === 429 ? 'rate_limited' : j.error || `email_${r.status}` };
+    return { ok: true, status: j.status, throttled: j.throttled === true };
+  } catch {
+    return { ok: false, error: 'network' };
+  }
+}
+
 export interface CreditsBalance {
   total: number;
   lifetimeEarned: number;
@@ -107,6 +133,60 @@ export async function awardPlay(gameId: number): Promise<number | null> {
     return bal;
   } catch {
     return null;
+  }
+}
+
+// Award Credits (web2) for a lean in-game action ("game_win" | "daily_streak"). CREDITS ONLY —
+// never $GAME (R2). SAME-ORIGIN to our own route (which holds the key); capped + idempotent
+// server-side. Fire-and-forget; returns the new gamerplex balance or null.
+export async function earnCredits(
+  action: 'game_win' | 'daily_streak',
+  refId?: string,
+): Promise<number | null> {
+  try {
+    const r = await fetch('/api/credits/earn', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ action, refId }),
+    });
+    if (!r.ok) return null;
+    const j = await r.json();
+    const bal = typeof j.appBalance === 'number' ? j.appBalance : null;
+    track('credits_earned', { category: action, balance_after: bal });
+    return bal;
+  } catch {
+    return null;
+  }
+}
+
+// Spend Credits (web2) on an above-the-money-line item ("continue" | "retry"). SAME-ORIGIN to
+// our own route (which holds the key + the fixed catalog, so a client can't spend an arbitrary
+// amount). Returns the new app balance, or { error } — "insufficient" when the balance is too low.
+export interface SpendResult {
+  ok: boolean;
+  appBalance?: number | null;
+  error?: string;
+}
+
+export async function spendCredits(
+  item: 'continue' | 'retry',
+  refId?: string,
+): Promise<SpendResult> {
+  try {
+    const r = await fetch('/api/credits/spend', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ item, refId }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) return { ok: false, error: j.error || `spend_${r.status}` };
+    const bal = typeof j.appBalance === 'number' ? j.appBalance : null;
+    track('credits_spent', { item, balance_after: bal });
+    return { ok: true, appBalance: bal };
+  } catch {
+    return { ok: false, error: 'network' };
   }
 }
 

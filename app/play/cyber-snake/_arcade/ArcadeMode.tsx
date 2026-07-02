@@ -45,6 +45,7 @@ import PaymentMethodPicker from "../../../../components/arcade/PaymentMethodPick
 import { getStoredReferrer } from "../../../../lib/arcade/referral";
 import { submitReplay } from "@gamerplex/sdk/arcade";
 import { track, identifyWallet } from "../../../../lib/analytics";
+import { earnCredits } from "../../../../lib/identity/client";
 import ReferrerBanner from "../../../../components/arcade/ReferrerBanner";
 import { ArcadeLeaderboard } from "../../../arcade/_components/ArcadeLeaderboard";
 
@@ -778,6 +779,8 @@ export default function CyberSnakeSolo() {
         };
         const top = insertLocalScore(entry);
         setBoard(top);
+        // Web2 Credits earn on run completion (fire-and-forget; capped + idempotent server-side, CREDITS only — never $GAME).
+        void earnCredits("game_win", `snake:win:${g.startedAt}`);
       }
       savedRef.current = true;
     }

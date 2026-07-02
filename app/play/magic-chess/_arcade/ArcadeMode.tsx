@@ -23,6 +23,7 @@ import {
 import { getStoredReferrer } from "../../../../lib/arcade/referral";
 import { submitReplay } from "@gamerplex/sdk/arcade";
 import { track, identifyWallet } from "../../../../lib/analytics";
+import { earnCredits } from "../../../../lib/identity/client";
 import ReferrerBanner from "../../../../components/arcade/ReferrerBanner";
 import { buildSaveScorePaymentIxs } from "../../../../lib/arcade/save-score-payment";
 import { PAYMENT_TOKENS, type PaymentTokenDef } from "../../../../lib/arcade/tokens";
@@ -111,6 +112,16 @@ export default function ArcadeMode() {
     }, 1000);
     return () => clearInterval(timerRef.current);
   }, [phase, wTurn]);
+
+  // Web2 Credits earn on a win (fire-and-forget; capped + idempotent server-side, CREDITS only — never $GAME).
+  const earnedThisRunRef = useRef(false);
+  useEffect(() => {
+    if (phase !== "gameover") { earnedThisRunRef.current = false; return; }
+    if (won === true && !earnedThisRunRef.current) {
+      earnedThisRunRef.current = true;
+      void earnCredits("game_win", `chess:win:${startedAt}`);
+    }
+  }, [phase, won, startedAt]);
 
   useEffect(() => { histRef.current?.scrollTo(0, histRef.current.scrollHeight); }, [hist]);
 
