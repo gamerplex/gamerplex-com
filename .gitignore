@@ -25,3 +25,7 @@ target/
 *.tsbuildinfo
 .env.local
 .env*.local
+playwright-report/
+test-results/
+/blob-report/
+.playwright/
