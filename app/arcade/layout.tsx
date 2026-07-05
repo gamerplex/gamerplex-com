@@ -21,7 +21,7 @@ import {
   buildOpenProfileIx,
   makeProgram,
 } from "../../lib/arcade/client";
-import { assertNetworkMatchesHostname } from "../../lib/arcade/safety";
+import { assertNetworkMatchesHostname, NetworkMismatchError } from "../../lib/arcade/safety";
 import { getStoredReferrer, pickReferrerFromUrl } from "../../lib/arcade/referral";
 import { ArcadeIdentityBar } from "../../components/identity/ArcadeIdentityBar";
 import ReferralClaimer from "../../components/arcade/ReferralClaimer";
@@ -131,9 +131,38 @@ function ProfileGuard({ children }: { children: React.ReactNode }) {
   );
 }
 
+// Shown when the arcade is blocked on this hostname (mainnet host, arcade still
+// on devnet). Friendly, on-brand, and points players at the free games that DO work.
+function ArcadeComingSoon() {
+  return (
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 24, textAlign: "center" }}>
+      <div style={{ maxWidth: 440 }}>
+        <div style={{ fontSize: 44, marginBottom: 12 }}>🎮</div>
+        <h1 style={{ fontSize: 24, fontWeight: 800, margin: "0 0 10px" }}>The on-chain Arcade is coming to mainnet</h1>
+        <p style={{ color: "#9c8fb8", fontSize: 14, lineHeight: 1.6, margin: "0 0 20px" }}>
+          On-chain scoring launches with mainnet soon. Meanwhile, every game is free to play right now — jump in.
+        </p>
+        <a href="/#featured" style={{ display: "inline-block", padding: "12px 22px", borderRadius: 11, fontWeight: 800, textDecoration: "none", color: "#04120c", background: "linear-gradient(135deg,#14F195,#0fd47f)" }}>
+          ▶ Play the free games
+        </a>
+      </div>
+    </div>
+  );
+}
+
 export default function ArcadeLayout({ children }: { children: React.ReactNode }) {
-  // v1.3 — hostname guard: throws if e.g. gamerplex.com is pointed at devnet
-  if (typeof window !== "undefined") assertNetworkMatchesHostname();
+  // v1.3 — hostname guard: FAIL CLOSED if e.g. gamerplex.com is on devnet (never
+  // mount the arcade on a mismatched network), but degrade to a friendly screen
+  // instead of an uncaught crash. Non-mismatch errors still surface.
+  let networkBlocked = false;
+  if (typeof window !== "undefined") {
+    try {
+      assertNetworkMatchesHostname();
+    } catch (e) {
+      if (e instanceof NetworkMismatchError) networkBlocked = true;
+      else throw e;
+    }
+  }
 
   const wallets = useMemo(
     () => [
@@ -143,6 +172,9 @@ export default function ArcadeLayout({ children }: { children: React.ReactNode }
     ],
     []
   );
+
+  if (networkBlocked) return <ArcadeComingSoon />;
+
   return (
     <ConnectionProvider endpoint={RPC_URL}>
       <WalletProvider wallets={wallets} autoConnect>
