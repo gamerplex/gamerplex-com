@@ -136,6 +136,7 @@ export default function Home() {
   const [realLeaderboard, setRealLeaderboard] = useState<any[]>([]);
   const [lbLoaded, setLbLoaded] = useState(false);
   const [liveGames, setLiveGames] = useState<any[]>([]);
+  const [liveLoaded, setLiveLoaded] = useState(false);
   const [selectedGame, setSelectedGame] = useState<string | null>(null);
   const [agentLeaderboard, setAgentLeaderboard] = useState<any[]>([]);
 
@@ -183,16 +184,17 @@ export default function Home() {
       fetch(`${RESOLVER}/game-pool/live`).then(r => r.json()).then(data => {
         if (data.ok) {
           const games = data.games || [];
-          setLiveGames(games);
-          if (games.length > 0 && !selectedGame) {
-            setSelectedGame(games[0].gamePda);
-          }
+          setLiveLoaded(true);
+          // Keep the last live match on a transient empty poll — never unmount the
+          // 3D board mid-stream (that caused the flicker + tile-layout shift).
+          setLiveGames(prev => (games.length ? games : prev));
+          if (games.length > 0) setSelectedGame(cur => cur || games[0].gamePda);
           const existing = readHomeCache();
           writeHomeCache({
             at: Date.now(),
             leaderboard: existing?.leaderboard || [],
             agents: existing?.agents || [],
-            liveGames: games,
+            liveGames: games.length ? games : (existing?.liveGames || []),
           });
         }
       }).catch(() => {});
@@ -200,7 +202,7 @@ export default function Home() {
     fetchLive();
     const interval = setInterval(fetchLive, 2000);
     return () => clearInterval(interval);
-  }, [RESOLVER, selectedGame]);
+  }, [RESOLVER]);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -321,33 +323,52 @@ export default function Home() {
         </div>
       </section>
 
-      {/* LIVE 3D CHESS — the actual product, playing right now */}
-      {liveGames.length > 0 && (
-        <section className="arena-section" style={{paddingTop:40}}>
+      {/* PORTAL ACTIVITY CENTER — live game + stats side-by-side (dense, no dead space) */}
+      <div className="portal-activity">
+        {/* pa-live ALWAYS renders with a fixed-height frame → no layout shift when the
+            live match loads / flaps. Skeleton while loading, board when live, gentle
+            empty state otherwise. */}
+        <section className="arena-section pa-live">
           <div className="arena-header">
             <h2><span className="live-dot" /> Live on Solana</h2>
           </div>
-          <div style={{maxWidth:1200,margin:"0 auto",padding:"0 20px"}}>
-            <InView placeholder={<div style={{width:"100%",height:480,borderRadius:12,border:"1px solid rgba(153,69,255,0.3)",background:"rgba(153,69,255,0.06)"}} aria-hidden="true" />}>
-              <LiveAgentViewer
-                games={liveGames}
-                selectedGame={selectedGame}
-                onSelect={setSelectedGame}
-              />
-            </InView>
+          <div style={{padding:"0 20px"}}>
+            <div className="live-board-frame">
+              {!liveLoaded ? (
+                <div className="live-skeleton" aria-busy="true">
+                  <div className="spinner" aria-hidden="true" />
+                  <span>Loading live match…</span>
+                </div>
+              ) : liveGames.length > 0 ? (
+                <InView placeholder={<div className="live-skeleton"><div className="spinner" aria-hidden="true" /><span>Rendering board…</span></div>}>
+                  <LiveAgentViewer
+                    games={liveGames}
+                    selectedGame={selectedGame}
+                    onSelect={setSelectedGame}
+                  />
+                </InView>
+              ) : (
+                <div className="live-empty">
+                  <span className="live-empty-emoji" aria-hidden="true">♟️</span>
+                  <p>No live match right now.</p>
+                  <a href="/play/magic-chess?mode=arcade" className="live-empty-cta">▶ Start one — free</a>
+                </div>
+              )}
+            </div>
           </div>
         </section>
-      )}
 
-      {/* ON-CHAIN PREVIEW (existing component) */}
-      <OnchainPreview />
-
-      {/* LEADERBOARD — real on-chain data only. Falls back to live agent ELO if no humans yet. */}
-      <LeaderboardSection
-        humans={realLeaderboard}
-        agents={agentLeaderboard}
-        loaded={lbLoaded}
-      />
+        <div className="pa-rail">
+          {/* LEADERBOARD — real on-chain data only. Falls back to live agent ELO if no humans yet. */}
+          <LeaderboardSection
+            humans={realLeaderboard}
+            agents={agentLeaderboard}
+            loaded={lbLoaded}
+          />
+          {/* ON-CHAIN PREVIEW (existing component) */}
+          <OnchainPreview />
+        </div>
+      </div>
 
       {/* PARTNER GAMES — Sledgit puzzle + trivia. Loose-coupled (own content,
           partner brand). Click → opens on sledgit.com. Same data shape as the
@@ -525,8 +546,8 @@ function LeaderboardSection({ humans, agents, loaded }: {
           </span>
         )}
       </div>
-      <div style={{maxWidth:560,margin:"0 auto",padding:"0 20px"}}>
-        <div style={{background:"#0c0c14",border:"1px solid #252540",borderRadius:12,padding:"14px 20px"}}>
+      <div style={{maxWidth:"100%",margin:"0 auto",padding:"0 20px"}}>
+        <div style={{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:14,padding:"14px 20px"}}>
           {/* Parzival easter egg — always rank 0, always visible */}
           <div style={{
             display:"flex",alignItems:"center",gap:12,padding:"10px 0",
@@ -637,7 +658,7 @@ function LiveAgentViewer({ games, selectedGame, onSelect }: {
   return (
     <div style={{display:"flex",flexDirection:"column",gap:12}}>
       {selected && (
-        <div style={{position:"relative",width:"100%",height:480,borderRadius:12,overflow:"hidden",border:"1px solid rgba(153,69,255,0.3)",boxShadow:"0 0 30px rgba(153,69,255,0.2)"}}>
+        <div className="la-board" style={{position:"relative",width:"100%",borderRadius:12,overflow:"hidden",border:"1px solid rgba(153,69,255,0.3)",boxShadow:"0 0 30px rgba(153,69,255,0.2)"}}>
           <Chess3DBoard
             board={selected.board}
             selected={null}

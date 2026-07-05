@@ -3,26 +3,31 @@
 @tailwind utilities;
 
 :root {
-  --bg: #0d001a;
-  --s1: #14052e;
-  --s2: #1c0840;
-  --s3: #240b52;
-  --border: #3d1875;
-  --border2: #5a249d;
-  --text: #f5f5fb;
-  --dim: #9c8fb8;
-  --dim2: #5a4080;
+  --bg: #160a33;          /* lifted base — indigo-violet, not near-black */
+  --bg2: #1e1046;
+  --s1: #241457;
+  --s2: #2c1866;
+  --s3: #351e78;
+  --border: #4b2a9e;
+  --border2: #6a3ad0;
+  --text: #f7f6ff;
+  --dim: #b6a8dd;
+  --dim2: #6d5aa8;
   --green: #14F195;
   --purple: #9945FF;
-  --cyan: #00f2ff;
-  --pink: #ff007a;
-  --orange: #ff6b2c;
+  --cyan: #22d3ee;
+  --pink: #ff2d92;
+  --orange: #ff8a3c;
   --yellow: #ffd740;
   --red: #ff1744;
-  --card-bg: rgba(255, 255, 255, 0.05);
-  --card-bg-hi: rgba(255, 255, 255, 0.09);
-  --glow-purple: 0 0 32px rgba(153, 69, 255, 0.4);
+  /* elevated glassy surfaces — lighter than the page, so panels read as "up" */
+  --card-bg: rgba(124, 92, 210, 0.10);
+  --card-bg-hi: rgba(140, 108, 235, 0.16);
+  --surface: rgba(45, 26, 92, 0.55);
+  --surface-hi: rgba(64, 38, 128, 0.72);
+  --glow-purple: 0 0 32px rgba(153, 69, 255, 0.45);
   --glow-green: 0 0 32px rgba(20, 241, 149, 0.4);
+  --max: 1560px;          /* wide portal content width */
 }
 
 * { box-sizing: border-box; }
@@ -30,10 +35,20 @@
 html, body {
   margin: 0;
   padding: 0;
-  background: var(--bg) !important;
   color: var(--text);
   font-family: 'JetBrains Mono', monospace;
   -webkit-font-smoothing: antialiased;
+}
+/* Living aurora backdrop — vibrant, not flat black. Fixed so it doesn't scroll. */
+body {
+  background:
+    radial-gradient(60% 50% at 12% 8%, rgba(153,69,255,0.30) 0%, transparent 60%),
+    radial-gradient(55% 45% at 88% 6%, rgba(34,211,238,0.20) 0%, transparent 55%),
+    radial-gradient(70% 60% at 78% 92%, rgba(255,45,146,0.16) 0%, transparent 60%),
+    radial-gradient(60% 50% at 20% 96%, rgba(20,241,149,0.12) 0%, transparent 55%),
+    linear-gradient(180deg, #1a0d3e 0%, #160a33 45%, #12082b 100%) !important;
+  background-attachment: fixed !important;
+  min-height: 100vh;
 }
 
 /* Scrollbar */
@@ -46,24 +61,22 @@ html, body {
 /* 2026: 78vh — games peek above the fold so users see what's playable without scroll */
 .hero {
   position: relative;
-  height: 78vh;
-  min-height: 560px;
-  max-height: 820px;
+  min-height: 460px;
+  padding: 40px 20px 24px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
+  overflow: visible;
 }
-/* Lightweight static "wormhole" — CSS radial gradients (archived the Babylon WebGL bg). */
+/* Transparent — the living body aurora shows through; just a soft top glow. */
 .hero-bg {
   position: absolute;
   inset: 0;
   z-index: 0;
   background:
-    radial-gradient(120% 90% at 50% -10%, rgba(139,92,246,0.28) 0%, rgba(139,92,246,0.10) 30%, transparent 60%),
-    radial-gradient(80% 60% at 50% 0%, rgba(34,211,238,0.14) 0%, transparent 55%),
-    #0a0a12;
+    radial-gradient(90% 70% at 50% -10%, rgba(153,69,255,0.22) 0%, transparent 55%),
+    radial-gradient(70% 50% at 78% 10%, rgba(34,211,238,0.14) 0%, transparent 55%);
   pointer-events: none;
 }
 /* web2-first login in the hero */
@@ -740,8 +753,8 @@ html, body {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   align-items: stretch;
-  gap: 18px;
-  max-width: 1120px;
+  gap: 22px;
+  max-width: var(--max);
   margin: 0 auto;
 }
 .cf-card {
@@ -749,15 +762,20 @@ html, body {
   text-decoration: none;
   color: var(--text);
   cursor: pointer;
-  border-radius: 14px;
+  border-radius: 18px;
   overflow: hidden;
-  background: var(--card-bg-hi);
-  border: 1px solid rgba(153, 69, 255, 0.3);
-  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s, border-color 0.3s;
+  background: linear-gradient(180deg, var(--surface-hi) 0%, var(--surface) 100%);
+  border: 1px solid var(--border2);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s, border-color 0.25s;
   display: flex;
   flex-direction: column;
 }
-.cf-card:hover { border-color: rgba(20, 241, 149, 0.6); }
+.cf-card:hover {
+  border-color: var(--green);
+  transform: translateY(-6px);
+  box-shadow: 0 22px 48px rgba(0,0,0,0.5), 0 0 40px rgba(20,241,149,0.28), inset 0 1px 0 rgba(255,255,255,0.08);
+}
 .cf-art {
   position: relative;
   width: 100%;
@@ -862,6 +880,94 @@ html, body {
 @media (max-width: 560px) {
   .coverflow { grid-template-columns: 1fr; max-width: 460px; }
   .cf-card:hover { transform: scale(1.01); }
+}
+
+/* ---- PORTAL ACTIVITY CENTER — live game (left) + stats rail (right) ---- */
+.portal-activity {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 22px;
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 24px 16px 8px;
+}
+@media (min-width: 1080px) {
+  .portal-activity { grid-template-columns: 1.55fr 1fr; align-items: start; }
+}
+/* Inside the grid, sections are borderless panels that blend with the aurora. */
+.portal-activity .arena-section {
+  background: transparent;
+  border: none;
+  border-radius: 18px;
+}
+.portal-activity .arena-header {
+  padding: 6px 12px 12px;
+  border-bottom: none;
+}
+.pa-rail { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.pa-live { min-width: 0; }
+
+/* Fixed-height frame so the live board NEVER shifts the layout while it loads/flaps. */
+/* Board + frame share the SAME height per breakpoint → the board mounting never
+   grows the frame → zero layout shift on desktop OR mobile. */
+.live-board-frame {
+  position: relative;
+  width: 100%;
+  min-height: 480px;
+  border-radius: 14px;
+  overflow: hidden;
+}
+.la-board { height: 480px; }
+@media (max-width: 700px) {
+  .live-board-frame { min-height: 340px; }
+  .la-board { height: 340px; }
+}
+
+.live-skeleton, .live-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  color: var(--dim);
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+.live-skeleton {
+  background:
+    linear-gradient(110deg, rgba(153,69,255,0.04) 8%, rgba(153,69,255,0.14) 18%, rgba(153,69,255,0.04) 33%),
+    var(--surface);
+  background-size: 200% 100%;
+  animation: shimmer-2026 1.6s ease-in-out infinite;
+}
+.live-empty { background: var(--surface); }
+.spinner {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 3px solid rgba(153, 69, 255, 0.25);
+  border-top-color: var(--green);
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.live-empty-emoji { font-size: 40px; }
+.live-empty p { margin: 0; color: var(--dim); font-size: 13px; text-transform: none; letter-spacing: 0; }
+.live-empty-cta {
+  margin-top: 4px;
+  padding: 9px 18px;
+  border-radius: 10px;
+  text-decoration: none;
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: #04120c;
+  background: linear-gradient(135deg, var(--green), #0fd47f);
 }
 
 /* ---- ARENA SECTION ---- */

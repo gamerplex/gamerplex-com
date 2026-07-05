@@ -121,7 +121,7 @@ export default function ArcadeOnchainPreview() {
 
       {/* Top-line: total saves */}
       <div style={{
-        maxWidth: 900, margin: "0 auto 12px",
+        maxWidth: "100%", margin: "0 auto 12px",
         textAlign: "center", padding: "10px 16px",
         background: "rgba(20,241,149,0.06)",
         border: "1px solid rgba(20,241,149,0.25)",
@@ -135,7 +135,7 @@ export default function ArcadeOnchainPreview() {
       </div>
 
       <div style={{
-        maxWidth: 900, margin: "0 auto",
+        maxWidth: "100%", margin: "0 auto",
         display: "grid",
         gridTemplateColumns: "1fr 1fr",
         gap: 12,
@@ -143,7 +143,7 @@ export default function ArcadeOnchainPreview() {
         {/* Top scorers panel */}
         <div style={{
           background: "rgba(255,255,255,0.02)",
-          border: "1px solid #252540",
+          border: "1px solid var(--border)",
           borderRadius: 10,
           padding: "14px 16px",
         }}>
@@ -184,7 +184,7 @@ export default function ArcadeOnchainPreview() {
         {/* Recent saves panel */}
         <div style={{
           background: "rgba(255,255,255,0.02)",
-          border: "1px solid #252540",
+          border: "1px solid var(--border)",
           borderRadius: 10,
           padding: "14px 16px",
         }}>
