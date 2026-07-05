@@ -23,7 +23,9 @@ import {
 import { getStoredReferrer } from "../../../../lib/arcade/referral";
 import { submitReplay } from "@gamerplex/sdk/arcade";
 import { track, identifyWallet } from "../../../../lib/analytics";
+import { EconomyConsentModal, hasEconomyConsent } from "../../../../lib/arcade/economy-gate";
 import { earnCredits } from "../../../../lib/identity/client";
+import ContinueWithCredits from "../../../../components/arcade/ContinueWithCredits";
 import ReferrerBanner from "../../../../components/arcade/ReferrerBanner";
 import { buildSaveScorePaymentIxs } from "../../../../lib/arcade/save-score-payment";
 import { PAYMENT_TOKENS, type PaymentTokenDef } from "../../../../lib/arcade/tokens";
@@ -237,8 +239,15 @@ export default function ArcadeMode() {
     PAYMENT_TOKENS.find((t) => t.symbol === "USDC") ?? PAYMENT_TOKENS[0]
   );
 
+  // §F legal gate: first $GAME payment must accept the 18+/AI/not-gambling attestation.
+  const [showEconomyGate, setShowEconomyGate] = useState(false);
+
   const onSaveOnChain = useCallback(async () => {
     if (!seed || !anchorWallet || !publicKey || !bot) return;
+    if (paymentToken.kind === "game" && !hasEconomyConsent()) {
+      setShowEconomyGate(true);
+      return;
+    }
     setBusy("save"); setOnchainError(null);
     track("score_save_attempted", { game: "magic-chess", bot: bot.id, turn_time_sec: turnTimeSec, score: finalScore, token: paymentToken.symbol });
     identifyWallet(publicKey.toBase58());
@@ -284,7 +293,7 @@ export default function ArcadeMode() {
 
       const sig = await program.provider.sendAndConfirm!(tx, [], { skipPreflight: false });
       setLastSaveSig(sig); setSavedThisRun(true); setProfileExists(true);
-      track("score_save_succeeded", { game: "magic-chess", bot: bot.id, sig, score: finalScore, sink_type: "save", token: paymentToken.symbol, amount: SCORE_COMMIT_MICRO_USD / 1e6 });
+      track("score_save_succeeded", { game: "magic-chess", bot: bot.id, sig, score: finalScore, sink_type: "save", token: paymentToken.symbol, amount_usd: SCORE_COMMIT_MICRO_USD / 1e6 });
       void submitReplay(sig, moveLogBytes).catch(() => {});
     } catch (e: any) {
       console.error("save failed:", e);
@@ -646,6 +655,10 @@ export default function ArcadeMode() {
                     )}
                   </div>
 
+                  <div style={{ marginTop: 12 }}>
+                    <ContinueWithCredits item="retry" game="chess" onSuccess={() => { setExperience(null); setPhase("ready"); reset(); }} />
+                  </div>
+
                   <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
                     <button className="magic-chess-btn" onClick={() => { setExperience(null); setPhase("ready"); reset(); }} style={{ flex: 1, padding: "10px", borderRadius: 8, fontSize: 13, cursor: "pointer" }}>
                       ✦ Play Again ✦
@@ -676,6 +689,13 @@ export default function ArcadeMode() {
             )}
           </div>
         </div>
+      )}
+
+      {showEconomyGate && (
+        <EconomyConsentModal
+          onClose={() => setShowEconomyGate(false)}
+          onAccept={() => { setShowEconomyGate(false); void onSaveOnChain(); }}
+        />
       )}
     </div>
   );

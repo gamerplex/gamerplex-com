@@ -24,6 +24,7 @@ import {
 import { assertNetworkMatchesHostname } from "../../lib/arcade/safety";
 import { getStoredReferrer, pickReferrerFromUrl } from "../../lib/arcade/referral";
 import { ArcadeIdentityBar } from "../../components/identity/ArcadeIdentityBar";
+import ReferralClaimer from "../../components/arcade/ReferralClaimer";
 import { track } from "../../lib/analytics";
 
 import "@solana/wallet-adapter-react-ui/styles.css";
@@ -148,6 +149,7 @@ export default function ArcadeLayout({ children }: { children: React.ReactNode }
         <WalletModalProvider>
           <ArcadeIdentityBar />
           <WalletConnectTracker />
+          <ReferralClaimer />
           <TosGuard>
             <ProfileGuard>{children}</ProfileGuard>
           </TosGuard>

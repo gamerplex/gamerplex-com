@@ -38,7 +38,9 @@ import PaymentMethodPicker from "../../../../components/arcade/PaymentMethodPick
 import { getStoredReferrer } from "../../../../lib/arcade/referral";
 import { submitReplay, openSession } from "@gamerplex/sdk/arcade";
 import { track, identifyWallet } from "../../../../lib/analytics";
+import { EconomyConsentModal, hasEconomyConsent } from "../../../../lib/arcade/economy-gate";
 import { earnCredits } from "../../../../lib/identity/client";
+import ContinueWithCredits from "../../../../components/arcade/ContinueWithCredits";
 import ReferrerBanner from "../../../../components/arcade/ReferrerBanner";
 import { WORDS, isAcceptableGuess } from "./words";
 import {
@@ -369,9 +371,16 @@ export default function ArcadeMode() {
     PAYMENT_TOKENS.find((t) => t.symbol === "USDC") ?? PAYMENT_TOKENS[0]
   );
 
+  // §F legal gate: first $GAME payment must accept the 18+/AI/not-gambling attestation.
+  const [showEconomyGate, setShowEconomyGate] = useState(false);
+
   const onSaveOnChain = useCallback(async () => {
     const r = runRef.current;
     if (!r || !anchorWallet || !publicKey) return;
+    if (paymentToken.kind === "game" && !hasEconomyConsent()) {
+      setShowEconomyGate(true);
+      return;
+    }
     setBusy("save");
     setOnchainError(null);
     track("score_save_attempted", { game: "blockwords", mode: r.mode, score: computeScore(r.solved, r.guesses.length, secondsUsed(r)), token: paymentToken.symbol });
@@ -428,7 +437,7 @@ export default function ArcadeMode() {
       setLastSaveSig(sig);
       setSavedThisRun(true);
       setProfileExists(true);
-      track("score_save_succeeded", { game: "blockwords", mode: r.mode, sig, score, sink_type: "save", token: paymentToken.symbol, amount: SCORE_COMMIT_MICRO_USD / 1e6 });
+      track("score_save_succeeded", { game: "blockwords", mode: r.mode, sig, score, sink_type: "save", token: paymentToken.symbol, amount_usd: SCORE_COMMIT_MICRO_USD / 1e6 });
       void submitReplay(sig, moveLogBytes).catch(() => {});
     } catch (e: any) {
       console.error("save on-chain failed:", e);
@@ -690,6 +699,10 @@ export default function ArcadeMode() {
                   <ReferrerBanner connectedWallet={publicKey ?? null} />
                 </div>
 
+                <div style={{ width: "100%", maxWidth: 420, marginTop: 8, marginBottom: 4, zIndex: 1 }}>
+                  <ContinueWithCredits item="retry" game="blockwords" onSuccess={() => startNewRun(r.mode)} />
+                </div>
+
                 {connected ? (
                   <>
                     {!savedThisRun && (
@@ -863,6 +876,13 @@ export default function ArcadeMode() {
           50%      { opacity: 0.45 }
         }
       `}</style>
+
+      {showEconomyGate && (
+        <EconomyConsentModal
+          onClose={() => setShowEconomyGate(false)}
+          onAccept={() => { setShowEconomyGate(false); void onSaveOnChain(); }}
+        />
+      )}
     </div>
   );
 }

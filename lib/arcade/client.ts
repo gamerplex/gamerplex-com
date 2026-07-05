@@ -177,6 +177,12 @@ export function affiliateConfigPda(): [PublicKey, number] {
   return PublicKey.findProgramAddressSync([Buffer.from("affiliate")], ARCADE_PROGRAM_ID);
 }
 
+// PaymentsConfig PDA at seed `["payments"]`. Global kill-switch — record_payment
+// rejects all paid actions when paused.
+export function paymentsConfigPda(): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync([Buffer.from("payments")], ARCADE_PROGRAM_ID);
+}
+
 // ───── Program instance ───────────────────────────────────────────────
 export function makeProgram(connection: Connection, wallet: AnchorWallet): Program {
   const provider = new AnchorProvider(connection, wallet, {
@@ -300,6 +306,7 @@ export async function buildRecordPaymentIx(
   const [stablecoinConfig] = stablecoinConfigPda();
   const [rates] = ratesPda();
   const [affiliateConfig] = affiliateConfigPda();
+  const [paymentsConfig] = paymentsConfigPda();
   const [game] = gamePda(params.gameId ?? CYBER_SNAKE_GAME_ID);
   const [profile] = profilePda(player);
   const accounts: any = {
@@ -311,6 +318,7 @@ export async function buildRecordPaymentIx(
     referrerProfile: params.referrerProfile ?? null,
     rates,
     affiliateConfig,
+    paymentsConfig,
     player,
     instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
   };

@@ -24,12 +24,14 @@ export function SignInWithSolana() {
   const [emailError, setEmailError] = useState('');
   const [sentTo, setSentTo] = useState('');
 
-  if (isSignedIn) {
-    const label = user?.handle
-      ? `@${user.handle}`
-      : user?.walletAddress
-        ? `${user.walletAddress.slice(0, 4)}…${user.walletAddress.slice(-4)}`
-        : 'signed in';
+  // Email-first: a wallet can only be linked onto an already-verified session (the
+  // identity-service enforces this too). So step 2 (wallet) stays locked until step 1 (email).
+  const canWallet = !!user?.emailVerified;
+
+  // Fully done — a session WITH a linked wallet. (An email-only session falls through so the
+  // user can still complete step 2 and link a wallet.)
+  if (isSignedIn && user?.walletAddress) {
+    const label = user.handle ? `@${user.handle}` : `${user.walletAddress.slice(0, 4)}…${user.walletAddress.slice(-4)}`;
     return <span data-testid="identity-status">Signed in as {label}</span>;
   }
 
@@ -52,17 +54,22 @@ export function SignInWithSolana() {
   }
 
   return (
-    <div>
+    <div className="siws">
+      {/* Step 1 — email (the walletless on-ramp; required first) */}
+      <p className="siws-step"><span className="siws-badge" data-done={canWallet ? 'true' : 'false'}>{canWallet ? '✓' : '1'}</span> Sign in with email</p>
       {step === 'sent' ? (
-        <div>
+        <div className="siws-sent">
           <p>We sent a sign-in link to <b>{sentTo}</b>. Click it to sign in. Check spam if it&apos;s not there.</p>
-          <button type="button" onClick={() => { setStep('idle'); setEmail(''); }}>
+          <button type="button" className="siws-linkbtn" onClick={() => { setStep('idle'); setEmail(''); }}>
             Use a different email
           </button>
         </div>
+      ) : canWallet ? (
+        <p className="siws-done" data-testid="identity-status">Signed in{user?.email ? ` as ${user.email}` : ''}</p>
       ) : (
-        <form onSubmit={submitEmail}>
+        <form className="siws-form" onSubmit={submitEmail}>
           <input
+            className="siws-input"
             type="email"
             inputMode="email"
             autoComplete="email"
@@ -72,22 +79,26 @@ export function SignInWithSolana() {
             placeholder="you@example.com"
             maxLength={254}
           />
-          <button type="submit" disabled={step === 'submitting' || !email.includes('@')}>
+          <button className="siws-primary" type="submit" disabled={step === 'submitting' || !email.includes('@')}>
             {step === 'submitting' ? 'Sending…' : 'Email me a sign-in link'}
           </button>
-          {emailError ? <p role="alert">{emailError}</p> : null}
+          {emailError ? <p className="siws-error" role="alert">{emailError}</p> : null}
         </form>
       )}
 
+      {/* Step 2 — wallet, LOCKED until step 1 (email) is verified */}
+      <p className="siws-step"><span className="siws-badge" data-locked={canWallet ? 'false' : 'true'}>{canWallet ? '2' : '🔒'}</span> Connect a wallet <span className="siws-opt">· optional</span></p>
       <button
         type="button"
+        className="siws-wallet"
         onClick={() => void signIn()}
-        disabled={loading || !walletConnected}
-        title={!walletConnected ? 'Connect a wallet first' : undefined}
+        disabled={loading || !canWallet || !walletConnected}
+        title={!canWallet ? 'Complete step 1 (email) first' : !walletConnected ? 'Connect a wallet first' : undefined}
       >
-        {loading ? 'Signing…' : 'Sign in with Solana'}
+        {loading ? 'Signing…' : !canWallet ? 'Connect a wallet — email first' : 'Sign in with Solana'}
       </button>
-      {error ? <p role="alert">{error}</p> : null}
+      {!canWallet ? <p className="siws-hint">Complete step 1 first — then link a wallet to go on-chain.</p> : null}
+      {error ? <p className="siws-error" role="alert">{error}</p> : null}
     </div>
   );
 }

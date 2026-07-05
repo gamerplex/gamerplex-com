@@ -3,12 +3,31 @@
 import dynamic from "next/dynamic";
 import { useState, useEffect, useRef } from "react";
 
-const InterstellarSymphony = dynamic(() => import("../components/InterstellarSymphony"), {
-  ssr: false,
-  loading: () => null,
-});
 const Chess3DBoard = dynamic(() => import("./play/magic-chess/_shared/Chess3DBoard"), { ssr: false });
 const OnchainPreview = dynamic(() => import("./_components/ArcadeOnchainPreview"), { ssr: false });
+const HomeIdentity = dynamic(() => import("../components/identity/HomeIdentity"), { ssr: false });
+
+// Defer heavy children (e.g. the THREE.js 3D board) until scrolled near the viewport,
+// so first paint stays fast on mobile. Renders `placeholder` until in view, then children once.
+function InView({ children, placeholder, rootMargin = "300px" }: {
+  children: React.ReactNode;
+  placeholder?: React.ReactNode;
+  rootMargin?: string;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    if (shown || !ref.current) return;
+    const el = ref.current;
+    const io = new IntersectionObserver(
+      (entries) => { if (entries.some((e) => e.isIntersecting)) { setShown(true); io.disconnect(); } },
+      { rootMargin },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [shown, rootMargin]);
+  return <div ref={ref}>{shown ? children : placeholder ?? null}</div>;
+}
 
 // localStorage cache helpers — keep the home page feeling instant on repeat visits.
 const CACHE_KEY_HOME = "gp.home.v1";
@@ -34,7 +53,6 @@ function writeHomeCache(c: HomeCache) {
   } catch {}
 }
 
-const MUTE_KEY_HOME = "gp.home.muted.v1";
 
 // Image with emoji fallback. Drop a real PNG at the src path to upgrade.
 function GameArt({ src, emoji, alt, big }: { src: string; emoji: string; alt: string; big?: boolean }) {
@@ -115,23 +133,6 @@ const PARTNER_GAMES: PartnerGame[] = [
 // ─── Component ──────────────────────────────────────────────────────────────
 export default function Home() {
   const [mounted, setMounted] = useState(false);
-  const [muted, setMuted] = useState(true);
-
-  useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem(MUTE_KEY_HOME);
-      if (saved === "false") setMuted(false);
-      else if (saved === "true") setMuted(true);
-    } catch {}
-  }, []);
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(MUTE_KEY_HOME, String(muted));
-    } catch {}
-  }, [muted]);
-
-  const [stats, setStats] = useState({ fps: "0", meshes: 0, memory: "0" });
   const [realLeaderboard, setRealLeaderboard] = useState<any[]>([]);
   const [lbLoaded, setLbLoaded] = useState(false);
   const [liveGames, setLiveGames] = useState<any[]>([]);
@@ -232,46 +233,23 @@ export default function Home() {
           <a href="https://x.com/gamerplex_com" target="_blank" title="@gamerplex_com" style={{display:"flex",alignItems:"center"}}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
           </a>
-          <button
-            onClick={() => setMuted(m => !m)}
-            title={muted ? "Unmute" : "Mute"}
-            aria-label={muted ? "Unmute" : "Mute"}
-            style={{
-              background:"none",border:"1px solid #333",borderRadius:6,
-              padding:"4px 8px",cursor:"pointer",color:"#aaa",
-              display:"flex",alignItems:"center",
-            }}
-          >
-            {muted ? (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-                <line x1="23" y1="9" x2="17" y2="15" />
-                <line x1="17" y1="9" x2="23" y2="15" />
-              </svg>
-            ) : (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-                <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" />
-              </svg>
-            )}
-          </button>
         </div>
       </nav>
 
       {/* HERO — wormhole bg + logo + one tagline + one CTA + one ticker line */}
       <section className="hero">
-        <div className="hero-bg">
-          <InterstellarSymphony onStatsUpdate={setStats} showJoystick={false} muted={muted} />
-        </div>
+        <div className="hero-bg" aria-hidden="true" />
         <div className="hero-content">
           <h1 className="hero-title">GAMERPLEX</h1>
           <p className="hero-sub">Build · Play · Own · Compete · Onchain Forever</p>
 
-          <div className="cta-row" style={{marginBottom:24,marginTop:18}}>
+          <div className="cta-row" style={{marginBottom:14,marginTop:18}}>
             <a href="#featured" className="btn-primary" style={{textDecoration:"none",display:"inline-flex",alignItems:"center",gap:8}}>
-              ▶ Play Now
+              ▶ Play Now — free
             </a>
           </div>
+          {/* web2-FIRST login: email → Credits, wallet/$GAME optional after (was missing entirely) */}
+          <div className="hero-login"><HomeIdentity /></div>
 
           {/* single minimal ticker line — top score + live count */}
           <div className="hero-ticker">
@@ -328,6 +306,18 @@ export default function Home() {
               <div className="cf-cta">PLAY FREE →</div>
             </div>
           </a>
+
+          {/* Flipball */}
+          <a href="/play/flipball?mode=arcade" className="cf-card cf-right" aria-label="Play Flipball">
+            <div className="cf-art cf-words-art">
+              <GameArt src="/games/flipball/banner.png" emoji="🪩" alt="Flipball" />
+              <div className="cf-art-overlay"></div>
+            </div>
+            <div className="cf-meta">
+              <div className="cf-name">Flipball</div>
+              <div className="cf-cta">PLAY FREE →</div>
+            </div>
+          </a>
         </div>
       </section>
 
@@ -338,11 +328,13 @@ export default function Home() {
             <h2><span className="live-dot" /> Live on Solana</h2>
           </div>
           <div style={{maxWidth:1200,margin:"0 auto",padding:"0 20px"}}>
-            <LiveAgentViewer
-              games={liveGames}
-              selectedGame={selectedGame}
-              onSelect={setSelectedGame}
-            />
+            <InView placeholder={<div style={{width:"100%",height:480,borderRadius:12,border:"1px solid rgba(153,69,255,0.3)",background:"rgba(153,69,255,0.06)"}} aria-hidden="true" />}>
+              <LiveAgentViewer
+                games={liveGames}
+                selectedGame={selectedGame}
+                onSelect={setSelectedGame}
+              />
+            </InView>
           </div>
         </section>
       )}

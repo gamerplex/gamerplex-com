@@ -1,0 +1,40 @@
+{
+  "games": [
+    {
+      "id": "cyber-snake",
+      "out": "cyber-snake/banner.png",
+      "subject": "a coiled neon serpent built from glowing circuit traces and pixel light, head raised, energy trailing from its body",
+      "accent": "electric green and cyan"
+    },
+    {
+      "id": "magic-chess",
+      "out": "magic-chess/banner.png",
+      "subject": "a single ornate chess knight piece carved from luminous crystal, wreathed in swirling arcane energy",
+      "accent": "royal violet and warm gold"
+    },
+    {
+      "id": "blockwords",
+      "out": "blockwords/banner.png",
+      "subject": "a small cluster of glossy glowing crystal letter-tiles floating and stacking in mid-air, blank faces catching the light",
+      "accent": "deep violet and teal"
+    },
+    {
+      "id": "flipball",
+      "out": "flipball/banner.png",
+      "subject": "a sleek chrome pinball arena with a single glowing energy orb streaking through it, sparks and light trails",
+      "accent": "magenta and cyan"
+    },
+    {
+      "id": "sledgit-pika",
+      "out": "sledgit/pika-set-quiz.png",
+      "subject": "a fan of glossy holographic collectible trading cards with blank generic faces and an electric-spark motif, no characters, no text",
+      "accent": "bright yellow and violet"
+    },
+    {
+      "id": "sledgit-shinji",
+      "out": "sledgit/shinji-quiz.png",
+      "subject": "a single glossy holographic collectible trading card beside a floating paintbrush and artist palette, blank generic card face, no characters, no text",
+      "accent": "warm orange and violet"
+    }
+  ]
+}

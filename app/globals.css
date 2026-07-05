@@ -55,12 +55,95 @@ html, body {
   justify-content: center;
   overflow: hidden;
 }
+/* Lightweight static "wormhole" — CSS radial gradients (archived the Babylon WebGL bg). */
 .hero-bg {
   position: absolute;
   inset: 0;
   z-index: 0;
-  opacity: 0.6;
-  transform: scale(1.1);
+  background:
+    radial-gradient(120% 90% at 50% -10%, rgba(139,92,246,0.28) 0%, rgba(139,92,246,0.10) 30%, transparent 60%),
+    radial-gradient(80% 60% at 50% 0%, rgba(34,211,238,0.14) 0%, transparent 55%),
+    #0a0a12;
+  pointer-events: none;
+}
+/* web2-first login in the hero */
+.hero-login {
+  display: flex;
+  justify-content: center;
+  margin-top: 18px;
+  width: 100%;
+}
+.home-identity {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  width: 100%;
+  max-width: 380px;
+  padding: 18px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(36,11,82,0.72) 0%, rgba(20,5,46,0.72) 100%);
+  border: 1px solid var(--border);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.05);
+  backdrop-filter: blur(10px);
+}
+/* the Credits badge sits on top when signed in; hidden-until-content is fine */
+.home-identity > :first-child:empty { display: none; }
+
+/* ---- SIGN-IN CARD (scoped to the homepage hero) ---- */
+.home-identity .siws { display: flex; flex-direction: column; gap: 6px; text-align: left; }
+.home-identity .siws-step {
+  display: flex; align-items: center; gap: 8px;
+  margin: 4px 0 2px; font-size: 13px; font-weight: 700; color: var(--text);
+}
+.home-identity .siws-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; border-radius: 50%; flex: 0 0 auto;
+  font-size: 11px; font-weight: 800;
+  background: var(--s3); border: 1px solid var(--border2); color: var(--dim);
+}
+.home-identity .siws-badge[data-done="true"] { background: var(--green); color: #04120c; border-color: var(--green); }
+.home-identity .siws-badge[data-locked="true"] { background: transparent; border-color: var(--dim2); font-size: 10px; }
+.home-identity .siws-opt { color: var(--dim2); font-weight: 500; font-size: 12px; }
+
+.home-identity .siws-form { display: flex; flex-direction: column; gap: 8px; }
+.home-identity .siws-input {
+  width: 100%; padding: 12px 14px; border-radius: 11px;
+  background: rgba(0,0,0,0.35); border: 1px solid var(--border2);
+  color: var(--text); font-family: inherit; font-size: 15px; /* 15px+ = no iOS zoom */
+  outline: none; transition: border-color .15s, box-shadow .15s;
+}
+.home-identity .siws-input::placeholder { color: var(--dim2); }
+.home-identity .siws-input:focus { border-color: var(--purple); box-shadow: 0 0 0 3px rgba(153,69,255,0.25); }
+
+.home-identity .siws-primary {
+  width: 100%; padding: 13px 16px; border: none; border-radius: 11px; cursor: pointer;
+  font-family: inherit; font-size: 15px; font-weight: 800; letter-spacing: .01em;
+  color: #04120c; background: linear-gradient(135deg, var(--green) 0%, #0fd47f 100%);
+  box-shadow: var(--glow-green); transition: transform .1s, filter .15s;
+}
+.home-identity .siws-primary:hover:not(:disabled) { filter: brightness(1.08); }
+.home-identity .siws-primary:active:not(:disabled) { transform: translateY(1px); }
+.home-identity .siws-primary:disabled { opacity: .5; cursor: not-allowed; box-shadow: none; }
+
+.home-identity .siws-wallet {
+  width: 100%; padding: 11px 16px; cursor: pointer; border-radius: 11px;
+  font-family: inherit; font-size: 14px; font-weight: 700;
+  color: var(--text); background: transparent; border: 1px solid var(--border2);
+  transition: border-color .15s, background .15s;
+}
+.home-identity .siws-wallet:hover:not(:disabled) { border-color: var(--purple); background: rgba(153,69,255,0.10); }
+.home-identity .siws-wallet:disabled { opacity: .45; cursor: not-allowed; }
+
+.home-identity .siws-hint, .home-identity .siws-done, .home-identity .siws-sent p {
+  margin: 0; font-size: 12px; color: var(--dim); line-height: 1.4;
+}
+.home-identity .siws-done { color: var(--green); font-weight: 700; }
+.home-identity .siws-error { margin: 2px 0 0; font-size: 12px; color: var(--red); }
+.home-identity .siws-linkbtn {
+  margin-top: 8px; padding: 8px 12px; border-radius: 9px; cursor: pointer;
+  font-family: inherit; font-size: 12px; font-weight: 600;
+  color: var(--dim); background: transparent; border: 1px solid var(--border);
 }
 .hero-content {
   position: relative;

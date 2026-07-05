@@ -190,6 +190,28 @@ export async function spendCredits(
   }
 }
 
+// Claim the referral reward after the referred user signs up. SAME-ORIGIN to our own
+// route (which holds the key + the server-fixed amounts + the by-wallet lookup, so a
+// client can never mint or name an amount). CREDITS ONLY (R2) — welcome grant to the new
+// user + referral grant to the referrer. Idempotent per (referrer, referred) server-side:
+// safe to call on every sign-in; a repeat is a no-op. Fire-and-forget; returns true on 2xx.
+export async function claimReferral(referrer: string): Promise<boolean> {
+  try {
+    const r = await fetch('/api/credits/referral', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ referrer }),
+    });
+    if (!r.ok) return false;
+    const j = await r.json().catch(() => ({}));
+    if (j?.referrerFound) track('referral_claimed', {});
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // "Who am I?" — returns null when anonymous (never throws on 401).
 export async function getIdentity(): Promise<IdentityUser | null> {
   try {
