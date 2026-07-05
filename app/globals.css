@@ -737,15 +737,12 @@ html, body {
   perspective: 1800px;
 }
 .coverflow {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0;
-  max-width: 1200px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 18px;
+  max-width: 1120px;
   margin: 0 auto;
-  min-height: 380px;
-  transform-style: preserve-3d;
 }
 .cf-card {
   position: relative;
@@ -813,27 +810,20 @@ html, body {
 }
 .cf-badge-live { color: var(--green); border: 1px solid rgba(20, 241, 149, 0.5); }
 
-/* CENTER — front, biggest, head-on */
+/* Featured card — subtle highlight, SAME size as the rest of the grid. */
 .cf-center {
-  width: 460px;
-  z-index: 3;
-  transform: translateZ(80px) scale(1.0);
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6), 0 0 80px rgba(153, 69, 255, 0.35);
+  z-index: 1;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5), 0 0 40px rgba(153, 69, 255, 0.25);
   border-color: rgba(153, 69, 255, 0.65);
 }
-/* 2026: matched 4/3 so all 3 cards have equal height — no text overlap on side cards */
-.cf-center .cf-art { aspect-ratio: 4 / 3; }
-.cf-center:hover { transform: translateZ(110px) scale(1.03); box-shadow: 0 28px 80px rgba(0, 0, 0, 0.7), 0 0 100px rgba(20, 241, 149, 0.45); }
+/* All game thumbnails are 16:9 — show them un-cropped, equal height. */
+.cf-center .cf-art, .cf-left .cf-art, .cf-right .cf-art { aspect-ratio: 16 / 9; }
+.cf-center:hover { transform: translateY(-4px); box-shadow: 0 20px 48px rgba(0, 0, 0, 0.6), 0 0 56px rgba(20, 241, 149, 0.4); }
 
 /* LEFT — recessed, tilted toward right (toward center), behind */
 /* 2026: gentler perspective so text never clips */
 .cf-left {
-  width: 320px;
-  z-index: 1;
-  margin-right: -40px;
-  transform: rotateY(18deg) translateX(-10px) translateZ(-30px) scale(0.92);
-  opacity: 0.95;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
 }
 .cf-left .cf-art { aspect-ratio: 4 / 3; background: radial-gradient(ellipse at center, rgba(0, 242, 255, 0.35), rgba(20, 5, 46, 0.9) 70%), linear-gradient(135deg, #050a14, #0a0a18); }
 .cf-left .cf-emoji { color: #14F195; }
@@ -845,16 +835,11 @@ html, body {
   background-size: 24px 24px;
   pointer-events: none;
 }
-.cf-left:hover { transform: rotateY(20deg) translateX(-10px) translateZ(-10px) scale(0.92); opacity: 1; }
+.cf-left:hover { transform: translateY(-4px); }
 
 /* RIGHT — recessed, tilted toward left (toward center), behind */
 .cf-right {
-  width: 320px;
-  z-index: 1;
-  margin-left: -40px;
-  transform: rotateY(-18deg) translateX(10px) translateZ(-30px) scale(0.92);
-  opacity: 0.95;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
 }
 .cf-right .cf-art { aspect-ratio: 4 / 3; background: radial-gradient(ellipse at center, rgba(255, 215, 64, 0.32), rgba(20, 5, 46, 0.9) 70%), linear-gradient(135deg, #160a05, #1f0a18); display: flex; flex-direction: column; gap: 10px; padding: 24px 0; }
 .cf-right .cf-emoji { color: #ffd740; font-size: 60px; }
@@ -868,16 +853,14 @@ html, body {
   color: #ffd740;
   border-radius: 4px;
 }
-.cf-right:hover { transform: rotateY(-20deg) translateX(10px) translateZ(-10px) scale(0.92); opacity: 1; }
+.cf-right:hover { transform: translateY(-4px); }
 
+/* Tablet: 2 columns. Mobile: single-column stack (the working mobile layout). */
 @media (max-width: 900px) {
-  .coverflow { flex-direction: column; gap: 16px; perspective: none; min-height: auto; }
-  .cf-card, .cf-left, .cf-right, .cf-center {
-    width: 100%; max-width: 420px;
-    margin: 0;
-    transform: none;
-    opacity: 1;
-  }
+  .coverflow { grid-template-columns: repeat(2, 1fr); gap: 14px; }
+}
+@media (max-width: 560px) {
+  .coverflow { grid-template-columns: 1fr; max-width: 460px; }
   .cf-card:hover { transform: scale(1.01); }
 }
 
