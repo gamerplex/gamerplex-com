@@ -1,11 +1,16 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { ProfileView } from "./_components/ProfileView";
 
 export default function ProfilePage() {
   const { publicKey } = useWallet();
+  // Gate wallet-dependent render until after mount so SSR (wallet-less) and the
+  // first client render (wallet auto-connecting) match — avoids a hydration mismatch.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
@@ -22,7 +27,11 @@ export default function ProfilePage() {
           <Link href="/profile">Profile</Link>
         </div>
       </nav>
-      <ProfileView walletPubkey={publicKey ?? null} isOwnProfile={true} />
+      {mounted ? (
+        <ProfileView walletPubkey={publicKey ?? null} isOwnProfile={true} />
+      ) : (
+        <div style={{ padding: 24, textAlign: "center", color: "#666" }}>Loading…</div>
+      )}
     </div>
   );
 }
