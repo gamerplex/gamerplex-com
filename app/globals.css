@@ -145,11 +145,62 @@ html, body {
   font-family: inherit; font-size: 12px; font-weight: 600;
   color: var(--dim); background: transparent; border: 1px solid var(--border);
 }
+
+/* ---- DAILY STREAK WIDGET (homepage, signed-in only) ---- */
+.streak-widget {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  padding: 12px 14px; border-radius: 13px;
+  background: linear-gradient(135deg, rgba(255,107,44,0.16), rgba(255,23,68,0.10));
+  border: 1px solid rgba(255,107,44,0.35);
+}
+.streak-flame { display: flex; align-items: baseline; gap: 5px; flex: 0 0 auto; }
+.streak-fire { font-size: 22px; line-height: 1; filter: drop-shadow(0 0 8px rgba(255,107,44,0.6)); }
+.streak-count { font-size: 22px; font-weight: 900; color: var(--orange); line-height: 1; }
+.streak-label { font-size: 11px; font-weight: 700; color: var(--dim); text-transform: uppercase; letter-spacing: 0.5px; }
+.streak-claim {
+  flex: 1; padding: 10px 14px; border: none; border-radius: 10px; cursor: pointer;
+  font-family: inherit; font-size: 13px; font-weight: 800; color: #1a0a00;
+  background: linear-gradient(135deg, var(--yellow) 0%, var(--orange) 100%);
+  box-shadow: 0 0 20px rgba(255,107,44,0.4); transition: filter .15s, transform .1s;
+}
+.streak-claim:hover:not(:disabled) { filter: brightness(1.08); }
+.streak-claim:active:not(:disabled) { transform: translateY(1px); }
+.streak-claim:disabled { opacity: .6; cursor: not-allowed; }
+.streak-done { display: flex; flex-direction: column; gap: 1px; flex: 1; text-align: left; }
+.streak-done b { font-size: 13px; font-weight: 800; color: var(--yellow); }
+.streak-done span { font-size: 11px; color: var(--dim); }
+
 .hero-content {
   position: relative;
   z-index: 10;
   text-align: center;
   padding: 24px;
+}
+/* Desktop: 2-column hero (copy left, login card right) — kills the lonely-column
+   dead space on wide screens. Mobile stays stacked (DOM order unchanged). */
+@media (min-width: 900px) {
+  .hero-content {
+    display: grid;
+    align-items: center;
+    justify-items: start;
+    text-align: left;
+    max-width: 1120px;
+    margin: 0 auto;
+    column-gap: 56px;
+    row-gap: 6px;
+    grid-template-columns: 1.15fr 0.85fr;
+    grid-template-areas:
+      "title  login"
+      "sub    login"
+      "cta    login"
+      "ticker login";
+  }
+  .hero-content .hero-title  { grid-area: title; margin-bottom: 8px; }
+  .hero-content .hero-sub    { grid-area: sub; }
+  .hero-content .cta-row     { grid-area: cta; }
+  .hero-content .hero-ticker { grid-area: ticker; }
+  .hero-content .hero-login  { grid-area: login; justify-content: flex-end; margin-top: 0; }
+  .hero-content .home-identity { max-width: 400px; }
 }
 .hero-title {
   background: linear-gradient(135deg, #9945FF 0%, #14F195 100%);

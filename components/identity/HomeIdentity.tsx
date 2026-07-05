@@ -15,6 +15,7 @@ import { BackpackWalletAdapter } from "@solana/wallet-adapter-backpack";
 
 import { CreditsBadge } from "./CreditsBadge";
 import { SignInWithSolana } from "./SignInWithSolana";
+import { StreakWidget } from "./StreakWidget";
 
 import "@solana/wallet-adapter-react-ui/styles.css";
 
@@ -33,6 +34,7 @@ export default function HomeIdentity() {
       <WalletProvider wallets={wallets} autoConnect>
         <WalletModalProvider>
           <div className="home-identity">
+            <StreakWidget />
             <CreditsBadge />
             <SignInWithSolana />
           </div>
