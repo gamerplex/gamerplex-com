@@ -45,6 +45,9 @@ import PaymentMethodPicker from "../../../../components/arcade/PaymentMethodPick
 import { getStoredReferrer } from "../../../../lib/arcade/referral";
 import { submitReplay } from "@gamerplex/sdk/arcade";
 import { track, identifyWallet } from "../../../../lib/analytics";
+import { EconomyConsentModal, hasEconomyConsent } from "../../../../lib/arcade/economy-gate";
+import { earnCredits } from "../../../../lib/identity/client";
+import ContinueWithCredits from "../../../../components/arcade/ContinueWithCredits";
 import ReferrerBanner from "../../../../components/arcade/ReferrerBanner";
 import { ArcadeLeaderboard } from "../../../arcade/_components/ArcadeLeaderboard";
 
@@ -437,14 +440,35 @@ export default function CyberSnakeSolo() {
     }
   }, []);
 
+  // Continue the current run after a crash (Credits-paid). Keeps score + seed,
+  // respawns the snake, and marks the run as having used a continue (breaks 1CC).
+  const continueRun = useCallback(() => {
+    const g = gameRef.current;
+    if (!g || g.status !== "crashed") return;
+    g.continuesUsed++;
+    resetSnakePosition(g);
+    prevStatusRef.current = "active";
+    savedRef.current = false;
+    sfx.start();
+    track("continue_purchased", { game: "cyber-snake", currency: "credits", sink_type: "continue" });
+    setTick((t) => t + 1);
+  }, [resetSnakePosition, sfx]);
+
   // v1.4: default to USDC. Token picker UI ships in the next commit.
   const [paymentToken, setPaymentToken] = useState<PaymentTokenDef>(
     PAYMENT_TOKENS.find((t) => t.symbol === "USDC") ?? PAYMENT_TOKENS[0]
   );
 
+  // §F legal gate: first $GAME payment must accept the 18+/AI/not-gambling attestation.
+  const [showEconomyGate, setShowEconomyGate] = useState(false);
+
   const onSaveOnChain = useCallback(async () => {
     const g = gameRef.current;
     if (!g || !anchorWallet || !publicKey) return;
+    if (paymentToken.kind === "game" && !hasEconomyConsent()) {
+      setShowEconomyGate(true);
+      return;
+    }
     setBusy("save");
     setOnchainError(null);
     track("score_save_attempted", { game: "cyber-snake", score: g.score, continues: g.continuesUsed, token: paymentToken.symbol });
@@ -778,6 +802,8 @@ export default function CyberSnakeSolo() {
         };
         const top = insertLocalScore(entry);
         setBoard(top);
+        // Web2 Credits earn on run completion (fire-and-forget; capped + idempotent server-side, CREDITS only — never $GAME).
+        void earnCredits("game_win", `snake:win:${g.startedAt}`);
       }
       savedRef.current = true;
     }
@@ -1122,6 +1148,10 @@ export default function CyberSnakeSolo() {
                   <ReferrerBanner connectedWallet={publicKey ?? null} />
                 </div>
 
+                <div style={{ width: "100%", maxWidth: 420, marginBottom: 8 }}>
+                  <ContinueWithCredits item="continue" game="snake" onSuccess={continueRun} />
+                </div>
+
                 {connected ? (
                   <>
                     {!savedThisRun && (
@@ -1425,6 +1455,12 @@ export default function CyberSnakeSolo() {
         </div>
       </div>
 
+      {showEconomyGate && (
+        <EconomyConsentModal
+          onClose={() => setShowEconomyGate(false)}
+          onAccept={() => { setShowEconomyGate(false); void onSaveOnChain(); }}
+        />
+      )}
     </div>
   );
 }

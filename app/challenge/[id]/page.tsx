@@ -65,10 +65,9 @@ export async function generateMetadata({
   const game = GAME_META[score.gameSlug] ?? { label: score.gameSlug, emoji: "🎮", route: "/", accent: "#9945ff" };
   const title = `${game.emoji} Beat ${score.score.toLocaleString()} on ${game.label}`;
   const desc = `${shortWallet(score.player)} scored ${score.score.toLocaleString()}. Same seed, same physics. Pure skill.`;
-  const ogImage =
-    score.gameSlug === "cyber-snake"
-      ? `${SITE}/api/og/snake-challenge?sig=${encodeURIComponent(id)}`
-      : `${SITE}/og.png`;
+  // Per-challenge OG image for EVERY game (was cyber-snake only → others showed
+  // the generic logo). The route reads the on-chain score, so it can't be forged.
+  const ogImage = `${SITE}/api/og/challenge?sig=${encodeURIComponent(id)}`;
   return {
     title,
     description: desc,
@@ -206,7 +205,7 @@ export default async function ChallengePage({
         color: "#9090a8",
         lineHeight: 1.6,
       }}>
-        <strong style={{ color: "#e8e8f0" }}>How it works:</strong> play the game free. When you save a score on-chain ($0.05), {shortWallet(score.player)} earns 20% as the referrer who brought you here. Pure skill — no wager, no lobby, no 1v1.
+        <strong style={{ color: "#e8e8f0" }}>How it works:</strong> play the game free. Sign in and you both earn bonus Credits — a welcome bonus for you and a referral bonus for {shortWallet(score.player)}, who brought you here. Pure skill — no wager, no lobby, no 1v1.
       </div>
 
       <div style={{ marginTop: 20, textAlign: "center" }}>

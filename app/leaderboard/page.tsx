@@ -8,7 +8,6 @@ const RESOLVER =
   process.env.NEXT_PUBLIC_RESOLVER_URL || "https://resolver.gamerplex.com";
 
 // Unified leaderboard Player shape — matches /leaderboard/unified from resolver.
-// Every stat is derived from CM v2.1 MarketResolvedV2 events on-chain.
 interface Player {
   wallet: string;
   name: string;
@@ -22,20 +21,12 @@ interface Player {
   losses: number;
   draws?: number;
   winRate?: number;
-  usdfWagered?: string;
-  usdfWon?: string;
-  usdfLost?: string;
-  netPnl?: string;
   currentStreak?: number;
   longestStreak?: number;
 }
 
 interface LeaderboardTotals {
   matches: number;
-  totalPotRaw: string;
-  treasuryRaw: string;
-  poolBackerRaw: string;
-  winnerPayoutRaw: string;
 }
 
 const GAMES = [
@@ -46,10 +37,8 @@ const GAMES = [
 ];
 
 const METRICS = [
-  { id: "pnl", label: "Net P&L", appliesTo: "any" },
   { id: "elo", label: "ELO", appliesTo: "game" },
   { id: "winrate", label: "Win %", appliesTo: "any" },
-  { id: "volume", label: "Volume", appliesTo: "any" },
   { id: "streak", label: "Streak", appliesTo: "any" },
   { id: "matches", label: "Matches", appliesTo: "any" },
 ];
@@ -61,25 +50,11 @@ const WINDOWS = [
   { id: "all", label: "All time" },
 ];
 
-const STAKE_TIERS = [
-  { id: "any", label: "Any stakes" },
-  { id: "low", label: "<$1" },
-  { id: "mid", label: "$1–$10" },
-  { id: "high", label: "$10+" },
-];
-
 const KINDS = [
   { id: "human", label: "Humans", hint: "The default board — real players only" },
   { id: "bot", label: "Bots", hint: "Registered agents (house + third-party)" },
   { id: "all", label: "All", hint: "Both — for full transparency" },
 ] as const;
-
-function fmtUsdf(raw?: string, signed = false): string {
-  if (!raw) return "$0.00";
-  const n = Number(BigInt(raw)) / 1e6;
-  const sign = signed && n > 0 ? "+" : "";
-  return `${sign}$${n.toFixed(2)}`;
-}
 
 function truncWallet(w: string): string {
   return `${w.slice(0, 4)}…${w.slice(-4)}`;
@@ -96,10 +71,9 @@ function cacheKey(
   game: string,
   metric: string,
   win: string,
-  tier: string,
   kind: string
 ): string {
-  return `${CACHE_PREFIX}${game}.${metric}.${win}.${tier}.${kind}`;
+  return `${CACHE_PREFIX}${game}.${metric}.${win}.${kind}`;
 }
 function readBoardCache(k: string): CachedBoard | null {
   if (typeof window === "undefined") return null;
@@ -120,9 +94,8 @@ function writeBoardCache(k: string, c: CachedBoard) {
 
 export default function LeaderboardPage() {
   const [selectedGame, setSelectedGame] = useState("all");
-  const [metric, setMetric] = useState("pnl");
+  const [metric, setMetric] = useState("winrate");
   const [window, setWindow] = useState("all");
-  const [stakeTier, setStakeTier] = useState("any");
   const [kind, setKind] = useState<"human" | "bot" | "all">("human");
   const [players, setPlayers] = useState<Player[]>([]);
   const [totals, setTotals] = useState<LeaderboardTotals | null>(null);
@@ -135,13 +108,13 @@ export default function LeaderboardPage() {
   const [stale, setStale] = useState(false);
 
   useEffect(() => {
-    if (selectedGame === "all" && metric === "elo") setMetric("pnl");
+    if (selectedGame === "all" && metric === "elo") setMetric("winrate");
   }, [selectedGame, metric]);
 
   // Per-filter-combo caching: switching tabs falls back to the last cached
   // result for that combo instantly, then refreshes in background.
   useEffect(() => {
-    const k = cacheKey(selectedGame, metric, window, stakeTier, kind);
+    const k = cacheKey(selectedGame, metric, window, kind);
     const cached = readBoardCache(k);
     if (cached) {
       setPlayers(cached.players);
@@ -163,7 +136,6 @@ export default function LeaderboardPage() {
         game: selectedGame,
         metric,
         window,
-        stakeTier,
         kind,
         ...(metric === "winrate" ? { minMatches: "5" } : {}),
       }).toString();
@@ -206,7 +178,7 @@ export default function LeaderboardPage() {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [selectedGame, metric, window, stakeTier, kind]);
+  }, [selectedGame, metric, window, kind]);
 
   const hasData = players.length > 0 || totals !== null;
   const showSkeleton = loading && !hasData;
@@ -289,10 +261,9 @@ export default function LeaderboardPage() {
               lineHeight: 1.5,
             }}
           >
-            Rankings derived directly from CM v2.1{" "}
-            <code style={{ color: "#c99aff" }}>MarketResolvedV2</code> events
-            on Solana. Every match, win, and net P&amp;L is independently
-            verifiable — the resolver is a cache, not a source of truth.
+            Rankings derived directly from on-chain score-save memos on Solana.
+            Every match and win is independently verifiable — the resolver is a
+            cache, not a source of truth.
           </p>
         </div>
 
@@ -309,24 +280,6 @@ export default function LeaderboardPage() {
             label="Resolved matches"
             value={totals ? totals.matches.toLocaleString() : null}
             accent="#14F195"
-            loading={showSkeleton}
-          />
-          <StatCard
-            label="Pool volume"
-            value={totals ? fmtUsdf(totals.totalPotRaw) : null}
-            accent="#9945FF"
-            loading={showSkeleton}
-          />
-          <StatCard
-            label="Treasury collected"
-            value={totals ? fmtUsdf(totals.treasuryRaw) : null}
-            accent="#ffd740"
-            loading={showSkeleton}
-          />
-          <StatCard
-            label="PoolBacker inflow"
-            value={totals ? fmtUsdf(totals.poolBackerRaw) : null}
-            accent="#00e676"
             loading={showSkeleton}
           />
         </div>
@@ -346,7 +299,7 @@ export default function LeaderboardPage() {
             {loading && !hasData ? (
               <>
                 <Spinner />
-                <span>Indexing CM v2.1 events from devnet…</span>
+                <span>Indexing score-save memos from devnet…</span>
               </>
             ) : hydratedFromCache && loading ? (
               <>
@@ -360,8 +313,7 @@ export default function LeaderboardPage() {
         )}
 
         {/* Humans / Bots / All tabs — humans is the default board. Bots are
-            registered agents (house + third-party). See /bots and
-            /docs/agents for the registration contract. */}
+            registered agents (house + third-party). */}
         <div
           style={{
             display: "flex",
@@ -398,11 +350,7 @@ export default function LeaderboardPage() {
             );
           })}
           <span style={{ fontSize: 11, color: "#6a6a80", marginLeft: 4 }}>
-            Default is Humans · see{" "}
-            <Link href="/bots" style={{ color: "#9945FF", textDecoration: "underline" }}>
-              /bots
-            </Link>{" "}
-            for the registered agent directory
+            Default is Humans · registered agents carry a visible BOT tag
           </span>
         </div>
 
@@ -476,18 +424,6 @@ export default function LeaderboardPage() {
               </Pill>
             ))}
           </FilterGroup>
-          <FilterGroup label="Stakes" color="#ffd740">
-            {STAKE_TIERS.map((t) => (
-              <Pill
-                key={t.id}
-                active={stakeTier === t.id}
-                activeColor="#ffd740"
-                onClick={() => setStakeTier(t.id)}
-              >
-                {t.label}
-              </Pill>
-            ))}
-          </FilterGroup>
         </div>
 
         {/* Podium (top 3) */}
@@ -540,8 +476,8 @@ export default function LeaderboardPage() {
               style={{
                 display: "grid",
                 gridTemplateColumns: showElo
-                  ? "60px 1.6fr 80px 90px 80px 80px 120px 120px"
-                  : "60px 1.6fr 90px 80px 80px 120px 120px",
+                  ? "60px 1.6fr 80px 90px 80px 80px"
+                  : "60px 1.6fr 90px 80px 80px",
                 padding: "14px 20px",
                 borderBottom: "1px solid #252540",
                 fontSize: 11,
@@ -558,8 +494,6 @@ export default function LeaderboardPage() {
               <div style={{ textAlign: "center" }}>W / L</div>
               <div style={{ textAlign: "center" }}>Win %</div>
               <div style={{ textAlign: "center" }}>Streak</div>
-              <div style={{ textAlign: "right" }}>Pool</div>
-              <div style={{ textAlign: "right" }}>Net P&amp;L</div>
             </div>
             {rest.map((p, idx) => {
               const i = idx + 3;
@@ -568,15 +502,14 @@ export default function LeaderboardPage() {
                 (p.wins + (p.losses || 0) > 0
                   ? Math.round((p.wins / (p.wins + (p.losses || 0))) * 100)
                   : 0);
-              const pnlN = p.netPnl ? Number(BigInt(p.netPnl)) / 1e6 : 0;
               return (
                 <div
                   key={p.wallet}
                   style={{
                     display: "grid",
                     gridTemplateColumns: showElo
-                      ? "60px 1.6fr 80px 90px 80px 80px 120px 120px"
-                      : "60px 1.6fr 90px 80px 80px 120px 120px",
+                      ? "60px 1.6fr 80px 90px 80px 80px"
+                      : "60px 1.6fr 90px 80px 80px",
                     padding: "16px 20px",
                     borderBottom: "1px solid #1a1a28",
                     alignItems: "center",
@@ -679,28 +612,6 @@ export default function LeaderboardPage() {
                       );
                     })()}
                   </div>
-                  <div
-                    style={{
-                      textAlign: "right",
-                      fontSize: 13,
-                      color: "#a8a8c0",
-                      fontFamily: "monospace",
-                    }}
-                  >
-                    {fmtUsdf(p.usdfWagered)}
-                  </div>
-                  <div
-                    style={{
-                      textAlign: "right",
-                      fontSize: 15,
-                      fontWeight: 700,
-                      color:
-                        pnlN > 0 ? "#00e676" : pnlN < 0 ? "#ff5252" : "#a8a8c0",
-                      fontFamily: "monospace",
-                    }}
-                  >
-                    {fmtUsdf(p.netPnl, true)}
-                  </div>
                 </div>
               );
             })}
@@ -802,7 +713,7 @@ export default function LeaderboardPage() {
           }}
         >
           <div>
-            Derived from CM v2.1 <code>MarketResolvedV2</code> · ELO K=32 ·
+            Derived from on-chain score-save memos · ELO K=32 ·
             SNS via Bonfida v3 (ASCII-only, anti-homograph)
           </div>
           <Link
@@ -1064,7 +975,6 @@ function PodiumCard({
   const accent =
     rank === 0 ? "#ffd740" : rank === 1 ? "#c0c0c0" : "#cd7f32";
   const medal = rank === 0 ? "🥇" : rank === 1 ? "🥈" : "🥉";
-  const pnlN = player.netPnl ? Number(BigInt(player.netPnl)) / 1e6 : 0;
   const winRate =
     player.winRate ??
     (player.wins + (player.losses || 0) > 0
@@ -1109,7 +1019,7 @@ function PodiumCard({
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: showElo ? "repeat(4, 1fr)" : "repeat(3, 1fr)",
+          gridTemplateColumns: showElo ? "repeat(3, 1fr)" : "repeat(2, 1fr)",
           gap: 8,
           fontSize: 11,
         }}
@@ -1132,11 +1042,6 @@ function PodiumCard({
           color={
             winRate >= 60 ? "#00e676" : winRate >= 40 ? "#e8e8f0" : "#ff5252"
           }
-        />
-        <MiniStat
-          label="Net P&L"
-          value={fmtUsdf(player.netPnl, true)}
-          color={pnlN > 0 ? "#00e676" : pnlN < 0 ? "#ff5252" : "#a8a8c0"}
         />
       </div>
     </div>

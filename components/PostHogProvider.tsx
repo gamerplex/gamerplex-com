@@ -18,10 +18,12 @@ export default function PostHogProvider({ children }: { children: React.ReactNod
       capture_pageleave: true,
     });
     posthog.register({
-      product: "gamerplex",
+      product: "arcade",
       surface: "gamerplex-com",
       // Segment devnet test noise from mainnet metrics (one PostHog project).
       network: process.env.NEXT_PUBLIC_SOLANA_NETWORK || "devnet",
+      // Tag automated/E2E traffic (Playwright sets navigator.webdriver) so it's filterable.
+      ...(typeof navigator !== "undefined" && navigator.webdriver ? { test_traffic: true } : {}),
     });
     (window as any).__posthog_initialized = true;
   }, []);

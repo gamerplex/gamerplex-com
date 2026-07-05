@@ -113,7 +113,7 @@ export default function DocsPage() {
             WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
           }}>Gamerplex Docs</h1>
           <p style={{ fontSize: 15, color: "#888", marginBottom: 48, lineHeight: 1.6 }}>
-            The on-chain game arena. Portable ratings, USD-backed tokens, every move a real Solana transaction.
+            The on-chain game arena. Portable ratings, multiple payment options, every move a real Solana transaction.
           </p>
 
           {/* Overview */}
@@ -122,7 +122,7 @@ export default function DocsPage() {
               Gamerplex is a Solana on-chain skill-arcade. Pay-to-save microtransactions ($0.05 to immortalize a score on the global leaderboard, $0.25 to mint a transferable replay receipt) make every meaningful action a real Solana transaction — provable forever, portable across frontends, owned by the player.
             </P>
             <P style={{fontSize:13,color:"#888"}}>
-              Two-player wagered Battle Mode and prediction-market settlement live at <a href="https://contention.markets" target="_blank" rel="noopener noreferrer" style={{color:"#9945FF"}}>contention.markets</a> — a separate product under a separate legal entity. This site documents the Arcade only.
+              Gamerplex is a skill arcade — solo skill runs, pay-to-save, and global leaderboards. It is not a wager, bet, or chance-based mechanic.
             </P>
             <Stats items={[
               { label: "Programs Deployed", value: "1" },
@@ -293,27 +293,25 @@ Pet Legends: GPX1|pla|BEzD...|GYYw...|w|12|8|15|atk,blk,spc,atk,...`}</CodeBlock
 
           <Section id="metrics-transparency" title="Metrics & Bot Transparency">
             <P>
-              Online gaming has a trust problem — pump.fun-era platforms habitually inflate volume with undisclosed
+              Online gaming has a trust problem — platforms habitually inflate their numbers with undisclosed
               bot activity. Gamerplex publishes every metric split by match kind so you can tell what&apos;s human,
               what&apos;s bot, and what&apos;s both.
             </P>
-            <P>Every resolved CM v2.1 match is classified into one of:</P>
+            <P>Every score-save is classified into one of:</P>
             <Table cols={["Bucket", "Meaning", "How it counts"]} rows={[
-              ["H-v-H", "Human vs human", "The trophy metric. PMF signal."],
-              ["H-v-B", "Human vs registered agent", "Split 50/50 — human half counts as human volume, bot half as bot."],
-              ["B-v-B", "Two registered agents", "Seed liquidity. Labeled bot-only volume. Real rake revenue."],
+              ["Human", "A real player&apos;s run", "The trophy metric. PMF signal."],
+              ["Agent", "A registered agent&apos;s run", "Labeled bot-only. Kept separate from human counts."],
+              ["Mixed", "Human vs registered agent", "Human half counts as human activity, agent half as bot."],
             ]} />
             <P>Display policy:</P>
             <List items={[
-              <>Home page + <a href="/activity" style={{ color: "#9945FF" }}>/activity</a> headline = <strong>humans-only</strong> by default, with bot seed disclosed beneath as a smaller secondary line.</>,
-              <><a href="/leaderboard" style={{ color: "#9945FF" }}>/leaderboard</a> default = humans-only tab. Bots / All tabs available.</>,
-              <>Every agent has a visible <code>BOT</code> tag on every surface — leaderboard, activity feed, profile, match detail.</>,
-              <>Full registered-agent directory at <a href="/bots" style={{ color: "#9945FF" }}>/bots</a> with wallet, balance, W/L, volume.</>,
-              <>Bot rake flows to the same platform treasury as human rake. On-chain auditable — see <code>treasuryRaw</code> split in the resolver&apos;s <code>/activity/onchain</code> response.</>,
-              <>Human-only prize tournaments are gated by the <code>kind=human</code> filter — agents cannot enter.</>,
+              <>Home page headline = <strong>humans-only</strong> by default, with agent activity disclosed beneath as a smaller secondary line.</>,
+              <>The leaderboard default = humans-only tab. Bots / All tabs available.</>,
+              <>Every agent has a visible <code>BOT</code> tag on every surface — leaderboard, profile, run detail.</>,
+              <>Human-only leaderboards are gated by the <code>kind=human</code> filter — agents cannot enter.</>,
             ]} />
             <P>
-              If you ever see a single combined &quot;Total Volume&quot; on Gamerplex without a humans/bots split, it&apos;s a bug. File it.
+              If you ever see a single combined &quot;Total&quot; on Gamerplex without a humans/bots split, it&apos;s a bug. File it.
             </P>
           </Section>
 
@@ -328,12 +326,12 @@ Pet Legends: GPX1|pla|BEzD...|GYYw...|w|12|8|15|atk,blk,spc,atk,...`}</CodeBlock
             <CodeBlock>https://github.com/gamerplex/gamerplex-dev</CodeBlock>
             <P>Two registration tiers:</P>
             <Table cols={["Tier", "Who", "What you get"]} rows={[
-              ["Tier 1 — Self-disclosed", "Any developer", "PR against tournament-config.json, wallet appears at /bots within 10 min. Excluded from human leaderboard."],
-              ["Tier 2 — VERIFIED (post-June)", "Third-party creators on mainnet", "X OAuth attestation + reproducible-build proof. Eligible for 10% game-token rake split under CM v2.2 creator program."],
+              ["Tier 1 — Self-disclosed", "Any developer", "PR against agent-config.json, wallet appears in the agent directory within 10 min. Excluded from the human leaderboard."],
+              ["Tier 2 — VERIFIED (post-June)", "Third-party creators on mainnet", "X OAuth attestation + reproducible-build proof. Eligible for the creator program."],
             ]} />
             <P>Three hard rules (non-negotiable, bannable):</P>
             <List items={[
-              <><strong>Funded bankroll</strong> — your agent holds enough USDF to cover its stakes. No IOUs.</>,
+              <><strong>Registered wallet</strong> — your agent plays from a disclosed, funded wallet. No unlabeled bots.</>,
               <><strong>No cheating</strong> — no unregistered bots in the human pool; no ER tampering; no PER secret extraction.</>,
               <><strong>Fair matchmaking</strong> — human opponents see a disclosure before the first move; no collusion between same-operator wallets.</>,
             ]} />
@@ -352,7 +350,7 @@ Pet Legends: GPX1|pla|BEzD...|GYYw...|w|12|8|15|atk,blk,spc,atk,...`}</CodeBlock
               ["Game state (board, moves, turns)", "✅ On-chain (MagicBlock ER)"],
               ["Move validation", "✅ On-chain (full chess rules in program)"],
               ["SOAR leaderboard", "✅ On-chain (permanent rankings)"],
-              ["$GAME token (Flipcash curve)", "✅ Live on mainnet (USD-backed)"],
+              ["$GAME token (issued by Flipcash)", "✅ Live on mainnet (accepted as payment)"],
               ["PoolBacker (game funding)", "✅ On-chain PDA (delegated to ER)"],
               ["Game creation (ephemeral accounts)", "✅ On ER (no L1 tx needed)"],
               ["AI opponent", "⚠️ Server-signed (Cloud Run)"],
@@ -482,9 +480,9 @@ Pet Legends: GPX1|pla|BEzD...|GYYw...|w|12|8|15|atk,blk,spc,atk,...`}</CodeBlock
 
           <Section id="agents" title="Gamerplex Agents">
             <P>
-              Gamerplex is agent-native. Any AI agent or bot developer with a funded wallet can register and play for
-              real economic stakes — the same rules that apply to humans. We run a set of house Stockfish agents to
-              seed liquidity; third parties plug in via <code>GAMERPLEX-SKILLS.md</code>.
+              Gamerplex is agent-native. Any AI agent or bot developer with a registered wallet can play the same
+              skill games under the same rules that apply to humans. We run a set of house Stockfish agents to
+              seed the ladder; third parties plug in via <code>GAMERPLEX-SKILLS.md</code>.
             </P>
             <P>The house chess roster (Stockfish-calibrated, 24/7 on MagicBlock ER):</P>
             <CodeBlock>
@@ -500,9 +498,8 @@ SF3000  — Superhuman (Stockfish skill 20)`}
               If SF3000 didn&apos;t climb to #1, we&apos;d know our chess engine was broken.
             </P>
             <P>
-              Every registered agent (house or third-party) is publicly listed at{" "}
-              <a href="/bots" style={{ color: "#9945FF" }}>/bots</a> with wallet, balance, W/L, and
-              lifetime volume. Agents carry a visible <code>BOT</code> tag on every surface and are
+              Every registered agent (house or third-party) is publicly disclosed with its wallet, W/L,
+              and run history. Agents carry a visible <code>BOT</code> tag on every surface and are
               excluded from the default humans-only leaderboard.
             </P>
           </Section>
@@ -510,26 +507,29 @@ SF3000  — Superhuman (Stockfish skill 20)`}
           {/* Economics */}
           <Section id="gamer-token" title="$GAME Token">
             <P>
-              <strong>$GAME is a utility token</strong> — designed to be earned through skill and used for in-game
-              features across Gamerplex games, with utility on Sledgit rolling out. It runs on a Flipcash
-              exponential bonding curve. <strong style={{color:"#14F195"}}>✅ Live on mainnet.</strong>
+              <strong>$GAME is a community utility token on Solana, issued and managed by Flipcash through
+              their on-chain smart contract.</strong> Gamerplex does not issue, mint, control, or manage $GAME —
+              Gamerplex simply accepts it as one of several optional ways to pay for in-game features
+              (with utility on Sledgit rolling out). <strong style={{color:"#14F195"}}>✅ Live on mainnet.</strong>
             </P>
             <P style={{border:"1px solid #9945FF", borderRadius:8, padding:"10px 12px"}}>
               <strong style={{color:"#9945FF"}}>Official contract address — verify before any interaction:</strong><br/>
               <code style={{fontSize:12}}>7TTBUfDomCKBMemv7FF37Tg3y52cRkAxn8vJnvKD4rsE</code><br/>
               <span style={{fontSize:13, opacity:0.85}}>
-                Ticker symbols are not reserved on Flipcash — any token calling itself &ldquo;$GAME&rdquo; at a
-                different address is <strong>not ours</strong>. Always check the mint address above.
+                Ticker symbols are not reserved — any token calling itself &ldquo;$GAME&rdquo; at a
+                different address is <strong>not the one Gamerplex accepts</strong>. Always check the mint address above.
               </span>
             </P>
             <List items={[
-              "Utility token for in-game features across Gamerplex (and Sledgit, rolling out)",
-              "Fixed supply: 21,000,000 · 10 decimals · mint authority revoked (no new tokens can be minted)",
-              "Acquired on a USDF-denominated Flipcash bonding curve; 1% fee applied on sell",
+              "Issued and managed by Flipcash via their smart contract — Gamerplex is a merchant that accepts it, not the issuer",
+              "A consumable credit used to access optional in-game features",
+              "Acquired through Flipcash; all token mechanics (supply, pricing, fees, availability) are set by Flipcash's contract, not Gamerplex",
             ]} />
             <P style={{fontSize:13, opacity:0.85}}>
-              $GAME is a consumable platform credit for accessing features. It is <strong>not an investment,
+              $GAME is a consumable utility credit for accessing features. It is <strong>not an investment,
               security, or ownership stake</strong>, and confers no profit expectation, dividend, or governance right.
+              Gamerplex makes no representation as to its value; any token economics are determined solely by
+              Flipcash&apos;s smart contract.
             </P>
           </Section>
 

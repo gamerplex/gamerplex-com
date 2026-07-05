@@ -43,7 +43,7 @@ export default function ReferrerBanner({
         <span style={{ color: "#00ffd1", marginLeft: 6, fontWeight: 700 }}>✓ on-chain verified</span>
       )}
       <div style={{ opacity: 0.6, fontSize: 10, marginTop: 2 }}>
-        They earn 20% of your save fee. Permanent attribution after first save.
+        You both earn bonus Credits once you sign in.
       </div>
     </div>
   );

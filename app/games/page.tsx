@@ -19,7 +19,7 @@ const LAUNCH_GAMES = [
   {
     id: "cyber-snake",
     name: "Cyber Snake",
-    description: "Tron-style 2-player snake. Solo version playable now in the Arcade; tournament duel mode ships with CM v2.2.",
+    description: "Tron-style 2-player snake. Solo version playable now in the Arcade.",
     path: "/play/cyber-snake?mode=arcade",
     color: "#4fc3f7",
     emoji: "🐍",
@@ -28,7 +28,7 @@ const LAUNCH_GAMES = [
   {
     id: "pla",
     name: "Pet Legends Arena",
-    description: "NFT auto-battler. Deterministic combat, CM v2.1-bound markets, SOAR ladder.",
+    description: "Auto-battler. Deterministic combat, SOAR ladder.",
     path: "/play/pla",
     color: "#ff6b2c",
     emoji: "🐉",
@@ -154,7 +154,7 @@ export default function GamesPortal() {
         {/* Launch lineup — the games shipping to mainnet on one unified stack */}
         <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>Launch lineup</h2>
         <p style={{ fontSize: 11, color: "#555570", marginBottom: 16 }}>
-          One stack: Orchestrator + Contention Markets v2.1 + MagicBlock ER + SOAR. Magic Chess is live; the others are in build.
+          One stack: Arcade contract + Arena (MagicBlock ER) + SOAR. Magic Chess is live; the others are in build.
         </p>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 12, marginBottom: 32 }}>
@@ -177,7 +177,7 @@ export default function GamesPortal() {
                   }}>{game.emoji}</div>
                   <div>
                     <div style={{ fontSize: 16, fontWeight: 700, color: "#e8e8f0" }}>{game.name}</div>
-                    <div style={{ fontSize: 10, color: game.color }}>CM v2.1 + Orchestrator</div>
+                    <div style={{ fontSize: 10, color: game.color }}>Arcade + Arena</div>
                   </div>
                 </div>
                 <p style={{ fontSize: 13, color: "#888", marginBottom: 12, lineHeight: 1.4 }}>
@@ -265,7 +265,7 @@ export default function GamesPortal() {
           display: "flex", justifyContent: "center", gap: 32,
           fontSize: 11, color: "#333",
         }}>
-          <span>CM v2.1 + Orchestrator live on devnet</span>
+          <span>Arcade + Arena live on devnet</span>
           <span>21+ unit tests passing</span>
           <span>Built on <span style={{ color: "#9945FF" }}>Solana</span> + <span style={{ color: "#14F195" }}>MagicBlock</span></span>
         </div>
