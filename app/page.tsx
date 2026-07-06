@@ -284,16 +284,15 @@ export default function Home() {
             </div>
           </a>
 
-          {/* CENTER — Magic Chess */}
-          <a href="/play/magic-chess?mode=arcade" className="cf-card cf-center" aria-label="Play Magic Chess">
+          {/* Magic Chess */}
+          <a href="/play/magic-chess?mode=arcade" className="cf-card cf-right" aria-label="Play Magic Chess">
             <div className="cf-art cf-chess-art">
-              <GameArt src="/games/magic-chess/banner.png" emoji="♟" alt="Magic Chess" big />
+              <GameArt src="/games/magic-chess/banner.png" emoji="♟" alt="Magic Chess" />
               <div className="cf-art-overlay"></div>
-              <span className="cf-badge cf-badge-live">● LIVE 3D</span>
             </div>
             <div className="cf-meta">
               <div className="cf-name">Magic Chess</div>
-              <div className="cf-cta cf-cta-primary">PLAY FREE →</div>
+              <div className="cf-cta">PLAY FREE →</div>
             </div>
           </a>
 
