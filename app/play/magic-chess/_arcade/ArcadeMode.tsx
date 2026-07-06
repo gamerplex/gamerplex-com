@@ -173,8 +173,8 @@ export default function ArcadeMode() {
       setHist(h => [...h, r.alg]); setMc(m => m + 1); setTimer(turnTimeSec);
 
       if (r.go) {
-        setWon(r.win === 1); setPhase("gameover");
-        setStatus(r.win === 1 ? "Checkmate!" : r.win === 2 ? "Checkmate!" : "Stalemate");
+        setWon(r.win === 1 ? true : r.win === 2 ? false : null); setPhase("gameover");
+        setStatus(r.win === 1 || r.win === 2 ? "Checkmate!" : "Stalemate");
         return;
       }
       const bk = r.nb.indexOf(13);
@@ -427,7 +427,7 @@ export default function ArcadeMode() {
           <div style={{ textAlign: "center", maxWidth: 460, padding: 16 }}>
             <div style={{ fontSize: 64, marginBottom: 8 }}>♟️</div>
             <h1 className="magic-chess-title magic-pulse" style={{ fontSize: 38, fontWeight: 700, marginBottom: 8 }}>✨ MAGIC CHESS 🪄</h1>
-            <p className="magic-chess-text" style={{ fontSize: 13, marginBottom: 4 }}>⚡ 5-second blitz vs Stockfish. Free to play. Save your score on Solana.</p>
+            <p className="magic-chess-text" style={{ fontSize: 13, marginBottom: 4 }}>Blitz chess vs AI · free to play</p>
 
             <div style={{ display: "flex", justifyContent: "center", margin: "12px 0 14px" }}>
               <ModeToggle
@@ -491,10 +491,9 @@ export default function ArcadeMode() {
 
             {experience && (
               <div>
-                <p style={{ color: "#888", fontSize: 11, marginBottom: 4 }}>
-                  Bot: {bot?.label} (~{bot?.elo} ELO) · {turnTimeSec}s/turn
+                <p style={{ color: "#888", fontSize: 11, marginBottom: 16 }}>
+                  {bot?.label} · ~{bot?.elo} ELO · {turnTimeSec}s/turn
                 </p>
-                <p style={{ color: "#555", fontSize: 10, marginBottom: 16 }}>Free to play · Optional on-chain save after the game</p>
                 <button onClick={startGame} className="magic-chess-btn" style={{ padding: "16px 48px", borderRadius: 10, fontSize: 18, cursor: "pointer" }}>
                   ✦ START ✦
                 </button>
@@ -599,6 +598,11 @@ export default function ArcadeMode() {
                     {finalScore.toLocaleString()}
                   </div>
                   <div style={{ fontSize: 10, color: "#666" }}>SCORE</div>
+                  {won === true && (
+                    <div style={{ fontSize: 11, color: "#ffd740", marginTop: 8, fontWeight: 600 }}>
+                      🔥 Credits earned — come back tomorrow to keep your streak
+                    </div>
+                  )}
 
                   {/* SAVE TIERS */}
                   <div style={{ marginTop: 16, padding: 12, background: "rgba(153,69,255,0.06)", borderRadius: 8, border: "1px solid rgba(153,69,255,0.2)" }}>
@@ -625,7 +629,7 @@ export default function ArcadeMode() {
                           💾 SAVE SCORE — CONNECT WALLET
                         </button>
                         <div style={{ fontSize: 10, color: "#8a8aa0", textAlign: "center", marginTop: 8, lineHeight: 1.5 }}>
-                          First save free on devnet · GPX5 memo on Solana, permanent
+                          First save free on devnet
                         </div>
                       </>
                     ) : (

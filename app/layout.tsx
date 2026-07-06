@@ -39,8 +39,11 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  // Allow pinch-zoom (was maximumScale:1 / userScalable:false, which snapped
+  // the page back and fought users trying to see the whole chess board).
+  // Accessibility win too — never trap zoom.
+  maximumScale: 5,
+  userScalable: true,
   themeColor: "#0d001a",
 };
 

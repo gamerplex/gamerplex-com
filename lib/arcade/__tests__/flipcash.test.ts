@@ -76,8 +76,8 @@ describe("flipcash: buildFlipcashBuyTokensIx (pure instruction encoding)", () =>
     expect(ix.programId.equals(FLIPCASH_PROGRAM_ID)).toBe(true);
     // 1-byte discriminator + 8 + 8 = 17 bytes
     expect(ix.data.length).toBe(17);
-    expect(ix.data.readBigUInt64LE(1)).toBe(1000n); // in_amount
-    expect(ix.data.readBigUInt64LE(9)).toBe(900n); // min_amount_out
+    expect(ix.data.readBigUInt64LE(1)).toBe(BigInt(1000)); // in_amount
+    expect(ix.data.readBigUInt64LE(9)).toBe(BigInt(900)); // min_amount_out
   });
 
   it("places buyer as the sole signer and marks vaults/ATAs writable", () => {

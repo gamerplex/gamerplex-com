@@ -112,17 +112,18 @@ export function execMove(from: number, to: number, b: number[], epSq: number, ca
   if (tp === 2 && Math.abs((to >> 3) - (from >> 3)) === 2) nep = ((from >> 3) + (to >> 3)) / 2 * 8 + (from & 7);
   if (tp === 2 && ((to >> 3) === (w ? 7 : 0))) nb[to] = w ? 10 : 11;
   const alg = toAlg(from, to, p, b, cap > 0, epSq, cas);
-  const ok = w ? 13 : 12;
-  const oks = nb.indexOf(ok);
+  // Game-over is decided by chess.js on the RESULTING position (opponent to
+  // move) — the single authoritative source. The old hand-rolled king-scan
+  // could report a false checkmate/stalemate whenever loadChess failed to
+  // build the FEN (every getValid returned [] → "no legal moves"), which
+  // surfaced as a spurious "you lost" mid-game. If the position won't load,
+  // we NEVER end the game.
   let go = false, win = 0;
-  if (oks >= 0) {
-    const ic = isAttacked(nb, oks, w);
-    let hl = false;
-    for (let i = 0; i < 64 && !hl; i++) {
-      if (!nb[i] || isW(nb[i]) === w) continue;
-      if (getValid(nb, i, nep, nc).length > 0) hl = true;
-    }
-    if (!hl) { go = true; win = ic ? (w ? 1 : 2) : 0; }
+  const after = loadChess(nb, !w, nc, nep);
+  if (after) {
+    if (after.isCheckmate()) { go = true; win = w ? 1 : 2; } // the mover delivered mate
+    else if (after.isGameOver()) { go = true; win = 0; }     // stalemate / draw / insufficient material
   }
-  return { nb, cap, alg: alg + (go && win ? "#" : ""), nep, nc, go, win };
+  const algMate = go && win && !alg.endsWith("#") ? alg + "#" : alg;
+  return { nb, cap, alg: algMate, nep, nc, go, win };
 }

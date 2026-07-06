@@ -239,11 +239,15 @@ export default function Chess3DBoard({ board, selected, validMoves, lastMove, ch
     scene.fog = new THREE.FogExp2(0x08000f, 0.015);
 
     const camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 1000);
-    if (autoRotate) {
-      camera.position.set(0.5, 11, 12);
-    } else {
-      camera.position.set(0.5, 9, 10);
-    }
+    // Fit the whole 8x8 board on screen. On portrait/narrow phones the
+    // HORIZONTAL field of view is the constraint (aspect < 1), so pull the
+    // camera back by ~1/aspect (clamped) — otherwise the board is cropped and
+    // the start view is "too zoomed in".
+    const aspect0 = container.clientWidth / Math.max(1, container.clientHeight);
+    const fit = aspect0 < 1 ? Math.min(2, 1 / aspect0) : 1;
+    const baseY = autoRotate ? 11 : 9;
+    const baseZ = autoRotate ? 12 : 10;
+    camera.position.set(0.5, baseY * fit, baseZ * fit);
     camera.lookAt(0.5, 0, 0.5);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
