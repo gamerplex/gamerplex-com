@@ -31,7 +31,7 @@ try {
 } catch (e) { check('credits/earn reachable', false, String(e.message || e)); }
 
 // 2. home + a post-verify landing path resolve (email verify must not dead-end).
-for (const path of ['/', '/?verified=1', '/arcade']) {
+for (const path of ['/', '/?verified=1', '/arcade', '/verify-email-error?reason=already_used']) {
   try {
     const res = await fetchT(`${BASE}${path}`, { redirect: 'manual' });
     check(`${path} resolves`, res.status < 404, `HTTP ${res.status}`);
