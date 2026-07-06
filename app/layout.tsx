@@ -62,18 +62,6 @@ export default function RootLayout({
       <body style={{ backgroundColor: '#0d001a', margin: 0, padding: 0 }}>
         <PostHogProvider>
         <ReferralCapture />
-        {/* Top banner — hackathon voting */}
-        <div style={{
-          background: "linear-gradient(90deg, #9945FF, #14F195)",
-          color: "#050508", padding: "8px 16px",
-          fontSize: 12, fontWeight: 700, textAlign: "center",
-          display: "flex", justifyContent: "center", alignItems: "center", gap: 12, flexWrap: "wrap",
-        }}>
-          <span>🚀 Help us get to Mainnet! Vote for Gamerplex at</span>
-          <a href="https://colosseum.com/frontier" target="_blank" rel="noopener noreferrer" style={{
-            color: "#050508", textDecoration: "underline", fontWeight: 800,
-          }}>Frontier →</a>
-        </div>
         {children}
         <script
           dangerouslySetInnerHTML={{

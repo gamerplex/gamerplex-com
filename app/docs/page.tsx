@@ -395,8 +395,8 @@ Pet Legends: GPX1|pla|BEzD...|GYYw...|w|12|8|15|atk,blk,spc,atk,...`}</CodeBlock
               Your <strong>Solana wallet IS your player identity</strong>. No email, no password, no account recovery.
             </P>
             <P>
-              For the hackathon, wallets show as truncated addresses (like <code>BEzD...2rtA</code>).
-              Post-hackathon we&apos;ll integrate <strong style={{color:"#e0b3ff"}}>Solana Name Service (SNS)</strong> —
+              Wallets show as truncated addresses (like <code>BEzD...2rtA</code>).
+              We&apos;ll integrate <strong style={{color:"#e0b3ff"}}>Solana Name Service (SNS)</strong> —
               register <code>yourname.sol</code> and appear on leaderboards as your chosen name.
             </P>
             <P>SNS gives you:</P>
