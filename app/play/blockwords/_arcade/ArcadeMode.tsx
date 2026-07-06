@@ -10,7 +10,7 @@ import {
 } from "@solana/wallet-adapter-react";
 import { WalletMultiButton, useWalletModal } from "@solana/wallet-adapter-react-ui";
 import ModeToggle from "../../../../components/games/ModeToggle";
-import { ArcadeLeaderboard } from "../../../arcade/_components/ArcadeLeaderboard";
+import ShellLeaderboard from "../../../../components/arcade/ShellLeaderboard";
 import {
   makeProgram,
   buildOpenProfileIx,
@@ -64,11 +64,24 @@ const TICK_MS = 100;
 const FLIP_DURATION_MS = 600;
 const SHAKE_DURATION_MS = 500;
 
-const TILE_GREEN = "#14F195";
-const TILE_YELLOW = "#ffd24a";
-const TILE_GREY = "#3a3a4a";
+// Gamerplex-branded 3-state visual language — deliberately distinct expression
+// from the green/yellow/grey flat-tile trade dress. State is carried by BOTH a
+// brand color (purple = exact, cyan = present, slate = absent) AND a non-color
+// glyph badge (◆ / ◇ / ·), so the tiles read clearly and remain colorblind-safe.
+// Colors are frontend-only and do NOT touch resolver verification.
+const TILE_EXACT = "#9945FF"; // right letter, right spot (Gamerplex purple)
+const TILE_PRESENT = "#22d3ee"; // right letter, wrong spot (brand cyan)
+const TILE_ABSENT = "#242433"; // not in the word (deep slate)
 const TILE_DEFAULT = "#1a1a28";
 const TILE_BORDER_DEFAULT = "#2a2a3a";
+
+// Non-color state cue: a glyph badge shown in each graded tile's corner. Lets
+// state be perceived without relying on hue (accessibility + distinct look).
+const STATE_GLYPH: Record<number, string> = {
+  [LetterState.GREEN]: "◆", // exact  — solid diamond (locked in place)
+  [LetterState.YELLOW]: "◇", // present — hollow diamond (somewhere else)
+  [LetterState.GREY]: "·", // absent  — dot
+};
 
 function generateSeed(): Uint8Array {
   const s = new Uint8Array(32);
@@ -326,6 +339,11 @@ export default function ArcadeMode() {
       r.endedAt = Date.now();
       // Web2 Credits earn on a solved win (fire-and-forget; capped + idempotent server-side, CREDITS only — never $GAME).
       void earnCredits("game_win", `blockwords:win:${r.startedAt}`);
+      // Arcade Shell: free web2 leaderboard save — no wallet, just the email session.
+      void fetch("/api/scores/submit", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ gameId: "blockwords", score: computeScore(r.solved, r.guesses.length, secondsUsed(r)), refId: `blockwords:${r.startedAt}`, durationSec: secondsUsed(r) }),
+      }).catch(() => {});
       if (r.mode === "daily") {
         const { streak } = recordDailyWin();
         setStreakInfo({ lastPlayedYmd: todayYmd(), streak, playedToday: true });
@@ -439,6 +457,11 @@ export default function ArcadeMode() {
       setProfileExists(true);
       track("score_save_succeeded", { game: "blockwords", mode: r.mode, sig, score, sink_type: "save", token: paymentToken.symbol, amount: SCORE_COMMIT_MICRO_USD / 1e6 });
       void submitReplay(sig, moveLogBytes).catch(() => {});
+      // Arcade Shell: stitch the on-chain tx onto the web2 leaderboard row → ✓ Verified.
+      void fetch("/api/scores/verify", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ gameId: "blockwords", refId: `blockwords:${r.startedAt}`, txSig: sig }),
+      }).catch(() => {});
     } catch (e: any) {
       console.error("save on-chain failed:", e);
       setOnchainError(e?.message || "Save failed");
@@ -799,20 +822,16 @@ export default function ArcadeMode() {
               <span style={{ marginLeft: "auto", fontSize: 10, color: "#5a5a70" }}>more</span>
             </summary>
             <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid #1a1a28", lineHeight: 1.6 }}>
-              After each guess, tiles flip:
-              <span style={{ color: TILE_GREEN, fontWeight: 700 }}> green</span> = right letter, right spot ·{" "}
-              <span style={{ color: TILE_YELLOW, fontWeight: 700 }}>yellow</span> = right letter, wrong spot ·{" "}
-              <span style={{ color: "#9a9aaf", fontWeight: 700 }}>grey</span> = not in the word. Beat the 90s timer for a bonus.
+              After each guess, tiles flip and show a badge:
+              <span style={{ color: TILE_EXACT, fontWeight: 700 }}> ◆ exact</span> = right letter, right spot ·{" "}
+              <span style={{ color: TILE_PRESENT, fontWeight: 700 }}>◇ present</span> = right letter, wrong spot ·{" "}
+              <span style={{ color: "#9a9aaf", fontWeight: 700 }}>· absent</span> = not in the word. The badge means you never have to rely on color alone. Beat the 90s timer for a bonus.
             </div>
           </details>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <ArcadeLeaderboard
-            gameSlug="blockwords"
-            limit={10}
-            highlightWallet={publicKey?.toBase58() ?? null}
-          />
+          <ShellLeaderboard gameId="blockwords" />
 
           {/* 2026: collapse verbose info panels into a single expandable */}
           <details style={{ background: "#0c0c14", border: "1px solid #252540", borderRadius: 12, padding: "12px 16px" }}>
@@ -1098,12 +1117,17 @@ function GuessGrid({
               let bg = TILE_DEFAULT;
               let borderColor = filled ? "#5a5a70" : TILE_BORDER_DEFAULT;
               let color = "#e8e8f0";
+              let glyph = "";
+              let stateLabel = "";
               if (grade === LetterState.GREEN) {
-                bg = TILE_GREEN; borderColor = TILE_GREEN; color = "#0a1810";
+                bg = `linear-gradient(135deg, ${TILE_EXACT}, #7a2fe0)`; borderColor = TILE_EXACT; color = "#fff";
+                glyph = STATE_GLYPH[LetterState.GREEN]; stateLabel = "exact";
               } else if (grade === LetterState.YELLOW) {
-                bg = TILE_YELLOW; borderColor = TILE_YELLOW; color = "#221a05";
+                bg = "rgba(34,211,238,0.14)"; borderColor = TILE_PRESENT; color = "#c4f6ff";
+                glyph = STATE_GLYPH[LetterState.YELLOW]; stateLabel = "present";
               } else if (grade === LetterState.GREY) {
-                bg = TILE_GREY; borderColor = TILE_GREY; color = "#cfcfdc";
+                bg = TILE_ABSENT; borderColor = "#33334a"; color = "#7a7a90";
+                glyph = STATE_GLYPH[LetterState.GREY]; stateLabel = "absent";
               }
 
               const animation = r.flipNow && grade !== undefined
@@ -1114,10 +1138,11 @@ function GuessGrid({
                 <div
                   key={i}
                   style={{
+                    position: "relative",
                     aspectRatio: "1 / 1",
                     background: bg,
                     border: `2px solid ${borderColor}`,
-                    borderRadius: 6,
+                    borderRadius: 12,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -1128,12 +1153,30 @@ function GuessGrid({
                     letterSpacing: 0,
                     textTransform: "uppercase",
                     animation,
+                    boxShadow: grade === LetterState.GREEN ? `0 0 14px ${TILE_EXACT}66` : "none",
                     transition: !r.flipNow ? "background 80ms, border-color 80ms" : "none",
                     transformStyle: "preserve-3d",
                   }}
-                  aria-label={filled ? `letter ${ch}` : "empty"}
+                  aria-label={filled ? (stateLabel ? `letter ${ch}, ${stateLabel}` : `letter ${ch}`) : "empty"}
                 >
                   {filled ? ch : ""}
+                  {glyph && (
+                    <span
+                      aria-hidden
+                      style={{
+                        position: "absolute",
+                        top: 3,
+                        right: 5,
+                        fontSize: "min(2.6vw, 11px)",
+                        lineHeight: 1,
+                        opacity: 0.85,
+                        color: grade === LetterState.GREY ? "#6a6a80" : color,
+                        fontFamily: "sans-serif",
+                      }}
+                    >
+                      {glyph}
+                    </span>
+                  )}
                 </div>
               );
             })}
@@ -1164,12 +1207,16 @@ function Keyboard({
     let bg = "#1a1a28";
     let color = "#e8e8f0";
     let border = "1px solid #2a2a3a";
+    let glyph = "";
     if (state === LetterState.GREEN) {
-      bg = TILE_GREEN; color = "#0a1810"; border = `1px solid ${TILE_GREEN}`;
+      bg = `linear-gradient(135deg, ${TILE_EXACT}, #7a2fe0)`; color = "#fff"; border = `1px solid ${TILE_EXACT}`;
+      glyph = STATE_GLYPH[LetterState.GREEN];
     } else if (state === LetterState.YELLOW) {
-      bg = TILE_YELLOW; color = "#221a05"; border = `1px solid ${TILE_YELLOW}`;
+      bg = "rgba(34,211,238,0.16)"; color = "#c4f6ff"; border = `1px solid ${TILE_PRESENT}`;
+      glyph = STATE_GLYPH[LetterState.YELLOW];
     } else if (state === LetterState.GREY) {
-      bg = TILE_GREY; color = "#cfcfdc"; border = `1px solid ${TILE_GREY}`;
+      bg = TILE_ABSENT; color = "#6a6a80"; border = "1px solid #33334a";
+      glyph = STATE_GLYPH[LetterState.GREY];
     }
     return (
       <button
@@ -1177,6 +1224,7 @@ function Keyboard({
         onClick={onClick}
         disabled={disabled}
         style={{
+          position: "relative",
           flex: opts?.wide ? "1.6" : "1",
           minWidth: 28,
           height: 44,
@@ -1184,7 +1232,7 @@ function Keyboard({
           background: bg,
           color,
           border,
-          borderRadius: 6,
+          borderRadius: 8,
           fontSize: opts?.wide ? 11 : 14,
           fontWeight: 700,
           fontFamily: "'Space Grotesk', sans-serif",
@@ -1196,6 +1244,14 @@ function Keyboard({
         }}
       >
         {label}
+        {glyph && (
+          <span
+            aria-hidden
+            style={{ position: "absolute", top: 2, right: 3, fontSize: 8, lineHeight: 1, opacity: 0.8, fontFamily: "sans-serif" }}
+          >
+            {glyph}
+          </span>
+        )}
       </button>
     );
   };

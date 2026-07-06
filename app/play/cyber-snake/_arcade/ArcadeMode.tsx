@@ -49,7 +49,7 @@ import { EconomyConsentModal, hasEconomyConsent } from "../../../../lib/arcade/e
 import { earnCredits } from "../../../../lib/identity/client";
 import ContinueWithCredits from "../../../../components/arcade/ContinueWithCredits";
 import ReferrerBanner from "../../../../components/arcade/ReferrerBanner";
-import { ArcadeLeaderboard } from "../../../arcade/_components/ArcadeLeaderboard";
+import ShellLeaderboard from "../../../../components/arcade/ShellLeaderboard";
 
 const EXPLORER_SUFFIX = ARCADE_NETWORK === "mainnet" ? "" : `?cluster=${ARCADE_NETWORK}`;
 
@@ -523,6 +523,11 @@ export default function CyberSnakeSolo() {
       setProfileExists(true);
       track("score_save_succeeded", { game: "cyber-snake", sig, score: g.score, sink_type: "save", token: paymentToken.symbol, amount: SCORE_COMMIT_MICRO_USD / 1e6 });
       void submitReplay(sig, moveLogBytes).catch(() => {});
+      // Arcade Shell: stitch the on-chain tx onto the web2 leaderboard row → ✓ Verified.
+      void fetch("/api/scores/verify", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ gameId: "cyber-snake", refId: `snake:${g.startedAt}`, txSig: sig }),
+      }).catch(() => {});
     } catch (e: any) {
       console.error("save on-chain failed:", e);
       setOnchainError(e?.message || "Save failed");
@@ -804,6 +809,11 @@ export default function CyberSnakeSolo() {
         setBoard(top);
         // Web2 Credits earn on run completion (fire-and-forget; capped + idempotent server-side, CREDITS only — never $GAME).
         void earnCredits("game_win", `snake:win:${g.startedAt}`);
+        // Arcade Shell: free web2 leaderboard save — no wallet, just the email session.
+        void fetch("/api/scores/submit", {
+          method: "POST", headers: { "content-type": "application/json" },
+          body: JSON.stringify({ gameId: "cyber-snake", score: g.score, refId: `snake:${g.startedAt}`, durationSec: duration }),
+        }).catch(() => {});
       }
       savedRef.current = true;
     }
@@ -1432,11 +1442,7 @@ export default function CyberSnakeSolo() {
             )}
           </div>}
 
-          <ArcadeLeaderboard
-            gameSlug="cyber-snake"
-            limit={10}
-            highlightWallet={publicKey?.toBase58() ?? null}
-          />
+          <ShellLeaderboard gameId="cyber-snake" />
 
           <details style={{ background: "#0c0c14", border: "1px solid #252540", borderRadius: 12, padding: "12px 16px" }}>
             <summary style={{ cursor: "pointer", fontSize: 11, fontWeight: 800, color: "#14F195", letterSpacing: 2, textTransform: "uppercase", listStyle: "none", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
