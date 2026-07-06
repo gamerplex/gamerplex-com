@@ -225,7 +225,6 @@ export default function Home() {
       <nav className="top-nav">
         <div style={{display:"flex",alignItems:"center",gap:10}}>
           <a href="/" className="nav-logo" style={{textDecoration:"none"}}>GAMERPLEX</a>
-          <span className="devnet-badge">Devnet</span>
         </div>
         <div className="nav-links">
           <a href="#featured">Play</a>
@@ -243,7 +242,7 @@ export default function Home() {
         <div className="hero-bg" aria-hidden="true" />
         <div className="hero-content">
           <h1 className="hero-title">GAMERPLEX</h1>
-          <p className="hero-sub">Build · Play · Own · Compete · Onchain Forever</p>
+          <p className="hero-sub">Build · Play · Own · Compete</p>
 
           <div className="cta-row" style={{marginBottom:14,marginTop:18}}>
             <a href="#featured" className="btn-primary" style={{textDecoration:"none",display:"inline-flex",alignItems:"center",gap:8}}>
@@ -329,7 +328,7 @@ export default function Home() {
             empty state otherwise. */}
         <section className="arena-section pa-live">
           <div className="arena-header">
-            <h2><span className="live-dot" /> Live on Solana</h2>
+            <h2><span className="live-dot" /> Live Now</h2>
           </div>
           <div style={{padding:"0 20px"}}>
             <div className="live-board-frame">

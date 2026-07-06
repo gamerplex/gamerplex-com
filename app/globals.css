@@ -1351,6 +1351,9 @@ html, body {
   display: inline-block;
 }
 .devnet-badge {
+  /* Hidden app-wide ahead of mainnet — web2-first, no chain jargon surfaced.
+     Re-enable (or swap to a "Mainnet"/network badge) by removing this line. */
+  display: none !important;
   font-size: 9px;
   font-weight: 700;
   padding: 2px 6px;
