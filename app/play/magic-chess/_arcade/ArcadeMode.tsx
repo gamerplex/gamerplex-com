@@ -30,7 +30,7 @@ import ReferrerBanner from "../../../../components/arcade/ReferrerBanner";
 import { buildSaveScorePaymentIxs } from "../../../../lib/arcade/save-score-payment";
 import { PAYMENT_TOKENS, type PaymentTokenDef } from "../../../../lib/arcade/tokens";
 import PaymentMethodPicker from "../../../../components/arcade/PaymentMethodPicker";
-import { ArcadeLeaderboard } from "../../../arcade/_components/ArcadeLeaderboard";
+import ShellLeaderboard from "../../../../components/arcade/ShellLeaderboard";
 import "../_shared/magic.css";
 
 const Chess3DBoard = dynamic(() => import("../_shared/Chess3DBoard"), { ssr: false });
@@ -234,6 +234,23 @@ export default function ArcadeMode() {
     return computeScore(bot.elo, won === true, mc, dur, turnTimeSec);
   }, [bot, won, mc, startedAt, phase, turnTimeSec]);
 
+  // Arcade Shell: free web2 leaderboard save on every game-over — no wallet,
+  // just the email session. The on-chain save later stitches its tx onto this row.
+  const savedWeb2Ref = useRef(false);
+  useEffect(() => {
+    if (phase !== "gameover") { savedWeb2Ref.current = false; return; }
+    if (savedWeb2Ref.current || !bot) return;
+    savedWeb2Ref.current = true;
+    void fetch("/api/scores/submit", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        gameId: "magic-chess", score: finalScore, refId: `chess:${startedAt}`,
+        variant: `${bot.id}|${turnTimeSec}`,
+        durationSec: Math.max(1, Math.floor((Date.now() - startedAt) / 1000)),
+      }),
+    }).catch(() => {});
+  }, [phase, finalScore, startedAt, bot, turnTimeSec]);
+
   // v1.4: default to USDC. Token picker UI ships in the next commit.
   const [paymentToken, setPaymentToken] = useState<PaymentTokenDef>(
     PAYMENT_TOKENS.find((t) => t.symbol === "USDC") ?? PAYMENT_TOKENS[0]
@@ -294,6 +311,11 @@ export default function ArcadeMode() {
       const sig = await program.provider.sendAndConfirm!(tx, [], { skipPreflight: false });
       setLastSaveSig(sig); setSavedThisRun(true); setProfileExists(true);
       track("score_save_succeeded", { game: "magic-chess", bot: bot.id, sig, score: finalScore, sink_type: "save", token: paymentToken.symbol, amount: SCORE_COMMIT_MICRO_USD / 1e6 });
+      // Arcade Shell: stitch the on-chain tx onto the web2 leaderboard row → ✓ Verified.
+      void fetch("/api/scores/verify", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ gameId: "magic-chess", refId: `chess:${startedAt}`, txSig: sig }),
+      }).catch(() => {});
       void submitReplay(sig, moveLogBytes).catch(() => {});
     } catch (e: any) {
       console.error("save failed:", e);
@@ -669,12 +691,11 @@ export default function ArcadeMode() {
                     </button>
                   </div>
 
-                  {/* Embedded leaderboard */}
-                  {savedThisRun && (
-                    <div style={{ marginTop: 14, textAlign: "left" }}>
-                      <ArcadeLeaderboard gameSlug="chess-puzzles" highlightWallet={publicKey?.toBase58()} />
-                    </div>
-                  )}
+                  {/* Web2 leaderboard — free, always shown (Arcade Shell). Scores
+                      that were saved on-chain carry the ✓ Verified tx column. */}
+                  <div style={{ marginTop: 14 }}>
+                    <ShellLeaderboard gameId="magic-chess" />
+                  </div>
                 </div>
               </div>
             )}
