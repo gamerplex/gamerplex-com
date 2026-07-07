@@ -14,7 +14,7 @@ import {
   useConnection,
   useWallet,
 } from "@solana/wallet-adapter-react";
-import { WalletMultiButton, useWalletModal } from "@solana/wallet-adapter-react-ui";
+import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import {
   makeProgram,
   buildOpenProfileIx,
@@ -46,7 +46,11 @@ import { getStoredReferrer } from "../../../../lib/arcade/referral";
 import { submitReplay } from "@gamerplex/sdk/arcade";
 import { track, identifyWallet } from "../../../../lib/analytics";
 import { EconomyConsentModal, hasEconomyConsent } from "../../../../lib/arcade/economy-gate";
-import { earnCredits } from "../../../../lib/identity/client";
+import { earnCredits, getIdentity, getCredits, type IdentityUser } from "../../../../lib/identity/client";
+import EmailLoginModal from "../../../../components/arcade/EmailLoginModal";
+import GoPlusModal from "../../../../components/arcade/GoPlusModal";
+import CommunityLinks from "../../../../components/CommunityLinks";
+import { prefersReducedMotion } from "../../../../lib/arcade/juice";
 import ContinueWithCredits from "../../../../components/arcade/ContinueWithCredits";
 import ReferrerBanner from "../../../../components/arcade/ReferrerBanner";
 import ShellLeaderboard from "../../../../components/arcade/ShellLeaderboard";
@@ -382,6 +386,40 @@ export default function CyberSnakeSolo() {
   const [verifiedThisRun, setVerifiedThisRun] = useState(false);
   const [ownedThisRun, setOwnedThisRun] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
+
+  // Web2 identity (email-first). Wallet is separate + only powers the optional on-chain save.
+  const [me, setMe] = useState<IdentityUser | null>(null);
+  const meRef = useRef<IdentityUser | null>(null);
+  const [credits, setCredits] = useState<number | null>(null);
+  const [showLogin, setShowLogin] = useState(false);
+  const [showPlus, setShowPlus] = useState(false);
+  const refreshIdentity = useCallback(async () => {
+    const u = await getIdentity();
+    setMe(u);
+    meRef.current = u;
+    if (u) {
+      const c = await getCredits();
+      setCredits(c?.perApp.find((a) => a.app === "gamerplex")?.balance ?? c?.total ?? 0);
+    } else {
+      setCredits(null);
+    }
+    return u;
+  }, []);
+  useEffect(() => {
+    void (async () => {
+      const u = await refreshIdentity();
+      // Magic-link round-trip: play → email → tap link → land back signed in → save the stashed score.
+      if (u && typeof window !== "undefined") {
+        const pend = window.localStorage.getItem("snake_pending_score");
+        if (pend) {
+          try {
+            await fetch("/api/scores/submit", { method: "POST", headers: { "content-type": "application/json" }, body: pend });
+          } catch {}
+          window.localStorage.removeItem("snake_pending_score");
+        }
+      }
+    })();
+  }, [refreshIdentity]);
 
   useEffect(() => {
     if (!publicKey) {
@@ -775,6 +813,7 @@ export default function CyberSnakeSolo() {
 
   const haptic = useCallback((ms: number) => {
     if (typeof navigator === "undefined") return;
+    if (prefersReducedMotion()) return;
     const v: ((p: number) => boolean) | undefined = (navigator as any).vibrate?.bind(navigator);
     if (v) v(ms);
   }, []);
@@ -817,10 +856,15 @@ export default function CyberSnakeSolo() {
         // Web2 Credits earn on run completion (fire-and-forget; capped + idempotent server-side, CREDITS only — never $GAME).
         void earnCredits("game_win", `snake:win:${g.startedAt}`);
         // Arcade Shell: free web2 leaderboard save — no wallet, just the email session.
+        const payload = JSON.stringify({ gameId: "cyber-snake", score: g.score, refId: `snake:${g.startedAt}`, durationSec: duration });
         void fetch("/api/scores/submit", {
           method: "POST", headers: { "content-type": "application/json" },
-          body: JSON.stringify({ gameId: "cyber-snake", score: g.score, refId: `snake:${g.startedAt}`, durationSec: duration }),
+          body: payload,
         }).catch(() => {});
+        // If signed out, stash it so it saves the moment they tap their email sign-in link.
+        if (!meRef.current && typeof window !== "undefined") {
+          window.localStorage.setItem("snake_pending_score", payload);
+        }
       }
       savedRef.current = true;
     }
@@ -849,20 +893,27 @@ export default function CyberSnakeSolo() {
           <a href="https://x.com/gamerplex_com" target="_blank" rel="noopener noreferrer" aria-label="Follow @gamerplex_com on X" title="@gamerplex_com" style={{ display: "inline-flex", alignItems: "center", color: "#e8e8f0" }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
           </a>
-          <WalletMultiButton
-            style={{
-              background: "rgba(153,69,255,0.12)",
-              color: "#e8e8f0",
-              fontSize: 11,
-              height: 32,
-              padding: "0 12px",
-              borderRadius: 99,
-              border: "1px solid rgba(153,69,255,0.4)",
-              fontWeight: 700,
-            }}
-          />
+          {/* Identity chip — play-first: signed-out shows a subtle Sign in; the real conversion is the game-over save. */}
+          {me ? (
+            <a
+              href="/profile"
+              style={{ display: "inline-flex", alignItems: "center", gap: 8, height: 32, padding: "0 12px", borderRadius: 99, border: "1px solid rgba(153,69,255,0.4)", background: "rgba(153,69,255,0.12)", color: "#e8e8f0", fontSize: 12, fontWeight: 700, textDecoration: "none" }}
+            >
+              <span style={{ maxWidth: 90, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{me.handle || me.email?.split("@")[0] || "you"}</span>
+              {credits != null && <span style={{ color: "#14F195", fontWeight: 800 }}>⚡{credits}</span>}
+            </a>
+          ) : (
+            <button
+              onClick={() => { setShowLogin(true); track("login_prompt", { game: "cyber-snake", source: "nav" }); }}
+              style={{ height: 32, padding: "0 16px", borderRadius: 99, border: "1px solid rgba(153,69,255,0.4)", background: "rgba(153,69,255,0.10)", color: "#e8e8f0", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+            >
+              Sign in
+            </button>
+          )}
         </div>
       </nav>
+
+      <EmailLoginModal open={showLogin} onClose={() => { setShowLogin(false); void refreshIdentity(); }} />
 
       <div className="arcade-layout" style={{ maxWidth: 1400, margin: "0 auto", padding: inRun ? "8px 12px 12px" : "16px 16px 24px", gap: 16, ...(inRun ? { flex: 1, minHeight: 0, display: "flex", flexDirection: "column", width: "100%", maxWidth: 680 } : {}) }}>
         <div style={inRun ? { flex: 1, minHeight: 0, display: "flex", flexDirection: "column" } : undefined}>
@@ -1176,36 +1227,18 @@ export default function CyberSnakeSolo() {
                   <ContinueWithCredits item="continue" game="snake" onSuccess={continueRun} />
                 </div>
 
-                {connected ? (
-                  <>
-                    {!savedThisRun && (
-                      <div style={{ width: "100%", maxWidth: 420, marginBottom: 4 }}>
-                        <PaymentMethodPicker
-                          value={paymentToken}
-                          onChange={setPaymentToken}
-                          basePriceMicroUsd={new BN(SCORE_COMMIT_MICRO_USD)}
-                        />
-                      </div>
-                    )}
-                    <ProgressiveUpgradeStack
-                      busy={busy}
-                      profileExists={profileExists}
-                      savedThisRun={savedThisRun}
-                      verifiedThisRun={verifiedThisRun}
-                      ownedThisRun={ownedThisRun}
-                      showAdvanced={showAdvanced}
-                      setShowAdvanced={setShowAdvanced}
-                      onSave={onSaveOnChain}
-                      onVerify={onVerifyRun}
-                      onMintReceipt={onMintReceipt}
-                      onWrapCnft={() => setOnchainError("T4 cNFT wrap ships in v1.3 — Metaplex Bubblegum integration pending.")}
-                      onRestart={startNewGame}
-                    />
-                  </>
+                {/* WEB2-FIRST save — primary path. No wallet: just the email session. */}
+                {me ? (
+                  <div style={{ width: "100%", maxWidth: 380, textAlign: "center", marginBottom: 4 }}>
+                    <div style={{ fontSize: 16, color: "#14F195", fontWeight: 900 }}>✓ Score saved!</div>
+                    <div style={{ fontSize: 13, color: "#a8a8c0", marginTop: 4, lineHeight: 1.5 }}>
+                      Come back to climb the board{credits != null ? ` · ⚡ ${credits} Credits` : ""}
+                    </div>
+                  </div>
                 ) : (
-                  <div className="snake-end-actions" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, marginTop: 4, width: "100%", maxWidth: 420 }}>
+                  <div style={{ width: "100%", maxWidth: 360 }}>
                     <button
-                      onClick={() => setWalletModalVisible(true)}
+                      onClick={() => { setShowLogin(true); track("login_prompt", { game: "cyber-snake", source: "gameover" }); }}
                       className="snake-end-save"
                       style={{
                         background: "linear-gradient(90deg, #9945FF, #14F195)",
@@ -1220,22 +1253,74 @@ export default function CyberSnakeSolo() {
                         fontFamily: "inherit",
                         boxShadow: "0 0 32px rgba(20,241,149,0.55), 0 0 64px rgba(153,69,255,0.35)",
                         width: "100%",
-                        maxWidth: 360,
                       }}
                     >
-                      💾 SAVE SCORE — CONNECT WALLET
+                      💾 Save my score
                     </button>
-                    <div style={{ fontSize: 11, color: "#8a8aa0", textAlign: "center", lineHeight: 1.5 }}>
-                      First save free on devnet · GPX5 memo on Solana, permanent
-                    </div>
-                    <div className="snake-end-secondary" style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center", marginTop: 4 }}>
-                      <button onClick={startNewGame} style={{ ...btnSecondary, minHeight: 40 }}>↻ Try Again</button>
-                      <a href="/arcade" style={{ ...btnSecondary, textDecoration: "none", display: "inline-flex", alignItems: "center", minHeight: 40 }}>
-                        ← Back
-                      </a>
+                    <div style={{ fontSize: 12, color: "#8a8aa0", textAlign: "center", marginTop: 8, lineHeight: 1.4 }}>
+                      Free · just your email · keep your spot 🏆
                     </div>
                   </div>
                 )}
+
+                <div className="snake-end-secondary" style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center", marginTop: 12 }}>
+                  <button onClick={startNewGame} style={{ ...btnSecondary, minHeight: 40 }}>↻ Try Again</button>
+                  <a href="/arcade" style={{ ...btnSecondary, textDecoration: "none", display: "inline-flex", alignItems: "center", minHeight: 40 }}>
+                    ← Back
+                  </a>
+                </div>
+
+                {/* Gamerplex Plus fake-door — subtle WTP money-test. */}
+                <button
+                  onClick={() => { setShowPlus(true); track("plus_opened", { source: "gameover", game: "cyber-snake" }); }}
+                  style={{ marginTop: 12, background: "none", border: "none", cursor: "pointer", fontSize: 12.5, fontWeight: 800, color: "#c8bfe6" }}
+                >
+                  ✦ Go Plus — more play, no ads
+                </button>
+                <GoPlusModal open={showPlus} onClose={() => setShowPlus(false)} source="gameover" />
+
+                {/* OPTIONAL on-chain "✓ Verified" save — advanced/secondary. Wallet only ever appears here. */}
+                <details style={{ width: "100%", maxWidth: 420, marginTop: 16 }}>
+                  <summary style={{ cursor: "pointer", fontSize: 12, color: "#8a8aa0", fontWeight: 700, textAlign: "center", listStyle: "none" }}>
+                    🔒 Save on-chain forever — ✓ Verified ($0.05) ▾
+                  </summary>
+                  <div style={{ marginTop: 12 }}>
+                    {connected ? (
+                      <>
+                        {!savedThisRun && (
+                          <div style={{ width: "100%", marginBottom: 8 }}>
+                            <PaymentMethodPicker
+                              value={paymentToken}
+                              onChange={setPaymentToken}
+                              basePriceMicroUsd={new BN(SCORE_COMMIT_MICRO_USD)}
+                            />
+                          </div>
+                        )}
+                        <ProgressiveUpgradeStack
+                          busy={busy}
+                          profileExists={profileExists}
+                          savedThisRun={savedThisRun}
+                          verifiedThisRun={verifiedThisRun}
+                          ownedThisRun={ownedThisRun}
+                          showAdvanced={showAdvanced}
+                          setShowAdvanced={setShowAdvanced}
+                          onSave={onSaveOnChain}
+                          onVerify={onVerifyRun}
+                          onMintReceipt={onMintReceipt}
+                          onWrapCnft={() => setOnchainError("T4 cNFT wrap ships in v1.3 — Metaplex Bubblegum integration pending.")}
+                          onRestart={startNewGame}
+                        />
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => setWalletModalVisible(true)}
+                        style={{ width: "100%", height: 48, border: "1px solid rgba(153,69,255,0.5)", borderRadius: 12, background: "rgba(153,69,255,0.12)", color: "#e8e8f0", fontSize: 14, fontWeight: 800, cursor: "pointer" }}
+                      >
+                        Connect wallet to save on-chain
+                      </button>
+                    )}
+                  </div>
+                </details>
 
                 {onchainError && (
                   <div style={{ fontSize: 11, color: "#ff5252", maxWidth: 420, textAlign: "center", marginTop: 4 }}>
@@ -1267,6 +1352,15 @@ export default function CyberSnakeSolo() {
                     score={g.score}
                   />
                 )}
+
+                {/* Leaderboard lives INSIDE the game-over (Blockwords pattern; below-page one hidden in-run). */}
+                <div style={{ width: "100%", maxWidth: 460, marginTop: 20 }}>
+                  <ShellLeaderboard gameId="cyber-snake" />
+                </div>
+
+                <div style={{ marginTop: 18 }}>
+                  <CommunityLinks tone="dark" />
+                </div>
               </div>
             )}
           </div>

@@ -9,12 +9,32 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import ShellLeaderboard from "../../../components/arcade/ShellLeaderboard";
+import CommunityLinks from "../../../components/CommunityLinks";
+import EmailLoginModal from "../../../components/arcade/EmailLoginModal";
+import { getIdentity, getCredits, type IdentityUser } from "../../../lib/identity/client";
 
 const FLIPBALL_ORIGIN = "https://flipball.gamerplex.com";
 
 export default function FlipballShell() {
   const [saved, setSaved] = useState<null | "saving" | "saved" | "signed_out">(null);
   const lastRun = useRef<string | null>(null);
+
+  // Web2 identity (email-first) — sign-in is a shell modal here, not just the /?login=1
+  // redirect; the actual score save still happens inside the iframed flipball app.
+  const [me, setMe] = useState<IdentityUser | null>(null);
+  const [credits, setCredits] = useState<number | null>(null);
+  const [showLogin, setShowLogin] = useState(false);
+  const refreshIdentity = async () => {
+    const u = await getIdentity();
+    setMe(u);
+    if (u) {
+      const c = await getCredits();
+      setCredits(c?.perApp.find((a) => a.app === "gamerplex")?.balance ?? c?.total ?? 0);
+    } else {
+      setCredits(null);
+    }
+  };
+  useEffect(() => { void refreshIdentity(); }, []);
 
   useEffect(() => {
     const onMsg = (e: MessageEvent) => {
@@ -44,13 +64,29 @@ export default function FlipballShell() {
       <nav style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "10px clamp(12px, 4vw, 20px)", borderBottom: "1px solid rgba(153,69,255,0.2)", background: "rgba(13,0,26,0.85)", backdropFilter: "blur(12px)", boxSizing: "border-box" }}>
         <Link href="/" style={{ fontWeight: 900, letterSpacing: 1, color: "#e8e8f0", textDecoration: "none" }}>GAMERPLEX</Link>
         <span style={{ fontWeight: 800, color: "#b388ff", letterSpacing: 2 }}>FLIPBALL</span>
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <a href="https://x.com/gamerplex_com" target="_blank" rel="noopener noreferrer" aria-label="Follow @gamerplex_com on X" title="@gamerplex_com" style={{ display: "inline-flex", alignItems: "center", color: "#b0b0c8" }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
-          </a>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <CommunityLinks compact />
+          {me ? (
+            <a
+              href="/profile"
+              style={{ display: "inline-flex", alignItems: "center", gap: 8, height: 32, padding: "0 12px", borderRadius: 99, border: "1px solid rgba(153,69,255,0.4)", background: "rgba(153,69,255,0.12)", color: "#e8e8f0", fontSize: 12, fontWeight: 700, textDecoration: "none" }}
+            >
+              <span style={{ maxWidth: 90, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{me.handle || me.email?.split("@")[0] || "you"}</span>
+              {credits != null && <span style={{ color: "#14F195", fontWeight: 800 }}>⚡{credits}</span>}
+            </a>
+          ) : (
+            <button
+              onClick={() => setShowLogin(true)}
+              style={{ height: 32, padding: "0 16px", borderRadius: 99, border: "1px solid rgba(153,69,255,0.4)", background: "rgba(153,69,255,0.10)", color: "#e8e8f0", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+            >
+              Sign in
+            </button>
+          )}
           <Link href="/#featured" style={{ fontSize: 12, color: "#b0b0c8", textDecoration: "none" }}>← Arcade</Link>
         </div>
       </nav>
+
+      <EmailLoginModal open={showLogin} onClose={() => { setShowLogin(false); void refreshIdentity(); }} />
 
       {/* THE FOLD — the game fills the viewport below the fixed nav (one comfortable
           screen tall). The leaderboard flows just below it (reached by a short scroll). */}
