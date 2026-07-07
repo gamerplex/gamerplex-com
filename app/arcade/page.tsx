@@ -47,8 +47,7 @@ const ARCADE_GAMES = [
     tagline: "WebGPU on-rails space flight. Blast through the gates, shoot what's in your way, beat the clock.",
     emoji: "◇",
     color: "#7fd7ff",
-    status: "playable",
-    controls: "arrows · WASD steer · space fire · shift boost",
+    status: "building",
   },
   {
     id: "hexman",

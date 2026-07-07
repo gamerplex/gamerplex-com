@@ -16,7 +16,6 @@ const GAMES = [
   { id: "magic-chess", label: "Magic Chess", emoji: "♟️", color: "#c99aff" },
   { id: "blockwords", label: "Blockwords", emoji: "📝", color: "#ffd24a" },
   { id: "flipball", label: "Flipball", emoji: "🎯", color: "#ff5edb" },
-  { id: "time-gate", label: "Time Gate", emoji: "◇", color: "#7fd7ff" },
 ];
 
 export default function LeaderboardPage() {
