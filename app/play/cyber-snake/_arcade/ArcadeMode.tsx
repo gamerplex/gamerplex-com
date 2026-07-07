@@ -691,11 +691,18 @@ export default function CyberSnakeSolo() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       let nextDir: number | null = null;
+      // In the 3D chase-cams (TPS/FPV) the camera follows the snake's heading, so
+      // Left/Right must turn RELATIVE to where it's facing (turn left / turn right),
+      // not to absolute compass points — otherwise "left" while heading south reads
+      // as a right turn on screen. Top/2D views keep intuitive absolute directions.
+      // dir encoding is clockwise N=0,E=1,S=2,W=3 → +1 = turn right, +3 = turn left.
+      const g = gameRef.current;
+      const chase = view === "tps-p1" || view === "fpv-p1";
       switch (e.key) {
-        case "ArrowUp": case "w": case "W": nextDir = DIR_N; break;
-        case "ArrowRight": case "d": case "D": nextDir = DIR_E; break;
-        case "ArrowDown": case "s": case "S": nextDir = DIR_S; break;
-        case "ArrowLeft": case "a": case "A": nextDir = DIR_W; break;
+        case "ArrowUp": case "w": case "W": nextDir = chase && g ? g.dir : DIR_N; break;
+        case "ArrowRight": case "d": case "D": nextDir = chase && g ? (g.dir + 1) % 4 : DIR_E; break;
+        case "ArrowDown": case "s": case "S": nextDir = chase ? null : DIR_S; break;
+        case "ArrowLeft": case "a": case "A": nextDir = chase && g ? (g.dir + 3) % 4 : DIR_W; break;
         case "v": case "V": {
           const order: SnakeCamera[] = ["top", "tps-p1", "fpv-p1", "2d-top"];
           const idx = order.indexOf(view);
