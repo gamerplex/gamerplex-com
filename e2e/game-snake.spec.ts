@@ -1,50 +1,63 @@
 import { test, expect } from '@playwright/test';
 
-// CORE-LOOP E2E for Cyber Snake (solo arcade).
-// Proves the game actually plays: ready screen with a Start control → starting
-// mounts the live board (score HUD appears) → an arrow key steers the snake and
-// the game keeps ticking without crashing.
+// FULL-PLAYTHROUGH E2E for Cyber Snake (solo arcade).
+// Proves the game plays AND reaches game-over + the save-score screen: ready
+// screen → start → live board (score HUD) → drive the snake into a wall so it
+// CRASHES → the crash overlay ("● Game Over") + the shared Arcade-Shell
+// "🏆 Leaderboard" (the save-score screen) are visible.
 //
-// The board is a WebGL/Canvas scene; we assert on the score HUD (real DOM, shown
-// only while status === "active") rather than pixel state. We use the 2D view to
-// avoid GPU flakiness, and assert on state transitions + no-crash, not exact score.
+// Deterministic crash: the snake spawns at row GRID/2 (16) moving EAST, near the
+// left edge. Turning NORTH (ArrowUp) is a legal, non-reversing turn; it then
+// advances one row north per tick (TICK_MS=140) until it walks off the top wall
+// (~16 ticks ≈ 2.3s) → stepDir() returns null → status "crashed". No food is
+// eaten on this straight vertical path, so the crash is reliable and headless.
+//
+// The board is a WebGL/Canvas scene; we assert on real DOM (score HUD while
+// active, crash overlay + leaderboard after) rather than pixel state, and use the
+// 2D view to avoid GPU flakiness.
 
-test('cyber snake: start → board goes live → arrow key steers without crashing', async ({ page }) => {
+test('cyber snake: start → crash into wall → game-over + leaderboard save screen', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
 
   await page.goto('/play/cyber-snake');
 
-  // 2) READY screen with a Start control.
+  // 1) READY screen with a Start control.
   const startBtn = page.getByRole('button', { name: /Start Game/i });
   await expect(startBtn).toBeVisible({ timeout: 15_000 });
 
   // Switch to the 2D view first (deterministic, no WebGL) — button label "▦ 2D".
-  await page.getByRole('button', { name: /2D/i }).first().click();
+  // Non-essential to the crash (which is DOM/state-driven), so force past the
+  // pulsing-nav pointer-intercept and don't fail the run if the toggle is racy.
+  await page.getByRole('button', { name: /▦ 2D/ }).first().click({ force: true }).catch(() => {});
 
-  // 3) Starting transitions into play. The Start button pulses (never "stable"),
+  // 2) Starting transitions into play. The Start button pulses (never "stable"),
   // so force past Playwright's stability wait.
   await startBtn.click({ force: true });
 
   // Live board: the score HUD renders only while the run is active.
-  // The HUD shows "score", "len", and "tick" — all only while status === "active".
-  await expect(page.getByText(/score/i).first()).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText(/len \d+/i)).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText(/len \d+/i)).toBeVisible({ timeout: 15_000 });
 
-  // 4) Basic interaction: steer with an arrow key. The snake starts moving east,
-  // so turn it up (a legal, non-reversing turn). The game must keep ticking.
-  const tickText = () => page.getByText(/tick \d+/i).innerText();
-  const readTick = async () => Number((await tickText()).match(/tick (\d+)/i)?.[1] ?? -1);
-
+  // 3) Drive NORTH into the top wall. One ArrowUp turns the snake north; the
+  // fixed-interval loop then walks it into the wall. We keep nudging ArrowUp (a
+  // no-op once already heading north) to be robust to input timing.
   await page.locator('body').press('ArrowUp');
-  const before = await readTick();
-  // Let the fixed-interval loop advance several frames (TICK_MS = 140).
-  await page.waitForTimeout(800);
-  const after = await readTick();
 
-  // Game responded and kept running: the tick counter advanced, no crash. We assert
-  // the loop progressed (state transition) rather than any exact score.
-  expect(after, `snake loop did not advance (before=${before} after=${after})`).toBeGreaterThan(before);
+  // 4) Wait for the crash overlay. It replaces the live HUD with a "● Game Over"
+  // (or "● Starved") eyebrow. Poll ArrowUp a few times in case the very first key
+  // landed between ticks; the wall crash is inevitable on a northward heading.
+  const crashEyebrow = page.getByText(/Game Over|Starved/i).first();
+  await expect(async () => {
+    await page.locator('body').press('ArrowUp');
+    await expect(crashEyebrow).toBeVisible({ timeout: 1_500 });
+  }).toPass({ timeout: 15_000 });
+
+  // 5) SAVE-SCORE SCREEN: crash overlay shows the "Your score" panel, and the
+  // shared Arcade-Shell web2 leaderboard (heading "🏆 Leaderboard" + "Verified
+  // only" filter) is present — that IS the save-score screen.
+  await expect(page.getByText(/Your score/i).first()).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText('🏆 Leaderboard')).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText('Verified only')).toBeVisible();
 
   expect(errors, `snake page threw: ${errors.join(' | ')}`).toHaveLength(0);
 });

@@ -15,6 +15,9 @@ describe("leaderboard/profile: shortAddr", () => {
   it("leaves short strings untouched", () => {
     expect(shortAddrLb("abcd")).toBe("abcd");
     expect(shortAddrLb("12345678")).toBe("12345678"); // boundary: length 8
+    // profile.ts has its own copy — exercise its short-string branch too.
+    expect(shortAddrProfile("abcd")).toBe("abcd");
+    expect(shortAddrProfile("12345678")).toBe("12345678");
   });
 });
 

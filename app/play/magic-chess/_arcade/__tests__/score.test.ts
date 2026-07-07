@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
 import {
   ARCADE_BOTS,
   botById,
@@ -94,9 +94,30 @@ describe("chess: encodeMoveLogV2 (5 bytes/move with delta_sec)", () => {
 });
 
 describe("chess: generateSeed", () => {
-  it("returns 32 fresh bytes (non all-zero in practice)", () => {
+  afterEach(() => {
+    delete (globalThis as any).window;
+    vi.restoreAllMocks();
+  });
+
+  it("uses window.crypto.getRandomValues when available (browser path)", () => {
+    const getRandomValues = vi.fn((arr: Uint8Array) => {
+      for (let i = 0; i < arr.length; i++) arr[i] = (i + 1) & 0xff;
+      return arr;
+    });
+    (globalThis as any).window = { crypto: { getRandomValues } };
     const s = generateSeed();
+    expect(getRandomValues).toHaveBeenCalledTimes(1);
     expect(s.length).toBe(32);
-    expect(s.some((b) => b !== 0)).toBe(true);
+    expect([...s.slice(0, 3)]).toEqual([1, 2, 3]);
+  });
+
+  it("falls back to Math.random when window is undefined (SSR/node path)", () => {
+    // no window installed
+    const rnd = vi.spyOn(Math, "random").mockReturnValue(0.5);
+    const s = generateSeed();
+    expect(rnd).toHaveBeenCalled();
+    expect(s.length).toBe(32);
+    // 0.5 * 256 = 128 for every byte
+    expect(s.every((b) => b === 128)).toBe(true);
   });
 });

@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import {
+  pickReferrerFromUrl,
   getStoredReferrer,
   getStoredReferrerInfo,
   clearReferrer,
@@ -98,5 +99,138 @@ describe("referral: SSR safety (no window)", () => {
     expect(getStoredReferrer().equals(PublicKey.default)).toBe(true);
     expect(getStoredReferrerInfo()).toBeNull();
     expect(() => clearReferrer()).not.toThrow();
+  });
+
+  it("pickReferrerFromUrl is a no-op under SSR (no window)", async () => {
+    delete (globalThis as any).window;
+    await expect(pickReferrerFromUrl()).resolves.toBeUndefined();
+  });
+});
+
+describe("referral: pickReferrerFromUrl", () => {
+  function installWindowWithSearch(search: string) {
+    const store = new Map<string, string>();
+    (globalThis as any).window = {
+      sessionStorage: {
+        getItem: (k: string) => (store.has(k) ? store.get(k)! : null),
+        setItem: (k: string, v: string) => void store.set(k, v),
+        removeItem: (k: string) => void store.delete(k),
+      },
+      location: { search },
+    };
+    return store;
+  }
+
+  afterEach(() => {
+    delete (globalThis as any).window;
+    delete (globalThis as any).fetch;
+    vi.restoreAllMocks();
+  });
+
+  it("does nothing when no referrer/ref param is present", async () => {
+    const store = installWindowWithSearch("?foo=bar");
+    await pickReferrerFromUrl();
+    expect(store.get(SS_KEY)).toBeUndefined();
+  });
+
+  it("rejects an invalid pubkey hint (no store write)", async () => {
+    const store = installWindowWithSearch("?ref=not-a-pubkey");
+    await pickReferrerFromUrl();
+    expect(store.get(SS_KEY)).toBeUndefined();
+  });
+
+  it("rejects a self-referral when hint === connected wallet", async () => {
+    const store = installWindowWithSearch(`?ref=${referrer.toBase58()}`);
+    await pickReferrerFromUrl(referrer);
+    expect(store.get(SS_KEY)).toBeUndefined();
+  });
+
+  it("stores a bare url-hint referrer when no sig is present", async () => {
+    const store = installWindowWithSearch(`?referrer=${referrer.toBase58()}`);
+    await pickReferrerFromUrl(other);
+    const saved = JSON.parse(store.get(SS_KEY)!);
+    expect(saved.pubkey).toBe(referrer.toBase58());
+    expect(saved.source).toBe("url-hint");
+  });
+
+  it("upgrades to on-chain-verified when sig resolves to the same pubkey", async () => {
+    const store = installWindowWithSearch(
+      `?ref=${referrer.toBase58()}&sig=${"s".repeat(64)}`,
+    );
+    (globalThis as any).fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ ok: true, player: referrer.toBase58() }),
+    });
+    await pickReferrerFromUrl();
+    const saved = JSON.parse(store.get(SS_KEY)!);
+    expect(saved.pubkey).toBe(referrer.toBase58());
+    expect(saved.source).toBe("url-hint-verified-onchain");
+  });
+
+  it("on-chain truth wins when the resolved pubkey mismatches the hint", async () => {
+    const store = installWindowWithSearch(
+      `?ref=${referrer.toBase58()}&sig=${"s".repeat(64)}`,
+    );
+    (globalThis as any).fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ ok: true, player: other.toBase58() }),
+    });
+    await pickReferrerFromUrl();
+    const saved = JSON.parse(store.get(SS_KEY)!);
+    expect(saved.pubkey).toBe(other.toBase58()); // resolved, not the hint
+    expect(saved.source).toBe("url-hint-verified-onchain");
+  });
+
+  it("falls back to the hint when the sig is present but does not resolve", async () => {
+    const store = installWindowWithSearch(
+      `?ref=${referrer.toBase58()}&sig=${"s".repeat(64)}`,
+    );
+    (globalThis as any).fetch = vi.fn().mockResolvedValue({ ok: false });
+    await pickReferrerFromUrl();
+    const saved = JSON.parse(store.get(SS_KEY)!);
+    expect(saved.pubkey).toBe(referrer.toBase58());
+    expect(saved.source).toBe("url-hint"); // unverified fallback
+  });
+
+  it("skips resolution for a too-short sig (guard) and stores the hint", async () => {
+    const store = installWindowWithSearch(`?ref=${referrer.toBase58()}&sig=short`);
+    const fetchMock = vi.fn();
+    (globalThis as any).fetch = fetchMock;
+    await pickReferrerFromUrl();
+    expect(fetchMock).not.toHaveBeenCalled(); // length<32 short-circuits before fetch
+    expect(JSON.parse(store.get(SS_KEY)!).source).toBe("url-hint");
+  });
+
+  it("treats a resolver fetch exception as unresolved (fallback to hint)", async () => {
+    const store = installWindowWithSearch(
+      `?ref=${referrer.toBase58()}&sig=${"s".repeat(64)}`,
+    );
+    (globalThis as any).fetch = vi.fn().mockRejectedValue(new Error("network"));
+    await pickReferrerFromUrl();
+    expect(JSON.parse(store.get(SS_KEY)!).source).toBe("url-hint");
+  });
+
+  it("treats a resolver payload with ok:false as unresolved", async () => {
+    const store = installWindowWithSearch(
+      `?ref=${referrer.toBase58()}&sig=${"s".repeat(64)}`,
+    );
+    (globalThis as any).fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ ok: false }),
+    });
+    await pickReferrerFromUrl();
+    expect(JSON.parse(store.get(SS_KEY)!).source).toBe("url-hint");
+  });
+
+  it("swallows exceptions thrown mid-flow (e.g. sessionStorage.setItem throws)", async () => {
+    (globalThis as any).window = {
+      sessionStorage: {
+        getItem: () => null,
+        setItem: () => { throw new Error("quota"); },
+        removeItem: () => {},
+      },
+      location: { search: `?ref=${referrer.toBase58()}` },
+    };
+    await expect(pickReferrerFromUrl(other)).resolves.toBeUndefined();
   });
 });

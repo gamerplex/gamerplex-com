@@ -21,7 +21,8 @@ for (const vp of [
     page.on('pageerror', (e) => errors.push(e.message));
 
     await page.goto('/play/magic-chess?mode=arcade');
-    // start flow (matches game-chess.spec.ts): pick a fast bullet bot, START
+    // start flow (matches game-chess.spec.ts): dismiss the StartPagePicker, then bot/speed, START
+    await page.locator('[data-mode="casual"]').first().click().catch(() => {});
     await page.locator('button', { hasText: 'Bullet' }).first().click().catch(() => {});
     await page.locator('button', { hasText: 'ELO 600' }).first().click().catch(() => {});
     await page.locator('button', { hasText: /START/ }).first().click();

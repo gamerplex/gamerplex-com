@@ -1,5 +1,15 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import { createHmac } from 'crypto';
 import { mintPlayToken, verifyPlayToken, redeemOnce } from '../play-token';
+
+// Mirror the module's private signer so we can forge a validly-signed token
+// whose PAYLOAD is deliberately not valid JSON (to hit the parse-catch path).
+function b64url(buf: Buffer): string {
+  return buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function sign(payloadB64: string, key: string): string {
+  return b64url(createHmac('sha256', key).update(payloadB64).digest());
+}
 
 const UID = 'user-1';
 const GID = 3;
@@ -53,6 +63,14 @@ describe('play-token (RA-I / award-play proof-of-play)', () => {
   it('rejects malformed tokens without throwing', () => {
     expect(verifyPlayToken('not-a-token', UID, GID, T0).reason).toBe('malformed');
     expect(verifyPlayToken(undefined, UID, GID, T0).reason).toBe('malformed');
+  });
+
+  it('rejects a validly-signed token whose payload is not valid JSON (parse catch)', () => {
+    // Signature check passes (correct HMAC), but the payload decodes to a
+    // non-JSON string, so JSON.parse throws and we fall into the catch.
+    const badPayload = b64url(Buffer.from('this-is-not-json'));
+    const token = `${badPayload}.${sign(badPayload, 'test-secret')}`;
+    expect(verifyPlayToken(token, UID, GID, T0 + 16_000).reason).toBe('malformed');
   });
 
   it('single-use: redeemOnce blocks replay of the same jti', () => {

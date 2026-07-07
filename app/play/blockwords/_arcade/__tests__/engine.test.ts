@@ -141,6 +141,18 @@ describe("blockwords: guess-log encode/decode", () => {
     expect(() => encodeGuessLogV2(["CAT"], [1])).toThrow();
   });
 
+  it("v1 substitutes 'A' (65) for non-A-Z characters in a guess", () => {
+    // digits survive toUpperCase() and hit the non-letter fallback branch.
+    const buf = encodeGuessLog(["12345"]);
+    expect([...buf]).toEqual([65, 65, 65, 65, 65]);
+  });
+
+  it("v2 substitutes 'A' (65) for non-A-Z characters and keeps the delta byte", () => {
+    const buf = encodeGuessLogV2(["1a-3!"], [9]);
+    // '1'->65, 'a'->'A'=65, '-'->65, '3'->65, '!'->65, then delta 9
+    expect([...buf]).toEqual([65, 65, 65, 65, 65, 9]);
+  });
+
   it("decode substitutes 'A' for non-A-Z bytes", () => {
     const raw = new Uint8Array([65, 66, 67, 68, 69]); // ABCDE, valid -> passes through
     expect(decodeGuessLog(raw)).toEqual(["ABCDE"]);
