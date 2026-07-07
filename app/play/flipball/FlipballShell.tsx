@@ -39,8 +39,9 @@ export default function FlipballShell() {
   }, []);
 
   return (
-    <div style={{ minHeight: "100vh", background: "#0d001a", color: "#e8e8f0", fontFamily: "'Space Grotesk', system-ui, sans-serif", display: "flex", flexDirection: "column" }}>
-      <nav style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "10px clamp(12px, 4vw, 20px)", borderBottom: "1px solid rgba(153,69,255,0.2)" }}>
+    <div style={{ minHeight: "100dvh", background: "#0d001a", color: "#e8e8f0", fontFamily: "'Space Grotesk', system-ui, sans-serif", display: "flex", flexDirection: "column", overflowX: "hidden", paddingTop: "calc(56px + env(safe-area-inset-top))", boxSizing: "border-box" }}>
+      {/* Fixed nav — consistent with the other arcade games (.top-nav is position:fixed). */}
+      <nav style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "10px clamp(12px, 4vw, 20px)", borderBottom: "1px solid rgba(153,69,255,0.2)", background: "rgba(13,0,26,0.85)", backdropFilter: "blur(12px)", boxSizing: "border-box" }}>
         <Link href="/" style={{ fontWeight: 900, letterSpacing: 1, color: "#e8e8f0", textDecoration: "none" }}>GAMERPLEX</Link>
         <span style={{ fontWeight: 800, color: "#b388ff", letterSpacing: 2 }}>FLIPBALL</span>
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
@@ -51,30 +52,29 @@ export default function FlipballShell() {
         </div>
       </nav>
 
-      <div style={{ flex: 1, display: "flex", flexWrap: "wrap", gap: 16, padding: "clamp(12px, 3vw, 20px)", alignItems: "flex-start", justifyContent: "center" }}>
-        {/* The game — flexible, keeps a play-friendly aspect on all sizes */}
-        <div style={{ flex: "1 1 340px", maxWidth: 640, width: "100%" }}>
-          <div style={{ position: "relative", width: "100%", aspectRatio: "3 / 4", borderRadius: 14, overflow: "hidden", border: "1px solid rgba(153,69,255,0.3)", background: "#000" }}>
-            <iframe
-              src={FLIPBALL_ORIGIN}
-              title="Flipball"
-              allow="autoplay; fullscreen"
-              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none" }}
-            />
+      {/* THE FOLD — the game fills the viewport below the fixed nav (one comfortable
+          screen tall). The leaderboard flows just below it (reached by a short scroll). */}
+      <div style={{ height: "calc(100dvh - 56px - env(safe-area-inset-top))", minHeight: 420, display: "flex", flexDirection: "column", padding: "10px clamp(12px, 3vw, 20px)", boxSizing: "border-box" }}>
+        <div style={{ flex: 1, minHeight: 0, position: "relative", maxWidth: 640, width: "100%", margin: "0 auto", borderRadius: 14, overflow: "hidden", border: "1px solid rgba(153,69,255,0.3)", background: "#000" }}>
+          <iframe
+            src={FLIPBALL_ORIGIN}
+            title="Flipball"
+            allow="autoplay; fullscreen"
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none" }}
+          />
+        </div>
+        {saved && (
+          <div style={{ marginTop: 8, textAlign: "center", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
+            {saved === "saving" && <span style={{ color: "#888" }}>Saving to leaderboard…</span>}
+            {saved === "saved" && <span style={{ color: "#14F195" }}>✓ Saved to leaderboard · 🔥 come back tomorrow to keep your streak</span>}
+            {saved === "signed_out" && <a href="/?login=1" style={{ color: "#000", background: "linear-gradient(90deg,#9945FF,#14F195)", padding: "8px 14px", borderRadius: 8, textDecoration: "none" }}>Sign in to save your score & rank →</a>}
           </div>
-          {saved && (
-            <div style={{ marginTop: 8, textAlign: "center", fontSize: 12, fontWeight: 700 }}>
-              {saved === "saving" && <span style={{ color: "#888" }}>Saving to leaderboard…</span>}
-              {saved === "saved" && <span style={{ color: "#14F195" }}>✓ Saved to leaderboard · 🔥 come back tomorrow to keep your streak</span>}
-              {saved === "signed_out" && <a href="/?login=1" style={{ color: "#000", background: "linear-gradient(90deg,#9945FF,#14F195)", padding: "8px 14px", borderRadius: 8, textDecoration: "none" }}>Sign in to save your score & rank →</a>}
-            </div>
-          )}
-        </div>
+        )}
+      </div>
 
-        {/* The shared leaderboard — beside on desktop, below on mobile */}
-        <div style={{ flex: "1 1 300px", maxWidth: 560, width: "100%" }}>
-          <ShellLeaderboard gameId="flipball" />
-        </div>
+      {/* The shared leaderboard — below the fold, full-width, no vw sizing. */}
+      <div style={{ maxWidth: 640, width: "100%", margin: "0 auto", padding: "8px clamp(12px, 3vw, 20px) calc(24px + env(safe-area-inset-bottom))", boxSizing: "border-box" }}>
+        <ShellLeaderboard gameId="flipball" />
       </div>
     </div>
   );

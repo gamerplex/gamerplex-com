@@ -413,10 +413,15 @@ export default function ArcadeMode() {
   const cols = "abcdefgh";
   const tm = Math.floor(timer / 60), ts = (timer % 60).toString().padStart(2, "0");
 
+  // In a run at all (playing OR game-over): the board frame fills the fold below the
+  // fixed nav and the page neither scrolls horizontally nor vertically (blockwords
+  // pattern). Only the idle "ready" screen is the tall, normally-scrolling page.
+  const inRun = phase === "playing" || phase === "gameover";
+
   return (
-    <div style={{ minHeight: "100vh", background: "#050508", color: "#e8e8f0", fontFamily: "'Space Grotesk', sans-serif" }}>
-      {/* 2026 minimalist top nav — matches home page */}
-      <nav className="top-nav" style={{ padding: "12px 16px" }}>
+    <div style={{ minHeight: "100vh", background: "#050508", color: "#e8e8f0", fontFamily: "'Space Grotesk', sans-serif", ...(inRun ? { height: "100dvh", minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column", paddingTop: "calc(64px + env(safe-area-inset-top))", boxSizing: "border-box" } : {}) }}>
+      {/* 2026 minimalist top nav — matches home page (position:fixed) */}
+      <nav className="top-nav" style={{ padding: "12px 16px", flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <Link href="/" className="nav-logo" style={{ textDecoration: "none" }}>GAMERPLEX</Link>
           <span className="devnet-badge">Devnet</span>
@@ -533,7 +538,7 @@ export default function ArcadeMode() {
 
       {/* PLAYING / GAMEOVER */}
       {(phase === "playing" || phase === "gameover") && (
-        <div style={{ position: "relative", height: "calc(100vh - 56px)", overflow: "hidden" }}>
+        <div style={{ position: "relative", flex: 1, minHeight: 0, overflow: "hidden" }}>
           {viewMode === "3d" && (
             <div style={{ position: "absolute", inset: 0, zIndex: 0 }}>
               <Chess3DBoard board={board} selected={sel} validMoves={valid} lastMove={last} check={check} phase={phase} onClick={click} />
@@ -611,10 +616,11 @@ export default function ArcadeMode() {
               </div>
             )}
 
-            {/* GAME OVER overlay */}
+            {/* GAME OVER overlay — fills the fold and scrolls internally so tall
+                content (save tiers + leaderboard) never pushes the page to scroll. */}
             {phase === "gameover" && (
-              <div style={{ pointerEvents: "auto", display: "flex", justifyContent: "center", padding: 12 }}>
-                <div className="magic-chess-panel" style={{ borderRadius: 12, padding: 20, maxWidth: 460, width: "100%", textAlign: "center" }}>
+              <div style={{ pointerEvents: "auto", flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", padding: 12, paddingBottom: "calc(12px + env(safe-area-inset-bottom))" }}>
+                <div className="magic-chess-panel" style={{ borderRadius: 12, padding: 20, maxWidth: 460, width: "100%", textAlign: "center", flexShrink: 0 }}>
                   <div className="magic-chess-title" style={{ fontSize: 32, fontWeight: 700 }}>
                     {won ? "✨ CHECKMATE ✨" : won === false ? "⚫ DEFEATED ⚫" : "🤝 STALEMATE"}
                   </div>

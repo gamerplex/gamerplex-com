@@ -828,11 +828,15 @@ export default function CyberSnakeSolo() {
 
   const g = gameRef.current;
   const sceneState = g ? toSceneState(g) : null;
+  // In a run at all (active OR game-over): the board fills the fold below the fixed
+  // nav and the below-board panels are hidden — so both play and game-over are
+  // self-contained full-screen states with no page scroll (Blockwords pattern).
+  const inRun = !!g;
 
   return (
-    <div style={{ minHeight: "100vh", background: "#050508", color: "#e8e8f0", fontFamily: "'Space Grotesk', sans-serif" }}>
+    <div style={{ minHeight: "100vh", background: "#050508", color: "#e8e8f0", fontFamily: "'Space Grotesk', sans-serif", ...(inRun ? { height: "100dvh", minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column", paddingTop: "calc(64px + env(safe-area-inset-top))", boxSizing: "border-box" } : {}) }}>
       {/* 2026 minimalist top nav — matches home page */}
-      <nav className="top-nav" style={{ padding: "14px 24px" }}>
+      <nav className="top-nav" style={{ padding: "14px 24px", flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <a href="/" className="nav-logo" style={{ textDecoration: "none" }}>GAMERPLEX</a>
           <span className="devnet-badge">Devnet</span>
@@ -860,10 +864,10 @@ export default function CyberSnakeSolo() {
         </div>
       </nav>
 
-      <div className="arcade-layout" style={{ maxWidth: 1400, margin: "0 auto", padding: "16px 16px 24px", gap: 16 }}>
-        <div>
+      <div className="arcade-layout" style={{ maxWidth: 1400, margin: "0 auto", padding: inRun ? "8px 12px 12px" : "16px 16px 24px", gap: 16, ...(inRun ? { flex: 1, minHeight: 0, display: "flex", flexDirection: "column", width: "100%", maxWidth: 680 } : {}) }}>
+        <div style={inRun ? { flex: 1, minHeight: 0, display: "flex", flexDirection: "column" } : undefined}>
           {/* 2026: camera toggles hidden on mobile (3D views useless on small screens) — also tightens above-fold */}
-          <div className="arcade-toolbar" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
+          <div className="arcade-toolbar" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 10, flexWrap: "wrap", flexShrink: 0 }}>
             <div className="arcade-cam-toggle" style={{ display: "inline-flex", padding: 3, background: "#0c0c14", border: "1px solid #252540", borderRadius: 10, flexWrap: "wrap" }}>
               {([
                 { key: "top",    label: "🗺️ TV" },
@@ -934,7 +938,7 @@ export default function CyberSnakeSolo() {
               </button>
             </div>
           </div>
-          <div ref={boardRef} className="arcade-board" style={{ position: "relative", width: "100%", borderRadius: 16, overflow: "hidden", border: "1px solid #252540", background: "#020614", touchAction: "none" }}>
+          <div ref={boardRef} className={`arcade-board${inRun ? " arcade-board-inrun" : ""}`} style={{ position: "relative", width: "100%", borderRadius: 16, overflow: "hidden", border: "1px solid #252540", background: "#020614", touchAction: "none", ...(inRun ? { flex: 1, minHeight: 0 } : {}) }}>
             {sceneState ? (
               view === "2d-top" ? (
                 <CyberSnake2DScene state={sceneState} />
@@ -1140,7 +1144,7 @@ export default function CyberSnakeSolo() {
             )}
 
             {g && g.status === "crashed" && (
-              <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at center, rgba(13,0,26,0.7), rgba(5,5,20,0.96))", backdropFilter: "blur(6px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, padding: 20 }}>
+              <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at center, rgba(13,0,26,0.7), rgba(5,5,20,0.96))", backdropFilter: "blur(6px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", gap: 8, padding: "20px 20px calc(20px + env(safe-area-inset-bottom))", overflowY: "auto" }}>
                 {/* 2026: status eyebrow (tiny), score (hero), then action */}
                 {g.ticksSinceLastFood >= FOOD_STARVATION_TICKS ? (
                   <div style={{ fontSize: 11, fontWeight: 800, color: "#ff9a40", letterSpacing: 3, textTransform: "uppercase" }}>● Starved</div>
@@ -1290,6 +1294,14 @@ export default function CyberSnakeSolo() {
             @media (max-width: 600px) {
               .arcade-board { height: 52vh; min-height: 280px; max-height: 420px; }
             }
+            /* In-run: the board fills the fold below the fixed nav (flex:1 inline) —
+               override the fixed heights so it never overflows or page-scrolls. */
+            .arcade-board-inrun,
+            .arcade-board-inrun.arcade-board {
+              height: auto;
+              min-height: 0;
+              max-height: none;
+            }
 
             .arcade-layout {
               display: grid;
@@ -1390,7 +1402,9 @@ export default function CyberSnakeSolo() {
               animation: viewToast 900ms ease-out forwards;
             }
           `}</style>
-          {/* 2026 minimalist controls — single line, expandable details */}
+          {/* 2026 minimalist controls — single line, expandable details. Hidden in-run
+              so the board owns the fold (no page scroll during play / game-over). */}
+          {inRun ? null : (
           <details style={{ marginTop: 12, padding: "10px 14px", background: "#0c0c14", border: "1px solid #252540", borderRadius: 10, fontSize: 11, color: "#8a8aa0" }}>
             <summary style={{ cursor: "pointer", listStyle: "none", display: "flex", alignItems: "center", gap: 6, userSelect: "none" }}>
               <span style={{ color: "#4fc3f7", fontWeight: 700 }}>Controls</span>
@@ -1401,8 +1415,10 @@ export default function CyberSnakeSolo() {
               <strong style={{ color: "#ff9a40" }}>Hunger:</strong> eat within 30s or snake starves · <strong style={{ color: "#ff9a40" }}>Moves:</strong> max 130 direction changes per session
             </div>
           </details>
+          )}
         </div>
 
+        {inRun ? null : (
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {/* 2026: hide entirely when empty — no fake empty-state cards */}
           {board.length > 0 && <div style={{ background: "#0c0c14", border: "1px solid #252540", borderRadius: 12, padding: "18px 20px" }}>
@@ -1469,6 +1485,7 @@ export default function CyberSnakeSolo() {
             </div>
           </details>
         </div>
+        )}
       </div>
 
       {showEconomyGate && (
@@ -1580,7 +1597,8 @@ function ProgressiveUpgradeStack(p: StackProps) {
               cursor: primaryConfig.disabled ? "not-allowed" : "pointer",
               fontFamily: "'Space Grotesk', sans-serif",
               letterSpacing: 0.3,
-              minWidth: 380,
+              width: "100%",
+              maxWidth: 380,
               opacity: primaryConfig.busy ? 0.7 : 1,
             }}
           >
