@@ -43,7 +43,12 @@ export default function FlipballShell() {
       <nav style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "10px clamp(12px, 4vw, 20px)", borderBottom: "1px solid rgba(153,69,255,0.2)" }}>
         <Link href="/" style={{ fontWeight: 900, letterSpacing: 1, color: "#e8e8f0", textDecoration: "none" }}>GAMERPLEX</Link>
         <span style={{ fontWeight: 800, color: "#b388ff", letterSpacing: 2 }}>FLIPBALL</span>
-        <Link href="/#featured" style={{ fontSize: 12, color: "#b0b0c8", textDecoration: "none" }}>← Arcade</Link>
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <a href="https://x.com/gamerplex_com" target="_blank" rel="noopener noreferrer" aria-label="Follow @gamerplex_com on X" title="@gamerplex_com" style={{ display: "inline-flex", alignItems: "center", color: "#b0b0c8" }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
+          </a>
+          <Link href="/#featured" style={{ fontSize: 12, color: "#b0b0c8", textDecoration: "none" }}>← Arcade</Link>
+        </div>
       </nav>
 
       <div style={{ flex: 1, display: "flex", flexWrap: "wrap", gap: 16, padding: "clamp(12px, 3vw, 20px)", alignItems: "flex-start", justifyContent: "center" }}>
