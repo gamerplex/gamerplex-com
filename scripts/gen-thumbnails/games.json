@@ -25,6 +25,12 @@
       "accent": "magenta and cyan"
     },
     {
+      "id": "time-gate",
+      "out": "time-gate/banner.png",
+      "subject": "a sleek arrowhead starfighter banking hard through a single glowing circular wormhole gate, the ring bending the starfield into a tight spiral vortex behind it, faint concentric spacetime ripples and particle-track light-trails curling off the ship's wings",
+      "accent": "electric cosmic blue and white-hot cyan"
+    },
+    {
       "id": "sledgit-pika",
       "out": "sledgit/pika-set-quiz.png",
       "subject": "three glossy holographic collectible trading cards fanned out like a hand, clearly card-shaped with rounded corners and blank generic faces, crackling with electric-spark energy, no characters, no text",

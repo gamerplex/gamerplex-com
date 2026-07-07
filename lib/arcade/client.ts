@@ -102,6 +102,10 @@ export const BLOCKWORDS_ARCADE_GAME_ID = 4;
 // FLIPBALL — Astro+Three.js+Rapier pinball. Registered v1.3.
 export const FLIPBALL_GAME_ID = 5;
 export const FLIPBALL_SLUG = "flipball";
+// Time Gate — WebGPU on-rails flight (gates + enemies). game_id=6 is PLG, so 7.
+// Register on-chain at the mainnet ceremony; web2 leaderboard (slug "time-gate")
+// works today.
+export const TIME_GATE_GAME_ID = 7;
 
 // Category codes matching on-chain CATEGORY_*.
 export const CATEGORY = {
