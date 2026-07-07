@@ -41,6 +41,8 @@ import { track, identifyWallet } from "../../../../lib/analytics";
 import { EconomyConsentModal, hasEconomyConsent } from "../../../../lib/arcade/economy-gate";
 import { getIdentity, getCredits, type IdentityUser } from "../../../../lib/identity/client";
 import EmailLoginModal from "../../../../components/arcade/EmailLoginModal";
+import ShareSheet from "../../../../components/arcade/ShareSheet";
+import { sfxRung, sfxInvalid, sfxMilestone, sfxGameOver, haptic, isMuted, setMuted } from "../../../../lib/arcade/juice";
 import { earnCredits } from "../../../../lib/identity/client";
 import ContinueWithCredits from "../../../../components/arcade/ContinueWithCredits";
 import ReferrerBanner from "../../../../components/arcade/ReferrerBanner";
@@ -223,6 +225,19 @@ export default function ArcadeMode() {
   const meRef = useRef<IdentityUser | null>(null);
   const [credits, setCredits] = useState<number | null>(null);
   const [showLogin, setShowLogin] = useState(false);
+  const [muted, setMutedState] = useState(true);
+  useEffect(() => { setMutedState(isMuted()); }, []);
+  const toggleMute = useCallback(() => { const m = !isMuted(); setMuted(m); setMutedState(m); }, []);
+  // Spoiler-free share = the organic growth engine (Wordle model): a challenge
+  // that carries the game link, no referral-code / MLM mechanics. Native share
+  // sheet on mobile, clipboard fallback on desktop.
+  const [showShare, setShowShare] = useState(false);
+  const buildShareText = (run: RunState) => {
+    const rungs = run.ladder.length - 1;
+    const secs = secondsUsed(run);
+    const score = computeScore(run.ladder, secs);
+    return `🪜 Blockwords — I climbed a ${rungs}-rung word ladder for ${score} pts in ${secs}s. Can you climb higher?`;
+  };
   const refreshIdentity = useCallback(async () => {
     const u = await getIdentity();
     setMe(u);
@@ -300,6 +315,8 @@ export default function ArcadeMode() {
     r.endedAt = Date.now();
     const steps = stepsOf(r);
     const score = computeScore(r.ladder, secondsUsed(r));
+    sfxGameOver(steps.length >= WIN_LADDER_STEPS);
+    haptic("gameover");
     if (steps.length >= WIN_LADDER_STEPS) {
       // Web2 Credits earn on a strong ladder (fire-and-forget; capped + idempotent server-side, CREDITS only — never $GAME).
       void earnCredits("game_win", `blockwords:win:${r.startedAt}`);
@@ -356,6 +373,8 @@ export default function ArcadeMode() {
   const reject = useCallback((r: RunState, msg: string) => {
     r.invalidUntil = Date.now() + SHAKE_DURATION_MS;
     r.invalidMsg = msg;
+    sfxInvalid();
+    haptic("invalid");
     setTick((t) => t + 1);
   }, []);
 
@@ -397,6 +416,15 @@ export default function ArcadeMode() {
     r.current = "";
     r.invalidMsg = "";
     r.lastRungIndex = r.ladder.length - 1;
+    // Juice: rising-pitch blip that climbs with the ladder (combo escalation) +
+    // a haptic tick; a milestone flourish at each streak tier.
+    const rungs = r.ladder.length - 1;
+    sfxRung(rungs);
+    haptic("rung");
+    if (rungs === WIN_LADDER_STEPS || (rungs > WIN_LADDER_STEPS && rungs % 5 === 0)) {
+      sfxMilestone();
+      haptic("milestone");
+    }
     setTick((t) => t + 1);
   }, [reject]);
 
@@ -672,6 +700,9 @@ export default function ArcadeMode() {
         </div>
         {/* Identity chip — ALWAYS visible (incl. mobile). Play-first: signed-out shows a subtle Sign in; the real conversion is the game-over save. */}
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <button onClick={toggleMute} aria-label={muted ? "unmute sound" : "mute sound"} title={muted ? "Sound off — tap for sound" : "Sound on"} style={{ height: 32, width: 32, borderRadius: 99, border: "1px solid rgba(153,69,255,0.4)", background: "rgba(153,69,255,0.10)", color: "#e8e8f0", fontSize: 14, cursor: "pointer", lineHeight: 1 }}>
+            {muted ? "🔇" : "🔊"}
+          </button>
           <a href="/leaderboard" className="nav-links" style={{ textDecoration: "none" }}>Leaderboard</a>
           {me ? (
             <a
@@ -805,7 +836,18 @@ export default function ArcadeMode() {
                   </div>
                 )}
 
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center", marginTop: 12, zIndex: 1 }}>
+                <button onClick={() => { setShowShare(true); track("share_open", { game: "blockwords" }); }} style={{ marginTop: 12, width: "100%", maxWidth: 340, height: 46, border: "1px solid rgba(20,241,149,0.5)", borderRadius: 12, background: "rgba(20,241,149,0.10)", color: "#14F195", fontSize: 14, fontWeight: 800, cursor: "pointer", zIndex: 1 }}>
+                  🔗 Challenge a friend
+                </button>
+                <ShareSheet
+                  open={showShare}
+                  onClose={() => setShowShare(false)}
+                  text={buildShareText(r)}
+                  url="https://gamerplex.com/play/blockwords"
+                  onShared={(m) => track("share_result", { game: "blockwords", method: m })}
+                />
+
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center", marginTop: 10, zIndex: 1 }}>
                   <button onClick={() => startNewRun("random")} style={{ ...btnSecondary, minHeight: 44 }}>↻ Play again</button>
                   <a href="/arcade" style={{ ...btnSecondary, textDecoration: "none", display: "inline-flex", alignItems: "center", minHeight: 44 }}>← Arcade</a>
                 </div>
