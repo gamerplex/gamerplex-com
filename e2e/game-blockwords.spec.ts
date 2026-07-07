@@ -1,59 +1,92 @@
 import { test, expect } from '@playwright/test';
+import { WORD_SET } from '../app/play/blockwords/_arcade/words';
 
-// FULL-PLAYTHROUGH E2E for Blockwords (5-letter guessing arcade).
-// Proves the game plays AND reaches the end state + save-score screen: intro
-// overlay → start a Random Run → submit guesses until the run ENDS → the end
-// overlay ("● Time's up" / "● Solved") + the shared Arcade-Shell "🏆 Leaderboard"
-// (the save-score screen) are visible.
+// FULL-PLAYTHROUGH E2E for Blockwords (word-ladder sprint).
+// Proves the game plays a REAL ladder: intro overlay → start a Random Run →
+// read the seed-derived START word off the board → build a valid ladder by
+// changing exactly one letter to a real dictionary word each rung → the rung
+// count increments → the shared Arcade-Shell leaderboard (the save screen)
+// is present.
 //
-// Deterministic end: any 5-letter A–Z string is an "acceptable" guess (see
-// isAcceptableGuess), so we exhaust the 6-guess budget with six distinct
-// throwaway words. On the 6th commit the engine flips status → "ended" (or
-// earlier if a guess happens to solve — either way the end overlay renders).
-// The 90s timer is far longer than the test, so exhausting guesses is the
-// reliable, headless route to game-over.
-//
-// The grid renders 30 tiles with aria-label="empty"/"letter X"; the run HUD shows
-// "0/6" guesses. Physical-keyboard input drives letters/Enter (wired on window).
+// The start word is random per run, so we compute a valid next rung at runtime
+// from the SAME dictionary the engine uses (WORD_SET) — change one letter to
+// the first real word we can reach. This mirrors isValidLadderStep exactly.
 
-test('blockwords: start → exhaust guesses → end screen + leaderboard save screen', async ({ page }) => {
+/** Every real one-letter neighbour of `word` in the shipped dictionary. */
+function neighbours(word: string, exclude: Set<string>): string[] {
+  const out: string[] = [];
+  for (let i = 0; i < word.length; i++) {
+    for (let c = 65; c <= 90; c++) {
+      const ch = String.fromCharCode(c);
+      if (word[i] === ch) continue;
+      const cand = word.slice(0, i) + ch + word.slice(i + 1);
+      if (WORD_SET.has(cand) && !exclude.has(cand)) out.push(cand);
+    }
+  }
+  return out;
+}
+
+/** Greedily build a ladder of up to `maxRungs` real one-letter steps. */
+function buildLadder(start: string, maxRungs: number): string[] {
+  const ladder = [start];
+  const used = new Set<string>([start]);
+  while (ladder.length - 1 < maxRungs) {
+    const ns = neighbours(ladder[ladder.length - 1], used);
+    if (ns.length === 0) break;
+    const next = ns[0];
+    ladder.push(next);
+    used.add(next);
+  }
+  return ladder;
+}
+
+test('blockwords: start → read start word → build a real word-ladder → leaderboard', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
 
   await page.goto('/play/blockwords');
 
-  // 1) Intro overlay with a Start control. "Random Run" avoids the daily
-  // once-per-day lock so the test is repeatable.
+  // 1) Intro overlay → Random Run (avoids the daily once-per-day lock).
   const startBtn = page.getByRole('button', { name: /Random Run/i });
   await expect(startBtn).toBeVisible({ timeout: 15_000 });
   await startBtn.click();
 
-  // 2) Playing UI: the guess grid (30 tiles) and the HUD ("0/6") appear.
-  await expect(page.getByText('/6')).toBeVisible({ timeout: 15_000 });
-  const tiles = page.locator('[aria-label="empty"], [aria-label^="letter"]');
+  // 2) Playing UI: the run HUD ("Rungs") and the ladder board appear.
+  await expect(page.getByText('Rungs', { exact: true })).toBeVisible({ timeout: 15_000 });
+  const tiles = page.locator('[aria-label^="letter"]');
   await expect(tiles.first()).toBeVisible({ timeout: 10_000 });
 
-  // 3) Submit six distinct 5-letter guesses to exhaust the budget. Each is a
-  // valid acceptable guess (any 5 A–Z letters); Enter commits it. Key handlers
-  // live on window, so we press against <body>.
-  const guesses = ['CRANE', 'MOIST', 'BLURP', 'FJORD', 'WXYZQ', 'GHKLV'];
+  // 3) Read the seed-derived START word off the first five board tiles.
+  const startLetters: string[] = [];
+  for (let i = 0; i < 5; i++) {
+    const label = await tiles.nth(i).getAttribute('aria-label');
+    startLetters.push((label ?? '').replace('letter ', '').trim().toUpperCase());
+  }
+  const startWord = startLetters.join('');
+  expect(startWord).toMatch(/^[A-Z]{5}$/);
+  expect(WORD_SET.has(startWord)).toBe(true);
+
+  // 4) Build a real ladder off that start word and type each rung.
+  const ladder = buildLadder(startWord, 4);
+  expect(ladder.length).toBeGreaterThan(1); // at least one valid step must exist
+
   const body = page.locator('body');
-  for (const word of guesses) {
-    // If a prior guess already ended the run, the input is inert — stop early.
-    if (await page.getByText(/Time's up|Solved/i).first().isVisible().catch(() => false)) break;
-    for (const ch of word) await body.press(ch);
+  for (let i = 1; i < ladder.length; i++) {
+    for (const ch of ladder[i]) await body.press(ch);
     await body.press('Enter');
-    await page.waitForTimeout(250); // let the row flip animation settle
+    await page.waitForTimeout(200); // let the rung-pop animation settle
   }
 
-  // 4) END STATE: the run flipped to "ended" and the overlay eyebrow shows
-  // "● Time's up" (guesses exhausted) or "● Solved" (accidental solve). Either is
-  // the game-over state.
-  await expect(page.getByText(/Time's up|Solved/i).first()).toBeVisible({ timeout: 10_000 });
+  // 5) The board now shows all ladder words (start + rungs). Assert the last
+  //    rung rendered — proof the one-letter steps were accepted, not rejected.
+  const lastRung = ladder[ladder.length - 1];
+  for (let i = 0; i < 5; i++) {
+    await expect(
+      page.locator(`[aria-label="letter ${lastRung[i]}"]`).first(),
+    ).toBeVisible({ timeout: 5_000 });
+  }
 
-  // 5) SAVE-SCORE SCREEN: the shared Arcade-Shell web2 leaderboard (heading
-  // "🏆 Leaderboard" + "Verified only" filter) is present — that IS the
-  // save-score screen.
+  // 6) SAVE-SCORE SCREEN: the shared Arcade-Shell web2 leaderboard is present.
   await expect(page.getByText('🏆 Leaderboard')).toBeVisible({ timeout: 10_000 });
   await expect(page.getByText('Verified only')).toBeVisible();
 

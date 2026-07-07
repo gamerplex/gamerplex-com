@@ -1,16 +1,10 @@
-import { WORDS } from "./words";
+import { WORDS, WORD_SET } from "./words";
 
-export const LetterState = {
-  GREEN: 2,
-  YELLOW: 1,
-  GREY: 0,
-} as const;
-export type LetterStateValue =
-  (typeof LetterState)[keyof typeof LetterState];
-
-export const MAX_GUESSES = 6;
 export const RUN_DURATION_SEC = 90;
 export const WORD_LENGTH = 5;
+// Hard cap on ladder length (start word + this many added steps). Bounds the
+// move-log size for inline on-chain storage and mirrors the resolver.
+export const MAX_LADDER_STEPS = 60;
 
 // xorshift64 — first 8 bytes fold into u64; matches resolver verifier.
 export function makeRng(seedBytes: Uint8Array): () => number {
@@ -32,116 +26,175 @@ export function makeRng(seedBytes: Uint8Array): () => number {
   };
 }
 
-export function nextWordIndex(seed: Uint8Array): number {
+export function startWordIndex(seed: Uint8Array): number {
   const rng = makeRng(seed);
   rng();
   return rng() % WORDS.length;
 }
 
-export function answerForSeed(seed: Uint8Array): string {
-  return WORDS[nextWordIndex(seed)];
+/** Deterministic START word of the ladder, derived from the session seed. */
+export function startWordForSeed(seed: Uint8Array): string {
+  return WORDS[startWordIndex(seed)];
 }
 
-export function gradeGuess(answer: string, guess: string): LetterStateValue[] {
-  const ans = answer.toUpperCase();
-  const g = guess.toUpperCase();
-  if (ans.length !== WORD_LENGTH || g.length !== WORD_LENGTH) {
-    throw new Error(
-      `gradeGuess: both answer and guess must be ${WORD_LENGTH} letters`,
-    );
-  }
-  const states: LetterStateValue[] = new Array(WORD_LENGTH).fill(LetterState.GREY);
-  const answerConsumed: boolean[] = new Array(WORD_LENGTH).fill(false);
+/** True iff `w` is a real word in the fixed dictionary (case-insensitive). */
+export function isRealWord(w: string): boolean {
+  return WORD_SET.has(w.toUpperCase());
+}
 
-  for (let i = 0; i < WORD_LENGTH; i++) {
-    if (g[i] === ans[i]) {
-      states[i] = LetterState.GREEN;
-      answerConsumed[i] = true;
-    }
+/** Count of letter positions where two equal-length words differ. */
+export function letterDiffCount(a: string, b: string): number {
+  const x = a.toUpperCase();
+  const y = b.toUpperCase();
+  if (x.length !== y.length) return -1;
+  let diff = 0;
+  for (let i = 0; i < x.length; i++) if (x[i] !== y[i]) diff++;
+  return diff;
+}
+
+/**
+ * A valid word-ladder step: `next` must be a real dictionary word, the same
+ * length as `prev`, and differ from `prev` in EXACTLY one position (classic
+ * Doublets rule). Case-insensitive. No dictionary membership is assumed for
+ * `prev` — the ladder start is seed-derived and every accepted step is checked.
+ */
+export function isValidLadderStep(prev: string, next: string): boolean {
+  const p = prev.toUpperCase();
+  const n = next.toUpperCase();
+  if (n.length !== WORD_LENGTH || p.length !== WORD_LENGTH) return false;
+  if (!isRealWord(n)) return false;
+  return letterDiffCount(p, n) === 1;
+}
+
+/** Distinct-letter count of a word (used for the rarity bonus). */
+function distinctLetters(w: string): number {
+  return new Set(w.toUpperCase().split("")).size;
+}
+
+// Letter rarity weights (integer). Common letters score low, rare letters high.
+// Frequency-inspired but fixed constants so the score is fully deterministic and
+// identical in the resolver. Values are for A..Z.
+const LETTER_RARITY: Readonly<Record<string, number>> = {
+  A: 1, B: 3, C: 3, D: 2, E: 1, F: 4, G: 2, H: 4, I: 1, J: 8, K: 5,
+  L: 1, M: 3, N: 1, O: 1, P: 3, Q: 10, R: 1, S: 1, T: 1, U: 1, V: 4,
+  W: 4, X: 8, Y: 3, Z: 10,
+};
+
+function rarityOf(letter: string): number {
+  return LETTER_RARITY[letter.toUpperCase()] ?? 1;
+}
+
+/** The letter that changed between prev and next (the single differing slot). */
+function changedLetter(prev: string, next: string): string {
+  const p = prev.toUpperCase();
+  const n = next.toUpperCase();
+  for (let i = 0; i < n.length; i++) if (p[i] !== n[i]) return n[i];
+  return "";
+}
+
+/**
+ * Score a completed ladder run. `ladder` is the ORDERED list of words including
+ * the seed-derived start word at index 0; each subsequent entry is one accepted
+ * step. Pure integer math (deterministic; mirrored exactly in the resolver).
+ *
+ *   perStepBase (20) for every step
+ * + rarityOf(changed letter) for every step   (rewards using rare letters)
+ * + speed bonus: max(0, RUN_DURATION_SEC - secondsUsed) once, only if any steps
+ *
+ * A ladder with only the start word (no steps) scores 0.
+ */
+const PER_STEP_BASE = 20;
+
+export function computeScore(ladder: string[], secondsUsed: number): number {
+  const steps = Math.max(0, ladder.length - 1);
+  if (steps === 0) return 0;
+  let score = 0;
+  for (let i = 1; i < ladder.length; i++) {
+    score += PER_STEP_BASE;
+    score += rarityOf(changedLetter(ladder[i - 1], ladder[i]));
   }
-  for (let i = 0; i < WORD_LENGTH; i++) {
-    if (states[i] === LetterState.GREEN) continue;
-    const ch = g[i];
+  const secs = Math.max(0, Math.floor(secondsUsed));
+  const speedBonus = Math.max(0, RUN_DURATION_SEC - secs);
+  return score + speedBonus;
+}
+
+// Move-log: 6 bytes per STEP word (5 uppercase letters + 1-byte delta_sec since
+// the previous step, or since run start for the first step). The seed-derived
+// start word is NOT stored — the resolver re-derives it from the seed. This is
+// byte-compatible with the prior v2 format so the on-chain plumbing is unchanged.
+const BYTES_PER_STEP = WORD_LENGTH + 1;
+
+/**
+ * Encode the ladder STEPS (words the player added AFTER the start word) plus a
+ * per-step delta_sec. `steps.length` must equal `deltas.length`.
+ */
+export function encodeLadderLog(steps: string[], deltas: number[]): Uint8Array {
+  if (deltas.length !== steps.length) {
+    throw new Error(`encodeLadderLog: deltas length ${deltas.length} != steps length ${steps.length}`);
+  }
+  const buf = new Uint8Array(steps.length * BYTES_PER_STEP);
+  for (let i = 0; i < steps.length; i++) {
+    const w = steps[i].toUpperCase();
+    if (w.length !== WORD_LENGTH) {
+      throw new Error(`encodeLadderLog: step[${i}] must be ${WORD_LENGTH} letters`);
+    }
     for (let j = 0; j < WORD_LENGTH; j++) {
-      if (!answerConsumed[j] && ans[j] === ch) {
-        states[i] = LetterState.YELLOW;
-        answerConsumed[j] = true;
-        break;
-      }
+      const code = w.charCodeAt(j);
+      buf[i * BYTES_PER_STEP + j] = code >= 65 && code <= 90 ? code : 65;
     }
-  }
-  return states;
-}
-
-export function isWinningGuess(answer: string, guess: string): boolean {
-  return answer.toUpperCase() === guess.toUpperCase();
-}
-
-// v1 = 5 bytes per guess (just letters). v2 = 6 bytes per guess (letters + 1-byte delta_sec).
-const V1_BYTES_PER_GUESS = WORD_LENGTH;
-const V2_BYTES_PER_GUESS = WORD_LENGTH + 1;
-
-export function encodeGuessLog(guesses: string[]): Uint8Array {
-  const buf = new Uint8Array(guesses.length * V1_BYTES_PER_GUESS);
-  for (let i = 0; i < guesses.length; i++) {
-    const g = guesses[i].toUpperCase();
-    if (g.length !== WORD_LENGTH) {
-      throw new Error(`encodeGuessLog: guess[${i}] must be ${WORD_LENGTH} letters`);
-    }
-    for (let j = 0; j < WORD_LENGTH; j++) {
-      const code = g.charCodeAt(j);
-      buf[i * WORD_LENGTH + j] = code >= 65 && code <= 90 ? code : 65;
-    }
+    buf[i * BYTES_PER_STEP + WORD_LENGTH] = Math.min(255, Math.max(0, Math.floor(deltas[i])));
   }
   return buf;
 }
 
-/** v2: each guess carries delta_sec (u8) since previous guess.
- *  Mirrored in @gamerplex/sdk/verify/blockwords/engine.ts — keep in sync. */
-export function encodeGuessLogV2(guesses: string[], deltas: number[]): Uint8Array {
-  if (deltas.length !== guesses.length) {
-    throw new Error(`encodeGuessLogV2: deltas length ${deltas.length} != guesses length ${guesses.length}`);
-  }
-  const buf = new Uint8Array(guesses.length * V2_BYTES_PER_GUESS);
-  for (let i = 0; i < guesses.length; i++) {
-    const g = guesses[i].toUpperCase();
-    if (g.length !== WORD_LENGTH) {
-      throw new Error(`encodeGuessLogV2: guess[${i}] must be ${WORD_LENGTH} letters`);
-    }
-    for (let j = 0; j < WORD_LENGTH; j++) {
-      const code = g.charCodeAt(j);
-      buf[i * V2_BYTES_PER_GUESS + j] = code >= 65 && code <= 90 ? code : 65;
-    }
-    buf[i * V2_BYTES_PER_GUESS + WORD_LENGTH] = Math.min(255, Math.max(0, Math.floor(deltas[i])));
-  }
-  return buf;
+export interface DecodedLadder {
+  steps: string[];
+  deltasSec: number[];
 }
 
-export function decodeGuessLog(buf: Uint8Array): string[] {
-  // Backward-compat: prefer v2 (mod 6 + NOT mod 5) over v1, fall back appropriately.
-  const okV1 = buf.length % V1_BYTES_PER_GUESS === 0;
-  const okV2 = buf.length % V2_BYTES_PER_GUESS === 0;
-  const stride = (okV2 && !okV1) ? V2_BYTES_PER_GUESS : V1_BYTES_PER_GUESS;
-  const n = Math.floor(buf.length / stride);
-  const out: string[] = [];
+/** Decode a move-log into the ordered STEP words + per-step deltas. */
+export function decodeLadderLog(buf: Uint8Array): DecodedLadder {
+  if (buf.length % BYTES_PER_STEP !== 0) {
+    throw new Error(`ladder log length ${buf.length} not a multiple of ${BYTES_PER_STEP}`);
+  }
+  const n = Math.floor(buf.length / BYTES_PER_STEP);
+  const steps: string[] = [];
+  const deltasSec: number[] = [];
   for (let i = 0; i < n; i++) {
     let s = "";
     for (let j = 0; j < WORD_LENGTH; j++) {
-      const code = buf[i * stride + j];
+      const code = buf[i * BYTES_PER_STEP + j];
       s += code >= 65 && code <= 90 ? String.fromCharCode(code) : "A";
     }
-    out.push(s);
+    steps.push(s);
+    deltasSec.push(buf[i * BYTES_PER_STEP + WORD_LENGTH]);
   }
-  return out;
+  return { steps, deltasSec };
 }
 
-export function computeScore(
-  solved: boolean,
-  guessesUsed: number,
-  secondsUsed: number,
-): number {
-  if (!solved) return 0;
-  const base = 1000 - guessesUsed * 100;
-  const timeBonus = Math.max(0, 300 - Math.max(0, Math.floor(secondsUsed)));
-  return Math.max(0, base + timeBonus);
+/**
+ * Replay + validate a ladder from its seed-derived start word and the ordered
+ * step words. Returns the full ladder (start + valid steps) and whether every
+ * step was legal + non-repeating. Mirrored exactly by the resolver.
+ */
+export function replayLadder(
+  seed: Uint8Array,
+  steps: string[],
+): { ladder: string[]; valid: boolean; reason: string | null } {
+  const start = startWordForSeed(seed);
+  const ladder: string[] = [start];
+  const used = new Set<string>([start]);
+  for (let i = 0; i < steps.length; i++) {
+    const next = steps[i].toUpperCase();
+    const prev = ladder[ladder.length - 1];
+    if (!isValidLadderStep(prev, next)) {
+      return { ladder, valid: false, reason: `step[${i}] "${next}" is not a valid one-letter move from "${prev}"` };
+    }
+    if (used.has(next)) {
+      return { ladder, valid: false, reason: `step[${i}] "${next}" already used in this ladder` };
+    }
+    used.add(next);
+    ladder.push(next);
+  }
+  return { ladder, valid: true, reason: null };
 }

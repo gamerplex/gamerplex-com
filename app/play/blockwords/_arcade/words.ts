@@ -1082,6 +1082,11 @@ for (const w of WORDS) {
 
 export const GUESSES: Set<string> = new Set(WORDS);
 
+// Fast membership set for word-ladder validation (the ladder dictionary IS the
+// word list). Kept identical in the resolver's words.ts.
+export const WORD_SET: Set<string> = GUESSES;
+
+/** A ladder word is acceptable iff it's a real 5-letter word in the dictionary. */
 export function isAcceptableGuess(s: string): boolean {
-  return /^[A-Z]{5}$/.test(s);
+  return /^[A-Z]{5}$/.test(s) && WORD_SET.has(s);
 }

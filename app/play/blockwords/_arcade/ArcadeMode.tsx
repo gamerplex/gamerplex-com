@@ -42,17 +42,14 @@ import { EconomyConsentModal, hasEconomyConsent } from "../../../../lib/arcade/e
 import { earnCredits } from "../../../../lib/identity/client";
 import ContinueWithCredits from "../../../../components/arcade/ContinueWithCredits";
 import ReferrerBanner from "../../../../components/arcade/ReferrerBanner";
-import { WORDS, isAcceptableGuess } from "./words";
 import {
-  answerForSeed,
+  startWordForSeed,
   computeScore,
-  encodeGuessLog,
-  encodeGuessLogV2,
-  gradeGuess,
-  isWinningGuess,
-  LetterState,
-  type LetterStateValue,
-  MAX_GUESSES,
+  encodeLadderLog,
+  isValidLadderStep,
+  isRealWord,
+  letterDiffCount,
+  MAX_LADDER_STEPS,
   RUN_DURATION_SEC,
   WORD_LENGTH,
 } from "./engine";
@@ -61,27 +58,17 @@ const EXPLORER_SUFFIX =
   ARCADE_NETWORK === "mainnet" ? "" : `?cluster=${ARCADE_NETWORK}`;
 
 const TICK_MS = 100;
-const FLIP_DURATION_MS = 600;
+const POP_DURATION_MS = 400;
 const SHAKE_DURATION_MS = 500;
 
-// Gamerplex-branded 3-state visual language — deliberately distinct expression
-// from the green/yellow/grey flat-tile trade dress. State is carried by BOTH a
-// brand color (purple = exact, cyan = present, slate = absent) AND a non-color
-// glyph badge (◆ / ◇ / ·), so the tiles read clearly and remain colorblind-safe.
-// Colors are frontend-only and do NOT touch resolver verification.
-const TILE_EXACT = "#9945FF"; // right letter, right spot (Gamerplex purple)
-const TILE_PRESENT = "#22d3ee"; // right letter, wrong spot (brand cyan)
-const TILE_ABSENT = "#242433"; // not in the word (deep slate)
+// Gamerplex-branded visual language (carried over from the reskin): purple =
+// the live rung / accent, cyan = the letter you changed, slate = board chrome.
+// Colors are frontend-only and never touch resolver verification.
+const ACCENT = "#9945FF"; // Gamerplex purple
+const ACCENT_2 = "#7a2fe0";
+const CHANGED = "#22d3ee"; // brand cyan — highlights the one changed letter
 const TILE_DEFAULT = "#1a1a28";
 const TILE_BORDER_DEFAULT = "#2a2a3a";
-
-// Non-color state cue: a glyph badge shown in each graded tile's corner. Lets
-// state be perceived without relying on hue (accessibility + distinct look).
-const STATE_GLYPH: Record<number, string> = {
-  [LetterState.GREEN]: "◆", // exact  — solid diamond (locked in place)
-  [LetterState.YELLOW]: "◇", // present — hollow diamond (somewhere else)
-  [LetterState.GREY]: "·", // absent  — dot
-};
 
 function generateSeed(): Uint8Array {
   const s = new Uint8Array(32);
@@ -123,6 +110,8 @@ function dailySeed(ymd: string): Uint8Array {
 
 const STREAK_KEY = "gpx-blockwords-daily-streak";
 const LAST_PLAYED_KEY = "gpx-blockwords-daily-last";
+// A "win" (streak-worthy) run is one where the player built at least this many rungs.
+const WIN_LADDER_STEPS = 3;
 
 function loadStreak(): { lastPlayedYmd: string | null; streak: number; playedToday: boolean } {
   if (typeof window === "undefined") return { lastPlayedYmd: null, streak: 0, playedToday: false };
@@ -152,35 +141,40 @@ interface RunState {
   mode: RunMode;
   startedAt: number;
   endedAt: number | null;
-  answer: string;
-  guesses: string[];
-  /** Per-guess delta (seconds) since previous guess (or run start for [0]).
-   *  Parallel to `guesses` — same length. Used for v2 move-log encoding. */
-  guessDeltasSec: number[];
+  /** The full ladder including the seed-derived start word at index 0. */
+  ladder: string[];
+  /** Per-STEP delta (seconds) since previous step (or run start for step[0]).
+   *  Parallel to ladder.slice(1) — one entry per added rung. */
+  stepDeltasSec: number[];
+  /** In-progress input for the next rung. */
   current: string;
-  solved: boolean;
   invalidUntil: number;
+  invalidMsg: string;
   status: RunStatus;
-  lastFlippedRow: number;
+  lastRungIndex: number;
 }
 
 function startRun(seed: Uint8Array, mode: RunMode = "random", sessionPda: PublicKey | null = null): RunState {
-  const answer = answerForSeed(seed);
+  const start = startWordForSeed(seed);
   return {
     seed,
     sessionPda,
     mode,
     startedAt: Date.now(),
     endedAt: null,
-    answer,
-    guesses: [],
-    guessDeltasSec: [],
+    ladder: [start],
+    stepDeltasSec: [],
     current: "",
-    solved: false,
     invalidUntil: 0,
+    invalidMsg: "",
     status: "active",
-    lastFlippedRow: -1,
+    lastRungIndex: 0,
   };
+}
+
+/** Ordered STEP words (everything the player added after the start word). */
+function stepsOf(r: RunState): string[] {
+  return r.ladder.slice(1);
 }
 
 function msRemaining(r: RunState): number {
@@ -194,24 +188,12 @@ function secondsUsed(r: RunState): number {
   return Math.max(0, Math.min(RUN_DURATION_SEC, Math.floor(ms / 1000)));
 }
 
-// Keyboard letter shows the BEST grade ever seen for that letter.
-type KeyboardStates = Record<string, LetterStateValue | -1>;
-
-function deriveKeyboardStates(answer: string, guesses: string[]): KeyboardStates {
-  const out: KeyboardStates = {};
-  for (let i = 0; i < 26; i++) out[String.fromCharCode(65 + i)] = -1;
-  for (const g of guesses) {
-    const grades = gradeGuess(answer, g);
-    for (let i = 0; i < WORD_LENGTH; i++) {
-      const ch = g[i];
-      const grade = grades[i];
-      const prev = out[ch];
-      if (prev === -1 || grade > prev) {
-        out[ch] = grade;
-      }
-    }
-  }
-  return out;
+// On-screen keyboard: the letter that, if placed at the currently-changed slot,
+// would keep exactly one letter different. We don't precompute hints — keyboard
+// just reflects letters present in the current word for a light visual cue.
+function currentWordLetters(current: string, live: string): Set<string> {
+  const src = current.length > 0 ? current : live;
+  return new Set(src.toUpperCase().split(""));
 }
 
 export default function ArcadeMode() {
@@ -277,21 +259,40 @@ export default function ArcadeMode() {
     setTick((t) => t + 1);
   }, [publicKey]);
 
+  const endRun = useCallback((r: RunState) => {
+    r.status = "ended";
+    r.endedAt = Date.now();
+    const steps = stepsOf(r);
+    const score = computeScore(r.ladder, secondsUsed(r));
+    if (steps.length >= WIN_LADDER_STEPS) {
+      // Web2 Credits earn on a strong ladder (fire-and-forget; capped + idempotent server-side, CREDITS only — never $GAME).
+      void earnCredits("game_win", `blockwords:win:${r.startedAt}`);
+    }
+    // Arcade Shell: free web2 leaderboard save — no wallet, just the email session.
+    void fetch("/api/scores/submit", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ gameId: "blockwords", score, refId: `blockwords:${r.startedAt}`, durationSec: secondsUsed(r) }),
+    }).catch(() => {});
+    if (r.mode === "daily" && steps.length >= WIN_LADDER_STEPS) {
+      const { streak } = recordDailyWin();
+      setStreakInfo({ lastPlayedYmd: todayYmd(), streak, playedToday: true });
+    }
+  }, []);
+
   useEffect(() => {
     loopRef.current = setInterval(() => {
       const r = runRef.current;
       if (!r || r.status !== "active") return;
       if (typeof document !== "undefined" && document.hidden) return;
       if (msRemaining(r) <= 0) {
-        r.status = "ended";
-        r.endedAt = Date.now();
+        endRun(r);
       }
       setTick((t) => t + 1);
     }, TICK_MS);
     return () => {
       if (loopRef.current) clearInterval(loopRef.current);
     };
-  }, []);
+  }, [endRun]);
 
   const onLetter = useCallback((letter: string) => {
     const r = runRef.current;
@@ -311,49 +312,52 @@ export default function ArcadeMode() {
     setTick((t) => t + 1);
   }, []);
 
+  const reject = useCallback((r: RunState, msg: string) => {
+    r.invalidUntil = Date.now() + SHAKE_DURATION_MS;
+    r.invalidMsg = msg;
+    setTick((t) => t + 1);
+  }, []);
+
   const onSubmit = useCallback(() => {
     const r = runRef.current;
     if (!r || r.status !== "active") return;
-    const guess = r.current.toUpperCase();
-    if (!isAcceptableGuess(guess)) {
-      r.invalidUntil = Date.now() + SHAKE_DURATION_MS;
-      setTick((t) => t + 1);
-      return;
-    }
-    if (r.guesses.length >= MAX_GUESSES) return;
+    const next = r.current.toUpperCase();
+    const prev = r.ladder[r.ladder.length - 1];
 
-    // Track per-guess delta in seconds since previous guess (or run start for first).
+    if (next.length !== WORD_LENGTH) {
+      return reject(r, `Needs ${WORD_LENGTH} letters`);
+    }
+    if (r.ladder.includes(next)) {
+      return reject(r, `${next} already used`);
+    }
+    if (!isRealWord(next)) {
+      return reject(r, `${next} isn't a word`);
+    }
+    const diff = letterDiffCount(prev, next);
+    if (diff !== 1) {
+      return reject(r, diff === 0 ? "Change one letter" : `${diff} letters changed — change just one`);
+    }
+    // Redundant with the checks above, but the single source of truth for a step.
+    if (!isValidLadderStep(prev, next)) {
+      return reject(r, "Invalid step");
+    }
+    if (r.ladder.length - 1 >= MAX_LADDER_STEPS) {
+      return reject(r, "Ladder is maxed out!");
+    }
+
+    // Track per-step delta in seconds since the previous rung (or run start for the first).
     const nowMs = Date.now();
-    const prevMs = r.guesses.length === 0
+    const prevMs = r.stepDeltasSec.length === 0
       ? r.startedAt
-      : r.startedAt + r.guessDeltasSec.reduce((sum, d) => sum + d * 1000, 0);
+      : r.startedAt + r.stepDeltasSec.reduce((sum, d) => sum + d * 1000, 0);
     const deltaSec = Math.max(0, Math.min(255, Math.floor((nowMs - prevMs) / 1000)));
-    r.guessDeltasSec.push(deltaSec);
-    r.guesses.push(guess);
+    r.stepDeltasSec.push(deltaSec);
+    r.ladder.push(next);
     r.current = "";
-    r.lastFlippedRow = r.guesses.length - 1;
-
-    if (isWinningGuess(r.answer, guess)) {
-      r.solved = true;
-      r.status = "ended";
-      r.endedAt = Date.now();
-      // Web2 Credits earn on a solved win (fire-and-forget; capped + idempotent server-side, CREDITS only — never $GAME).
-      void earnCredits("game_win", `blockwords:win:${r.startedAt}`);
-      // Arcade Shell: free web2 leaderboard save — no wallet, just the email session.
-      void fetch("/api/scores/submit", {
-        method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ gameId: "blockwords", score: computeScore(r.solved, r.guesses.length, secondsUsed(r)), refId: `blockwords:${r.startedAt}`, durationSec: secondsUsed(r) }),
-      }).catch(() => {});
-      if (r.mode === "daily") {
-        const { streak } = recordDailyWin();
-        setStreakInfo({ lastPlayedYmd: todayYmd(), streak, playedToday: true });
-      }
-    } else if (r.guesses.length >= MAX_GUESSES) {
-      r.status = "ended";
-      r.endedAt = Date.now();
-    }
+    r.invalidMsg = "";
+    r.lastRungIndex = r.ladder.length - 1;
     setTick((t) => t + 1);
-  }, []);
+  }, [reject]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -383,8 +387,7 @@ export default function ArcadeMode() {
     return () => window.removeEventListener("keydown", onKey);
   }, [startNewRun, onSubmit, onBackspace, onLetter]);
 
-  // v1.4: default to USDC. Token picker UI ships in the next commit; for now
-  // the new shared helper handles the existing USDC flow byte-equivalently.
+  // v1.4: default to USDC. Token picker handles USDC/SOL/$GAME.
   const [paymentToken, setPaymentToken] = useState<PaymentTokenDef>(
     PAYMENT_TOKENS.find((t) => t.symbol === "USDC") ?? PAYMENT_TOKENS[0]
   );
@@ -401,7 +404,8 @@ export default function ArcadeMode() {
     }
     setBusy("save");
     setOnchainError(null);
-    track("score_save_attempted", { game: "blockwords", mode: r.mode, score: computeScore(r.solved, r.guesses.length, secondsUsed(r)), token: paymentToken.symbol });
+    const score = computeScore(r.ladder, secondsUsed(r));
+    track("score_save_attempted", { game: "blockwords", mode: r.mode, score, token: paymentToken.symbol });
     identifyWallet(publicKey.toBase58());
     try {
       const program = makeProgram(connection, anchorWallet);
@@ -412,8 +416,6 @@ export default function ArcadeMode() {
         tx.add(await buildOpenProfileIx(program, publicKey, getStoredReferrer(publicKey)));
       }
 
-      // v1.4: shared multi-token helper. Routes USDC/SOL/$GAME and applies
-      // the 20% discount for $GAME automatically via contract-aware quote.
       const { ixs: paymentIxs } = await buildSaveScorePaymentIxs(
         program,
         connection,
@@ -429,10 +431,9 @@ export default function ArcadeMode() {
       );
       paymentIxs.forEach((ix) => tx.add(ix));
 
-      const moveLogBytes = encodeGuessLogV2(r.guesses, r.guessDeltasSec);
+      const moveLogBytes = encodeLadderLog(stepsOf(r), r.stepDeltasSec);
       const moveHash = await sha256(moveLogBytes);
       const durationSec = Math.max(1, secondsUsed(r));
-      const score = computeScore(r.solved, r.guesses.length, secondsUsed(r));
       tx.add(
         await buildSubmitScoreIx(program, publicKey, {
           variant: r.mode === "daily" ? `daily|${todayYmd()}` : "random",
@@ -501,13 +502,13 @@ export default function ArcadeMode() {
           amountMicroUsd: new BN(VERIFIED_COMMIT_MICRO_USD),
           paymentTxSig: emptySig,
           paymentMint: USDC_MINT,
-          paymentAmountRaw: new BN(VERIFIED_COMMIT_MICRO_USD), // v1.3: stablecoin parity (raw === micro-USD)
+          paymentAmountRaw: new BN(VERIFIED_COMMIT_MICRO_USD),
           externalRef: "",
           gameId: BLOCKWORDS_ARCADE_GAME_ID,
         }),
       );
 
-      const moveLog = encodeGuessLogV2(r.guesses, r.guessDeltasSec);
+      const moveLog = encodeLadderLog(stepsOf(r), r.stepDeltasSec);
       if (moveLog.length > 400) {
         throw new Error(
           `Move log too long for inline storage (${moveLog.length}B > 400B).`,
@@ -564,17 +565,17 @@ export default function ArcadeMode() {
           amountMicroUsd: new BN(REPLAY_RECEIPT_MICRO_USD),
           paymentTxSig: emptySig,
           paymentMint: USDC_MINT,
-          paymentAmountRaw: new BN(REPLAY_RECEIPT_MICRO_USD), // v1.3: stablecoin parity (raw === micro-USD)
+          paymentAmountRaw: new BN(REPLAY_RECEIPT_MICRO_USD),
           externalRef: "",
           gameId: BLOCKWORDS_ARCADE_GAME_ID,
         }),
       );
 
       const nonce = new BN(r.startedAt);
-      const moveLogBytes = encodeGuessLogV2(r.guesses, r.guessDeltasSec);
+      const moveLogBytes = encodeLadderLog(stepsOf(r), r.stepDeltasSec);
       const moveHash = await sha256(moveLogBytes);
       const durationSec = Math.max(1, secondsUsed(r));
-      const score = computeScore(r.solved, r.guesses.length, secondsUsed(r));
+      const score = computeScore(r.ladder, secondsUsed(r));
       tx.add(
         await buildMintReceiptIx(program, publicKey, {
           nonce,
@@ -607,12 +608,14 @@ export default function ArcadeMode() {
   const remainingSec = Math.ceil(remainingMs / 1000);
   const finalScore = useMemo(() => {
     if (!r) return 0;
-    return computeScore(r.solved, r.guesses.length, secondsUsed(r));
+    return computeScore(r.ladder, secondsUsed(r));
   }, [r, tick]);
-  const keyboardStates = useMemo<KeyboardStates>(() => {
-    if (!r) return deriveKeyboardStates("AAAAA", []);
-    return deriveKeyboardStates(r.answer, r.guesses);
-  }, [r, tick]);
+  const stepCount = r ? r.ladder.length - 1 : 0;
+  const liveWord = r ? r.ladder[r.ladder.length - 1] : "";
+  const keyboardHot = useMemo<Set<string>>(() => {
+    if (!r) return new Set();
+    return currentWordLetters(r.current, liveWord);
+  }, [r, tick, liveWord]);
 
   return (
     <div style={{ minHeight: "100vh", background: "#050508", color: "#e8e8f0", fontFamily: "'Space Grotesk', sans-serif" }}>
@@ -653,7 +656,7 @@ export default function ArcadeMode() {
             />
           </div>
 
-          <div className="bw-board-frame" style={{ position: "relative", width: "100%", borderRadius: 16, overflow: "hidden", border: "1px solid rgba(255,210,74,0.4)", background: "linear-gradient(135deg, rgba(40,30,5,0.95), rgba(2,6,20,0.95))", boxShadow: "0 0 40px rgba(255,210,74,0.18)" }}>
+          <div className="bw-board-frame" style={{ position: "relative", width: "100%", borderRadius: 16, overflow: "hidden", border: "1px solid rgba(153,69,255,0.4)", background: "linear-gradient(135deg, rgba(25,10,45,0.95), rgba(2,6,20,0.95))", boxShadow: "0 0 40px rgba(153,69,255,0.18)" }}>
             {!r ? (
               <IntroOverlay onStart={startNewRun} streak={streakInfo} />
             ) : (
@@ -661,21 +664,22 @@ export default function ArcadeMode() {
                 <RunHud
                   remainingSec={remainingSec}
                   totalSec={RUN_DURATION_SEC}
-                  guessesUsed={r.guesses.length}
+                  rungs={stepCount}
+                  score={finalScore}
                   status={r.status}
                 />
 
-                <GuessGrid
-                  answer={r.answer}
-                  guesses={r.guesses}
+                <LadderView
+                  ladder={r.ladder}
                   current={r.current}
                   status={r.status}
                   invalid={Date.now() < r.invalidUntil}
-                  lastFlippedRow={r.lastFlippedRow}
+                  invalidMsg={r.invalidMsg}
+                  lastRungIndex={r.lastRungIndex}
                 />
 
                 <Keyboard
-                  states={keyboardStates}
+                  hot={keyboardHot}
                   onLetter={onLetter}
                   onBackspace={onBackspace}
                   onSubmit={onSubmit}
@@ -686,12 +690,11 @@ export default function ArcadeMode() {
 
             {r && r.status === "ended" && (
               <div style={{ position: "absolute", inset: 0, background: "rgba(5,5,20,0.94)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, padding: 20, overflowY: "auto" }}>
-                {r.solved && (
+                {stepCount >= WIN_LADDER_STEPS && (
                   <Confetti />
                 )}
-                {/* 2026: status eyebrow (tiny), score (hero), then action — matches Cyber Snake */}
-                <div style={{ fontSize: 11, fontWeight: 800, color: r.solved ? "#14F195" : "#ff5230", letterSpacing: 3, textTransform: "uppercase", zIndex: 1 }}>
-                  {r.solved ? "● Solved" : "● Time's up"}
+                <div style={{ fontSize: 11, fontWeight: 800, color: stepCount >= WIN_LADDER_STEPS ? "#14F195" : "#ff5230", letterSpacing: 3, textTransform: "uppercase", zIndex: 1 }}>
+                  {stepCount >= WIN_LADDER_STEPS ? `● ${stepCount}-rung ladder` : "● Time's up"}
                 </div>
                 {/* SCORE is the hero — huge gradient italic */}
                 <div style={{
@@ -710,12 +713,13 @@ export default function ArcadeMode() {
                   Your score
                 </div>
                 <div style={{ fontSize: 13, color: "#a8a8c0", display: "flex", gap: 8, alignItems: "center", zIndex: 1, flexWrap: "wrap", justifyContent: "center" }}>
-                  <span>Word:</span>
-                  <span style={{ color: "#ffd24a", fontFamily: "monospace", fontWeight: 800, letterSpacing: 3, fontSize: 18 }}>
-                    {r.answer}
+                  <span>Ladder:</span>
+                  <span style={{ color: ACCENT, fontFamily: "monospace", fontWeight: 800, letterSpacing: 2, fontSize: 15 }}>
+                    {r.ladder.join(" → ")}
                   </span>
-                  <span style={{ color: "#555" }}>·</span>
-                  <span>{r.guesses.length} {r.guesses.length === 1 ? "guess" : "guesses"} · {secondsUsed(r)}s</span>
+                </div>
+                <div style={{ fontSize: 12, color: "#8a8aa0", zIndex: 1 }}>
+                  {stepCount} {stepCount === 1 ? "rung" : "rungs"} · {secondsUsed(r)}s
                 </div>
 
                 <div style={{ width: "100%", maxWidth: 420, marginTop: 8 }}>
@@ -817,15 +821,14 @@ export default function ArcadeMode() {
           {/* 2026 minimalist how-to — single line, expandable details */}
           <details style={{ marginTop: 12, padding: "10px 14px", background: "#0c0c14", border: "1px solid #252540", borderRadius: 10, fontSize: 11, color: "#8a8aa0" }}>
             <summary style={{ cursor: "pointer", listStyle: "none", display: "flex", alignItems: "center", gap: 6, userSelect: "none", flexWrap: "wrap" }}>
-              <span style={{ color: "#ffd24a", fontWeight: 700 }}>How to play</span>
-              <span>guess the 5-letter word in 6 tries · <kbd style={kbdStyle}>A–Z</kbd> letter · <kbd style={kbdStyle}>↵</kbd> submit · <kbd style={kbdStyle}>⌫</kbd> erase</span>
+              <span style={{ color: ACCENT, fontWeight: 700 }}>How to play</span>
+              <span>change ONE letter to make a new word · chain the longest ladder before the timer · <kbd style={kbdStyle}>A–Z</kbd> letter · <kbd style={kbdStyle}>↵</kbd> submit · <kbd style={kbdStyle}>⌫</kbd> erase</span>
               <span style={{ marginLeft: "auto", fontSize: 10, color: "#5a5a70" }}>more</span>
             </summary>
             <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid #1a1a28", lineHeight: 1.6 }}>
-              After each guess, tiles flip and show a badge:
-              <span style={{ color: TILE_EXACT, fontWeight: 700 }}> ◆ exact</span> = right letter, right spot ·{" "}
-              <span style={{ color: TILE_PRESENT, fontWeight: 700 }}>◇ present</span> = right letter, wrong spot ·{" "}
-              <span style={{ color: "#9a9aaf", fontWeight: 700 }}>· absent</span> = not in the word. The badge means you never have to rely on color alone. Beat the 90s timer for a bonus.
+              You start on a random {WORD_LENGTH}-letter word. Each rung must be a real word that differs from the one above it in
+              <span style={{ color: CHANGED, fontWeight: 700 }}> exactly one letter</span> (e.g. STARE → STORE → SCORE).
+              No repeats. Longer ladders and rarer letters score more; finish fast for a speed bonus. Beat the {RUN_DURATION_SEC}s clock.
             </div>
           </details>
         </div>
@@ -835,7 +838,7 @@ export default function ArcadeMode() {
 
           {/* 2026: collapse verbose info panels into a single expandable */}
           <details style={{ background: "#0c0c14", border: "1px solid #252540", borderRadius: 12, padding: "12px 16px" }}>
-            <summary style={{ cursor: "pointer", fontSize: 11, fontWeight: 800, color: "#ffd24a", letterSpacing: 2, textTransform: "uppercase", listStyle: "none", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <summary style={{ cursor: "pointer", fontSize: 11, fontWeight: 800, color: ACCENT, letterSpacing: 2, textTransform: "uppercase", listStyle: "none", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span>💸 Save options · pricing</span>
               <span style={{ fontSize: 14, color: "#6a6a80" }}>+</span>
             </summary>
@@ -843,12 +846,12 @@ export default function ArcadeMode() {
               <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}><span style={{ color: "#4fc3f7" }}>💾 Save score</span><b>$0.05</b></div>
               <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}><span style={{ color: "#ffd740" }}>🏆 Save replay (verified)</span><b>$0.15</b></div>
               <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}><span style={{ color: "#c99aff" }}>🎴 Claim ownership</span><b>$0.25</b></div>
-              <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}><span style={{ color: "#9945FF" }}>✨ Wrap as cNFT (v1.3)</span><b>$0.50</b></div>
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}><span style={{ color: ACCENT }}>✨ Wrap as cNFT (v1.3)</span><b>$0.50</b></div>
               <div style={{ fontSize: 10, color: "#666", marginTop: 8, lineHeight: 1.5 }}>
                 Paid in USDC. ~$0.001/tx Solana gas. PlayerProfile setup ~$0.41 refundable rent (one-time per wallet).
               </div>
               <div style={{ fontSize: 10, color: "#555", marginTop: 6, lineHeight: 1.5 }}>
-                {WORDS.length} answer words · word deterministic from session seed · score = 1000 − (guesses × 100) + max(0, 300 − seconds).
+                Start word deterministic from session seed · every ladder step re-validated on-chain · score = 20/rung + rare-letter bonus + speed bonus.
               </div>
             </div>
           </details>
@@ -867,17 +870,17 @@ export default function ArcadeMode() {
           font-family: 'Space Grotesk', sans-serif;
         }
         @keyframes bwTitleGlow {
-          0%, 100% { text-shadow: 0 0 22px rgba(255,210,74,0.55), 0 0 48px rgba(255,107,44,0.25); }
-          50%      { text-shadow: 0 0 38px rgba(255,210,74,0.95), 0 0 80px rgba(255,107,44,0.5); }
+          0%, 100% { text-shadow: 0 0 22px rgba(153,69,255,0.55), 0 0 48px rgba(20,241,149,0.2); }
+          50%      { text-shadow: 0 0 38px rgba(153,69,255,0.95), 0 0 80px rgba(20,241,149,0.4); }
         }
         @keyframes bwStartPulse {
-          0%, 100% { box-shadow: 0 0 28px rgba(255,210,74,0.4), inset 0 1px 0 rgba(255,255,255,0.2); transform: scale(1); }
-          50%      { box-shadow: 0 0 48px rgba(255,107,44,0.7), inset 0 1px 0 rgba(255,255,255,0.2); transform: scale(1.02); }
+          0%, 100% { box-shadow: 0 0 28px rgba(153,69,255,0.4), inset 0 1px 0 rgba(255,255,255,0.2); transform: scale(1); }
+          50%      { box-shadow: 0 0 48px rgba(20,241,149,0.6), inset 0 1px 0 rgba(255,255,255,0.2); transform: scale(1.02); }
         }
-        @keyframes bwTileFlip {
-          0%   { transform: rotateX(0deg); }
-          50%  { transform: rotateX(90deg); }
-          100% { transform: rotateX(0deg); }
+        @keyframes bwRungPop {
+          0%   { transform: translateY(8px) scale(0.96); opacity: 0; }
+          60%  { transform: translateY(-2px) scale(1.03); opacity: 1; }
+          100% { transform: translateY(0) scale(1); opacity: 1; }
         }
         @keyframes bwShake {
           0%, 100% { transform: translateX(0); }
@@ -921,18 +924,18 @@ function IntroOverlay({
           position: "absolute",
           inset: 0,
           backgroundImage:
-            "radial-gradient(circle at 30% 30%, rgba(255,210,74,0.18), transparent 50%), radial-gradient(circle at 70% 70%, rgba(255,107,44,0.12), transparent 50%)",
+            "radial-gradient(circle at 30% 30%, rgba(153,69,255,0.2), transparent 50%), radial-gradient(circle at 70% 70%, rgba(20,241,149,0.12), transparent 50%)",
           pointerEvents: "none",
         }}
       />
-      <div className="bw-intro-emoji" style={{ fontSize: 56, zIndex: 1 }}>🔤</div>
-      <div className="bw-title" style={{ fontSize: 44, fontWeight: 900, color: "#ffd24a", letterSpacing: 4, textAlign: "center", textShadow: "0 0 22px rgba(255,210,74,0.6), 0 0 48px rgba(255,107,44,0.3)", animation: "bwTitleGlow 3s ease-in-out infinite", zIndex: 1, lineHeight: 1.1 }}>
+      <div className="bw-intro-emoji" style={{ fontSize: 56, zIndex: 1 }}>🪜</div>
+      <div className="bw-title" style={{ fontSize: 44, fontWeight: 900, color: ACCENT, letterSpacing: 4, textAlign: "center", textShadow: "0 0 22px rgba(153,69,255,0.6), 0 0 48px rgba(20,241,149,0.25)", animation: "bwTitleGlow 3s ease-in-out infinite", zIndex: 1, lineHeight: 1.1 }}>
         BLOCKWORDS<br />
-        <span style={{ fontSize: 24, color: "#ff8a40", letterSpacing: 6 }}>· ARCADE ·</span>
+        <span style={{ fontSize: 24, color: "#14F195", letterSpacing: 6 }}>· WORD LADDER ·</span>
       </div>
-      <div style={{ fontSize: 14, color: "#a8a8c0", textAlign: "center", maxWidth: 420, zIndex: 1, lineHeight: 1.5 }}>
-        Pick the secret 5-letter word in <strong style={{ color: "#ffd24a" }}>6 guesses</strong>, against a{" "}
-        <strong style={{ color: "#ffd24a" }}>{RUN_DURATION_SEC}s</strong> timer. Faster + fewer guesses = higher score.
+      <div style={{ fontSize: 14, color: "#a8a8c0", textAlign: "center", maxWidth: 440, zIndex: 1, lineHeight: 1.5 }}>
+        Change <strong style={{ color: CHANGED }}>one letter at a time</strong> to build the longest chain of real words before the{" "}
+        <strong style={{ color: ACCENT }}>{RUN_DURATION_SEC}s</strong> timer runs out. Longer + rarer + faster = higher score.
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 6, zIndex: 1, alignItems: "stretch", width: "min(320px, 90%)" }}>
         <button
@@ -945,12 +948,12 @@ function IntroOverlay({
             textTransform: "uppercase",
             background: streak.playedToday
               ? "linear-gradient(135deg, #14F195, #0fa572)"
-              : "linear-gradient(135deg, #ffd24a, #ff8a40)",
-            color: "#1a0a00",
+              : "linear-gradient(135deg, #9945FF, #7a2fe0)",
+            color: streak.playedToday ? "#062015" : "#fff",
             border: "none",
             borderRadius: 10,
             cursor: "pointer",
-            boxShadow: "0 0 28px rgba(255,210,74,0.45), inset 0 1px 0 rgba(255,255,255,0.2)",
+            boxShadow: "0 0 28px rgba(153,69,255,0.45), inset 0 1px 0 rgba(255,255,255,0.2)",
             animation: streak.playedToday ? "none" : "bwStartPulse 2s ease-in-out infinite",
             fontFamily: "'Space Grotesk', sans-serif",
           }}
@@ -966,8 +969,8 @@ function IntroOverlay({
             letterSpacing: 2,
             textTransform: "uppercase",
             background: "transparent",
-            color: "#ffd24a",
-            border: "1px solid #ffd24a",
+            color: ACCENT,
+            border: `1px solid ${ACCENT}`,
             borderRadius: 10,
             cursor: "pointer",
             fontFamily: "'Space Grotesk', sans-serif",
@@ -978,7 +981,7 @@ function IntroOverlay({
       </div>
       <div style={{ fontSize: 11, color: "#6a6a80", zIndex: 1, textAlign: "center" }}>
         {streak.streak > 0
-          ? `🔥 ${streak.streak}-day streak${streak.playedToday ? " (today solved)" : ""}`
+          ? `🔥 ${streak.streak}-day streak${streak.playedToday ? " (today done)" : ""}`
           : "Free to play — on-chain scoring optional at game over."}
       </div>
     </div>
@@ -988,45 +991,47 @@ function IntroOverlay({
 function RunHud({
   remainingSec,
   totalSec,
-  guessesUsed,
+  rungs,
+  score,
   status,
 }: {
   remainingSec: number;
   totalSec: number;
-  guessesUsed: number;
+  rungs: number;
+  score: number;
   status: RunStatus;
 }) {
   const pct = Math.max(0, Math.min(1, remainingSec / totalSec));
   const urgent = remainingSec <= 10;
 
   return (
-    <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,210,74,0.25)", background: "rgba(28,18,4,0.6)" }}>
+    <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(153,69,255,0.25)", background: "rgba(20,8,36,0.6)" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
           <div>
-            <div style={{ fontSize: 10, color: "#8a8aa0", letterSpacing: 1.5, textTransform: "uppercase", fontWeight: 700 }}>Guesses</div>
-            <div style={{ fontSize: 28, fontWeight: 900, color: "#ffd24a", fontFamily: "monospace", lineHeight: 1 }}>
-              {guessesUsed}<span style={{ color: "#6a6a80", fontSize: 18 }}>/{MAX_GUESSES}</span>
+            <div style={{ fontSize: 10, color: "#8a8aa0", letterSpacing: 1.5, textTransform: "uppercase", fontWeight: 700 }}>Rungs</div>
+            <div style={{ fontSize: 28, fontWeight: 900, color: ACCENT, fontFamily: "monospace", lineHeight: 1 }}>
+              {rungs}
             </div>
           </div>
           <div>
-            <div style={{ fontSize: 10, color: "#8a8aa0", letterSpacing: 1.5, textTransform: "uppercase", fontWeight: 700 }}>Remaining</div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: "#a8a8c0", fontFamily: "monospace", lineHeight: 1 }}>
-              {Math.max(0, MAX_GUESSES - guessesUsed)} rows
+            <div style={{ fontSize: 10, color: "#8a8aa0", letterSpacing: 1.5, textTransform: "uppercase", fontWeight: 700 }}>Score</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: "#14F195", fontFamily: "monospace", lineHeight: 1 }}>
+              {score.toLocaleString()}
             </div>
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{ textAlign: "right" }}>
             <div style={{ fontSize: 10, color: "#8a8aa0", letterSpacing: 1.5, textTransform: "uppercase", fontWeight: 700 }}>Goal</div>
-            <div style={{ fontSize: 11, color: "#ffd24a", fontWeight: 700, lineHeight: 1.2, marginTop: 2 }}>find the word</div>
+            <div style={{ fontSize: 11, color: ACCENT, fontWeight: 700, lineHeight: 1.2, marginTop: 2 }}>longest ladder</div>
           </div>
           <div style={{
             padding: "8px 14px",
             borderRadius: 10,
-            background: urgent ? "rgba(255,82,48,0.18)" : "rgba(255,210,74,0.12)",
-            border: `1px solid ${urgent ? "#ff5230" : "rgba(255,210,74,0.4)"}`,
-            color: urgent ? "#ff5230" : "#ffd24a",
+            background: urgent ? "rgba(255,82,48,0.18)" : "rgba(153,69,255,0.12)",
+            border: `1px solid ${urgent ? "#ff5230" : "rgba(153,69,255,0.4)"}`,
+            color: urgent ? "#ff5230" : ACCENT,
             fontFamily: "monospace",
             fontSize: 24,
             fontWeight: 900,
@@ -1038,11 +1043,11 @@ function RunHud({
           </div>
         </div>
       </div>
-      <div style={{ marginTop: 8, height: 4, borderRadius: 2, background: "rgba(40,30,5,0.6)", overflow: "hidden" }}>
+      <div style={{ marginTop: 8, height: 4, borderRadius: 2, background: "rgba(30,12,50,0.6)", overflow: "hidden" }}>
         <div style={{
           width: `${pct * 100}%`,
           height: "100%",
-          background: urgent ? "linear-gradient(90deg, #ff5230, #ff9a40)" : "linear-gradient(90deg, #ffd24a, #ff8a40)",
+          background: urgent ? "linear-gradient(90deg, #ff5230, #ff9a40)" : `linear-gradient(90deg, ${ACCENT}, #14F195)`,
           transition: "width 100ms linear",
         }} />
       </div>
@@ -1050,136 +1055,78 @@ function RunHud({
   );
 }
 
-function GuessGrid({
-  answer,
-  guesses,
-  current,
-  status,
-  invalid,
-  lastFlippedRow,
-}: {
-  answer: string;
-  guesses: string[];
-  current: string;
-  status: RunStatus;
-  invalid: boolean;
-  lastFlippedRow: number;
-}) {
-  const rows: { row: number; letters: string[]; grades: LetterStateValue[] | null; isActive: boolean; flipNow: boolean; }[] = [];
-  for (let row = 0; row < MAX_GUESSES; row++) {
-    if (row < guesses.length) {
-      const g = guesses[row];
-      rows.push({
-        row,
-        letters: g.split(""),
-        grades: gradeGuess(answer, g),
-        isActive: false,
-        flipNow: row === lastFlippedRow,
-      });
-    } else if (row === guesses.length && status === "active") {
-      const padded = current.padEnd(WORD_LENGTH, " ").split("");
-      rows.push({
-        row,
-        letters: padded,
-        grades: null,
-        isActive: true,
-        flipNow: false,
-      });
-    } else {
-      rows.push({
-        row,
-        letters: ["", "", "", "", ""],
-        grades: null,
-        isActive: false,
-        flipNow: false,
-      });
-    }
+/** Which letter index differs between two equal-length words (-1 if not exactly one). */
+function changedIndex(prev: string, next: string): number {
+  if (!prev || !next || prev.length !== next.length) return -1;
+  let idx = -1;
+  let count = 0;
+  for (let i = 0; i < prev.length; i++) {
+    if (prev[i] !== next[i]) { idx = i; count++; }
   }
+  return count === 1 ? idx : -1;
+}
 
+function WordRow({
+  word,
+  prev,
+  variant,
+  pop,
+}: {
+  word: string;
+  prev: string | null;
+  variant: "start" | "rung" | "input";
+  pop: boolean;
+}) {
+  const changed = prev ? changedIndex(prev, word.replace(/ /g, "")) : -1;
+  const letters = word.padEnd(WORD_LENGTH, " ").split("");
+  const isInput = variant === "input";
+  const isStart = variant === "start";
   return (
-    <div style={{ padding: "20px 16px", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
-      {rows.map((r) => {
-        const shake = invalid && r.isActive;
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: `repeat(${WORD_LENGTH}, 1fr)`,
+        gap: 6,
+        width: "min(360px, 84vw)",
+        animation: pop ? `bwRungPop ${POP_DURATION_MS}ms ease-out` : "none",
+      }}
+    >
+      {letters.map((ch, i) => {
+        const filled = ch && ch !== " ";
+        const isChanged = !isInput && changed === i && changed >= 0;
+        let bg: string = TILE_DEFAULT;
+        let borderColor: string = filled ? "#5a5a70" : TILE_BORDER_DEFAULT;
+        let color = "#e8e8f0";
+        if (isStart) {
+          bg = `linear-gradient(135deg, ${ACCENT}, ${ACCENT_2})`; borderColor = ACCENT; color = "#fff";
+        } else if (isChanged) {
+          bg = "rgba(34,211,238,0.16)"; borderColor = CHANGED; color = "#c4f6ff";
+        } else if (!isInput && filled) {
+          bg = "rgba(153,69,255,0.08)"; borderColor = "rgba(153,69,255,0.3)"; color = "#d8c8ff";
+        }
         return (
           <div
-            key={r.row}
+            key={i}
             style={{
-              display: "grid",
-              gridTemplateColumns: `repeat(${WORD_LENGTH}, 1fr)`,
-              gap: 6,
-              width: "min(360px, 84vw)",
-              animation: shake ? `bwShake ${SHAKE_DURATION_MS}ms ease-in-out` : "none",
+              position: "relative",
+              aspectRatio: "1 / 1",
+              background: bg,
+              border: `2px solid ${borderColor}`,
+              borderRadius: 12,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "min(7vw, 30px)",
+              fontWeight: 800,
+              color,
+              fontFamily: "monospace",
+              textTransform: "uppercase",
+              boxShadow: isStart ? `0 0 14px ${ACCENT}55` : isChanged ? `0 0 12px ${CHANGED}44` : "none",
+              transition: "background 80ms, border-color 80ms",
             }}
+            aria-label={filled ? `letter ${ch}` : "empty"}
           >
-            {r.letters.map((ch, i) => {
-              const grade = r.grades?.[i];
-              const filled = ch && ch !== " ";
-              let bg = TILE_DEFAULT;
-              let borderColor = filled ? "#5a5a70" : TILE_BORDER_DEFAULT;
-              let color = "#e8e8f0";
-              let glyph = "";
-              let stateLabel = "";
-              if (grade === LetterState.GREEN) {
-                bg = `linear-gradient(135deg, ${TILE_EXACT}, #7a2fe0)`; borderColor = TILE_EXACT; color = "#fff";
-                glyph = STATE_GLYPH[LetterState.GREEN]; stateLabel = "exact";
-              } else if (grade === LetterState.YELLOW) {
-                bg = "rgba(34,211,238,0.14)"; borderColor = TILE_PRESENT; color = "#c4f6ff";
-                glyph = STATE_GLYPH[LetterState.YELLOW]; stateLabel = "present";
-              } else if (grade === LetterState.GREY) {
-                bg = TILE_ABSENT; borderColor = "#33334a"; color = "#7a7a90";
-                glyph = STATE_GLYPH[LetterState.GREY]; stateLabel = "absent";
-              }
-
-              const animation = r.flipNow && grade !== undefined
-                ? `bwTileFlip ${FLIP_DURATION_MS}ms ease-in-out ${i * 100}ms 1`
-                : "none";
-
-              return (
-                <div
-                  key={i}
-                  style={{
-                    position: "relative",
-                    aspectRatio: "1 / 1",
-                    background: bg,
-                    border: `2px solid ${borderColor}`,
-                    borderRadius: 12,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "min(7vw, 30px)",
-                    fontWeight: 800,
-                    color,
-                    fontFamily: "monospace",
-                    letterSpacing: 0,
-                    textTransform: "uppercase",
-                    animation,
-                    boxShadow: grade === LetterState.GREEN ? `0 0 14px ${TILE_EXACT}66` : "none",
-                    transition: !r.flipNow ? "background 80ms, border-color 80ms" : "none",
-                    transformStyle: "preserve-3d",
-                  }}
-                  aria-label={filled ? (stateLabel ? `letter ${ch}, ${stateLabel}` : `letter ${ch}`) : "empty"}
-                >
-                  {filled ? ch : ""}
-                  {glyph && (
-                    <span
-                      aria-hidden
-                      style={{
-                        position: "absolute",
-                        top: 3,
-                        right: 5,
-                        fontSize: "min(2.6vw, 11px)",
-                        lineHeight: 1,
-                        opacity: 0.85,
-                        color: grade === LetterState.GREY ? "#6a6a80" : color,
-                        fontFamily: "sans-serif",
-                      }}
-                    >
-                      {glyph}
-                    </span>
-                  )}
-                </div>
-              );
-            })}
+            {filled ? ch : ""}
           </div>
         );
       })}
@@ -1187,37 +1134,99 @@ function GuessGrid({
   );
 }
 
+function LadderView({
+  ladder,
+  current,
+  status,
+  invalid,
+  invalidMsg,
+  lastRungIndex,
+}: {
+  ladder: string[];
+  current: string;
+  status: RunStatus;
+  invalid: boolean;
+  invalidMsg: string;
+  lastRungIndex: number;
+}) {
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [ladder.length, current]);
+
+  return (
+    <div style={{ padding: "16px 16px 12px", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+      <div
+        ref={scrollRef}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 6,
+          maxHeight: "min(46vh, 380px)",
+          overflowY: "auto",
+          width: "100%",
+          paddingRight: 4,
+        }}
+      >
+        {ladder.map((w, idx) => (
+          <WordRow
+            key={idx}
+            word={w}
+            prev={idx > 0 ? ladder[idx - 1] : null}
+            variant={idx === 0 ? "start" : "rung"}
+            pop={idx === lastRungIndex && idx > 0}
+          />
+        ))}
+
+        {status === "active" && (
+          <div
+            style={{
+              animation: invalid ? `bwShake ${SHAKE_DURATION_MS}ms ease-in-out` : "none",
+            }}
+          >
+            <WordRow
+              word={current}
+              prev={null}
+              variant="input"
+              pop={false}
+            />
+          </div>
+        )}
+      </div>
+
+      <div style={{ minHeight: 18, fontSize: 12, fontWeight: 700, color: invalid ? "#ff5230" : "#6a6a80", textAlign: "center" }}>
+        {invalid && invalidMsg
+          ? `⚠ ${invalidMsg}`
+          : status === "active"
+          ? `Change one letter of ${ladder[ladder.length - 1]}`
+          : ""}
+      </div>
+    </div>
+  );
+}
+
 const KB_ROWS: string[] = ["QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"];
 
 function Keyboard({
-  states,
+  hot,
   onLetter,
   onBackspace,
   onSubmit,
   disabled,
 }: {
-  states: KeyboardStates;
+  hot: Set<string>;
   onLetter: (l: string) => void;
   onBackspace: () => void;
   onSubmit: () => void;
   disabled: boolean;
 }) {
-  const renderKey = (label: string, onClick: () => void, opts?: { wide?: boolean; state?: LetterStateValue | -1 }) => {
-    const state = opts?.state ?? -1;
-    let bg = "#1a1a28";
-    let color = "#e8e8f0";
-    let border = "1px solid #2a2a3a";
-    let glyph = "";
-    if (state === LetterState.GREEN) {
-      bg = `linear-gradient(135deg, ${TILE_EXACT}, #7a2fe0)`; color = "#fff"; border = `1px solid ${TILE_EXACT}`;
-      glyph = STATE_GLYPH[LetterState.GREEN];
-    } else if (state === LetterState.YELLOW) {
-      bg = "rgba(34,211,238,0.16)"; color = "#c4f6ff"; border = `1px solid ${TILE_PRESENT}`;
-      glyph = STATE_GLYPH[LetterState.YELLOW];
-    } else if (state === LetterState.GREY) {
-      bg = TILE_ABSENT; color = "#6a6a80"; border = "1px solid #33334a";
-      glyph = STATE_GLYPH[LetterState.GREY];
-    }
+  const renderKey = (label: string, onClick: () => void, opts?: { wide?: boolean; hot?: boolean }) => {
+    const isHot = !!opts?.hot;
+    const bg = isHot ? "rgba(153,69,255,0.22)" : "#1a1a28";
+    const color = isHot ? "#e0ccff" : "#e8e8f0";
+    const border = isHot ? `1px solid ${ACCENT}` : "1px solid #2a2a3a";
     return (
       <button
         key={label}
@@ -1244,14 +1253,6 @@ function Keyboard({
         }}
       >
         {label}
-        {glyph && (
-          <span
-            aria-hidden
-            style={{ position: "absolute", top: 2, right: 3, fontSize: 8, lineHeight: 1, opacity: 0.8, fontFamily: "sans-serif" }}
-          >
-            {glyph}
-          </span>
-        )}
       </button>
     );
   };
@@ -1269,7 +1270,7 @@ function Keyboard({
           }}
         >
           {idx === 2 && renderKey("Enter", onSubmit, { wide: true })}
-          {row.split("").map((ch) => renderKey(ch, () => onLetter(ch), { state: states[ch] }))}
+          {row.split("").map((ch) => renderKey(ch, () => onLetter(ch), { hot: hot.has(ch) }))}
           {idx === 2 && renderKey("⌫", onBackspace, { wide: true })}
         </div>
       ))}
@@ -1279,7 +1280,7 @@ function Keyboard({
 
 function Confetti() {
   const pieces = useMemo(() => {
-    const colors = ["#14F195", "#ffd24a", "#9945FF", "#4fc3f7", "#ff8a40"];
+    const colors = ["#14F195", "#9945FF", "#22d3ee", "#4fc3f7", "#c99aff"];
     const arr: { left: number; delay: number; duration: number; color: string; size: number; rot: number }[] = [];
     for (let i = 0; i < 40; i++) {
       arr.push({
@@ -1357,7 +1358,7 @@ function ProgressiveUpgradeStack(p: StackProps) {
     },
     2: {
       label: p.busy === "verify" ? "Saving replay…" : "Add replay proof · $0.15",
-      why: "Full guess log committed on-chain. Anyone can replay your run from the seed and cryptographically verify the score — you get the 🏆 VERIFIED badge.",
+      why: "Your full ladder is committed on-chain. Anyone can replay it from the seed and cryptographically verify the score — you get the 🏆 VERIFIED badge.",
       action: p.onVerify,
       disabled: p.busy !== null,
       busy: p.busy === "verify",
@@ -1377,7 +1378,7 @@ function ProgressiveUpgradeStack(p: StackProps) {
       action: p.onWrapCnft,
       disabled: true,
       busy: false,
-      accent: "#9945FF",
+      accent: ACCENT,
     },
   }[nextTier];
 
@@ -1459,7 +1460,7 @@ function ProgressiveUpgradeStack(p: StackProps) {
           <AdvancedRow done={false} tier="T4" label="Wrap as cNFT" fee="$0.50 (v1.3)" detail="Metaplex Bubblegum — Magic Eden tradeable" pending />
           <div style={{ borderTop: "1px solid #1a1a28", marginTop: 10, paddingTop: 10, fontSize: 11, color: "#a8a8c0", display: "flex", justifyContent: "space-between" }}>
             <span>Total Gamerplex fees spent this run:</span>
-            <span style={{ color: "#ffd24a", fontFamily: "monospace", fontWeight: 700 }}>
+            <span style={{ color: ACCENT, fontFamily: "monospace", fontWeight: 700 }}>
               ${(
                 (p.savedThisRun ? 0.05 : 0) +
                 (p.verifiedThisRun ? 0.15 : 0) +
@@ -1499,15 +1500,15 @@ function AdvancedRow({ done, tier, label, fee, detail, pending }: { done: boolea
       </span>
       <span style={{ color: "#a8a8c0", fontWeight: 700, width: 30 }}>{tier}</span>
       <span style={{ color: "#e8e8f0", flex: 1 }}>{label}</span>
-      <span style={{ color: "#ffd24a", fontFamily: "monospace", fontSize: 11 }}>{fee}</span>
+      <span style={{ color: ACCENT, fontFamily: "monospace", fontSize: 11 }}>{fee}</span>
       <span style={{ color: "#6a6a80", fontSize: 10, flexBasis: "100%", paddingLeft: 74, marginTop: -2 }}>{detail}</span>
     </div>
   );
 }
 
 const btnPrimary: React.CSSProperties = {
-  background: "linear-gradient(135deg, #ffd24a, #ff8a40)",
-  color: "#1a0a00",
+  background: `linear-gradient(135deg, ${ACCENT}, #14F195)`,
+  color: "#050508",
   padding: "12px 28px",
   borderRadius: 10,
   fontSize: 15,
@@ -1525,7 +1526,7 @@ const btnSecondary: React.CSSProperties = {
   borderRadius: 10,
   fontSize: 13,
   fontWeight: 700,
-  border: "1px solid #ffd24a40",
+  border: "1px solid rgba(153,69,255,0.25)",
   cursor: "pointer",
   fontFamily: "'Space Grotesk', sans-serif",
 };
@@ -1547,4 +1548,3 @@ const kbdStyle: React.CSSProperties = {
   borderRadius: 3,
   fontSize: 10,
 };
-
