@@ -30,6 +30,7 @@ import ReferrerBanner from "../../../../components/arcade/ReferrerBanner";
 import { buildSaveScorePaymentIxs } from "../../../../lib/arcade/save-score-payment";
 import { PAYMENT_TOKENS, type PaymentTokenDef } from "../../../../lib/arcade/tokens";
 import PaymentMethodPicker from "../../../../components/arcade/PaymentMethodPicker";
+import { purchasesEnabled } from "../../../../lib/arcade/killswitch";
 import ShellLeaderboard from "../../../../components/arcade/ShellLeaderboard";
 import EmailLoginModal from "../../../../components/arcade/EmailLoginModal";
 import GoPlusModal from "../../../../components/arcade/GoPlusModal";
@@ -755,7 +756,8 @@ export default function ArcadeMode() {
                   </button>
                   <GoPlusModal open={showPlus} onClose={() => setShowPlus(false)} source="gameover" />
 
-                  {/* OPTIONAL on-chain "✓ Verified" save — advanced/secondary. Wallet only ever appears here. */}
+                  {/* OPTIONAL on-chain "✓ Verified" save — hidden by the kill-switch (NEXT_PUBLIC_GAME_PURCHASES_ENABLED=false). Wallet only ever appears here. */}
+                  {purchasesEnabled() && (
                   <details style={{ marginTop: 14, textAlign: "left" }}>
                     <summary style={{ cursor: "pointer", fontSize: 12, color: "#8a8aa0", fontWeight: 700, textAlign: "center", listStyle: "none" }}>
                       🔒 Save on-chain forever — ✓ Verified ($0.05) ▾
@@ -796,6 +798,7 @@ export default function ArcadeMode() {
                       )}
                     </div>
                   </details>
+                  )}
 
                   {/* Web2 leaderboard — free, always shown (Arcade Shell). Scores
                       that were saved on-chain carry the ✓ Verified tx column. */}

@@ -35,6 +35,7 @@ import {
 import { buildSaveScorePaymentIxs } from "../../../../lib/arcade/save-score-payment";
 import { PAYMENT_TOKENS, type PaymentTokenDef } from "../../../../lib/arcade/tokens";
 import PaymentMethodPicker from "../../../../components/arcade/PaymentMethodPicker";
+import { purchasesEnabled } from "../../../../lib/arcade/killswitch";
 import { getStoredReferrer } from "../../../../lib/arcade/referral";
 import { submitReplay, openSession } from "@gamerplex/sdk/arcade";
 import { track, identifyWallet } from "../../../../lib/analytics";
@@ -881,7 +882,8 @@ export default function ArcadeMode() {
                 </button>
                 <GoPlusModal open={showPlus} onClose={() => setShowPlus(false)} source="gameover" />
 
-                {/* OPTIONAL on-chain "✓ Verified" save — advanced/secondary. Wallet only ever appears here. */}
+                {/* OPTIONAL on-chain "✓ Verified" save — hidden by the kill-switch (NEXT_PUBLIC_GAME_PURCHASES_ENABLED=false). Wallet only ever appears here. */}
+                {purchasesEnabled() && (
                 <details style={{ width: "100%", maxWidth: 420, marginTop: 16, zIndex: 1 }}>
                   <summary style={{ cursor: "pointer", fontSize: 12, color: "rgba(255,255,255,0.75)", fontWeight: 700, textAlign: "center", listStyle: "none" }}>
                     🔒 Save on-chain forever — ✓ Verified ($0.05) ▾
@@ -923,6 +925,7 @@ export default function ArcadeMode() {
                     )}
                   </div>
                 </details>
+                )}
 
                 {onchainError && (
                   <div style={{ fontSize: 11, color: "#ff5252", maxWidth: 420, textAlign: "center", marginTop: 4, zIndex: 1 }}>

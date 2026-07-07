@@ -42,6 +42,7 @@ import {
 import { buildSaveScorePaymentIxs } from "../../../../lib/arcade/save-score-payment";
 import { PAYMENT_TOKENS, type PaymentTokenDef } from "../../../../lib/arcade/tokens";
 import PaymentMethodPicker from "../../../../components/arcade/PaymentMethodPicker";
+import { purchasesEnabled } from "../../../../lib/arcade/killswitch";
 import { getStoredReferrer } from "../../../../lib/arcade/referral";
 import { submitReplay } from "@gamerplex/sdk/arcade";
 import { track, identifyWallet } from "../../../../lib/analytics";
@@ -1279,7 +1280,9 @@ export default function CyberSnakeSolo() {
                 </button>
                 <GoPlusModal open={showPlus} onClose={() => setShowPlus(false)} source="gameover" />
 
-                {/* OPTIONAL on-chain "✓ Verified" save — advanced/secondary. Wallet only ever appears here. */}
+                {/* OPTIONAL on-chain "✓ Verified" save — advanced/secondary. Wallet only ever appears here.
+                    Hidden instantly by the kill-switch (NEXT_PUBLIC_GAME_PURCHASES_ENABLED=false). */}
+                {purchasesEnabled() && (
                 <details style={{ width: "100%", maxWidth: 420, marginTop: 16 }}>
                   <summary style={{ cursor: "pointer", fontSize: 12, color: "#8a8aa0", fontWeight: 700, textAlign: "center", listStyle: "none" }}>
                     🔒 Save on-chain forever — ✓ Verified ($0.05) ▾
@@ -1321,6 +1324,7 @@ export default function CyberSnakeSolo() {
                     )}
                   </div>
                 </details>
+                )}
 
                 {onchainError && (
                   <div style={{ fontSize: 11, color: "#ff5252", maxWidth: 420, textAlign: "center", marginTop: 4 }}>

@@ -11,6 +11,7 @@ import { useEffect, useRef, useState } from "react";
 import ShellLeaderboard from "./ShellLeaderboard";
 import GoPlusModal from "./GoPlusModal";
 import { track } from "../../lib/analytics";
+import { purchasesEnabled } from "../../lib/arcade/killswitch";
 
 type SaveState = "saving" | "saved" | "signed_out" | "error";
 
@@ -97,8 +98,9 @@ export default function GameOverPanel({
         {save === "error" && <span style={{ fontSize: 12, color: "#ff6b6b" }}>Couldn’t save — try again.</span>}
       </div>
 
-      {/* optional on-chain upgrade — the paid "verified" flex; wallet appears here only */}
-      {save === "saved" && onSaveOnChain && (
+      {/* optional on-chain upgrade — the paid "verified" flex; wallet appears here only.
+          Hidden instantly by the kill-switch (NEXT_PUBLIC_GAME_PURCHASES_ENABLED=false). */}
+      {save === "saved" && onSaveOnChain && purchasesEnabled() && (
         <div style={{ marginTop: 8 }}>
           {verify === "verified" ? (
             <span style={{ fontSize: 12, color: "#14F195", fontWeight: 700 }}>✓ Verified on-chain — permanent & provably legit</span>
