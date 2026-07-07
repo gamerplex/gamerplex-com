@@ -42,6 +42,7 @@ import { EconomyConsentModal, hasEconomyConsent } from "../../../../lib/arcade/e
 import { getIdentity, getCredits, type IdentityUser } from "../../../../lib/identity/client";
 import EmailLoginModal from "../../../../components/arcade/EmailLoginModal";
 import ShareSheet from "../../../../components/arcade/ShareSheet";
+import CommunityLinks from "../../../../components/CommunityLinks";
 import { sfxRung, sfxInvalid, sfxMilestone, sfxGameOver, haptic, isMuted, setMuted, prefersReducedMotion } from "../../../../lib/arcade/juice";
 import { earnCredits } from "../../../../lib/identity/client";
 import {
@@ -734,6 +735,9 @@ export default function ArcadeMode() {
           <button onClick={toggleMute} aria-label={muted ? "unmute sound" : "mute sound"} title={muted ? "Sound off — tap for sound" : "Sound on"} style={{ height: 32, width: 32, borderRadius: 99, border: "1px solid rgba(153,69,255,0.4)", background: "rgba(153,69,255,0.10)", color: "#e8e8f0", fontSize: 14, cursor: "pointer", lineHeight: 1 }}>
             {muted ? "🔇" : "🔊"}
           </button>
+          <a href="https://x.com/gamerplex_com" target="_blank" rel="noopener noreferrer" aria-label="Follow @gamerplex_com on X" title="@gamerplex_com" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", height: 32, width: 32, borderRadius: 99, border: "1px solid rgba(153,69,255,0.4)", background: "rgba(153,69,255,0.10)", color: "#e8e8f0" }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
+          </a>
           <a href="/leaderboard" className="nav-links" style={{ textDecoration: "none" }}>Leaderboard</a>
           {me ? (
             <a
@@ -937,6 +941,10 @@ export default function ArcadeMode() {
                 {/* Leaderboard lives INSIDE the game-over now (the below-page one is hidden in-run). */}
                 <div style={{ width: "100%", maxWidth: 460, marginTop: 20, zIndex: 1 }}>
                   <ShellLeaderboard gameId="blockwords" />
+                </div>
+
+                <div style={{ marginTop: 18, zIndex: 1 }}>
+                  <CommunityLinks tone="light" />
                 </div>
               </div>
             )}
