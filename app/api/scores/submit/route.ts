@@ -35,6 +35,22 @@ export async function POST(req: NextRequest) {
   let body: { gameId?: unknown; score?: unknown; refId?: unknown; variant?: unknown; durationSec?: unknown; metadata?: unknown };
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'invalid_json' }, { status: 400 }); }
 
+  // Defense-in-depth sanity bounds on the client-asserted score. The FREE web2
+  // board is inherently client-trusted; the trustworthy path is the on-chain
+  // "✓ Verified" replay (resolver-validated). These bounds reject the egregious
+  // spoofs (negatives, non-integers, absurd values, impossible durations).
+  const gameId = typeof body.gameId === 'string' ? body.gameId : '';
+  const SCORE_CEILING: Record<string, number> = { blockwords: 10_000, 'magic-chess': 100_000, 'cyber-snake': 200_000, flipball: 2_000_000 };
+  const ceiling = SCORE_CEILING[gameId] ?? 1_000_000;
+  const score = body.score;
+  if (typeof score !== 'number' || !Number.isFinite(score) || !Number.isInteger(score) || score < 0 || score > ceiling) {
+    return NextResponse.json({ error: 'invalid_score' }, { status: 400 });
+  }
+  const dur = body.durationSec;
+  if (dur !== undefined && (typeof dur !== 'number' || !Number.isFinite(dur) || dur < 0 || dur > 3600)) {
+    return NextResponse.json({ error: 'invalid_duration' }, { status: 400 });
+  }
+
   const cookie = req.headers.get('cookie') ?? '';
   const meRes = await fetch(`${IDENTITY_URL}/api/auth/me`, { headers: { cookie }, cache: 'no-store' });
   const me = await meRes.json().catch(() => ({}));

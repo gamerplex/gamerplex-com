@@ -42,7 +42,7 @@ import { EconomyConsentModal, hasEconomyConsent } from "../../../../lib/arcade/e
 import { getIdentity, getCredits, type IdentityUser } from "../../../../lib/identity/client";
 import EmailLoginModal from "../../../../components/arcade/EmailLoginModal";
 import ShareSheet from "../../../../components/arcade/ShareSheet";
-import { sfxRung, sfxInvalid, sfxMilestone, sfxGameOver, haptic, isMuted, setMuted } from "../../../../lib/arcade/juice";
+import { sfxRung, sfxInvalid, sfxMilestone, sfxGameOver, haptic, isMuted, setMuted, prefersReducedMotion } from "../../../../lib/arcade/juice";
 import { earnCredits } from "../../../../lib/identity/client";
 import ContinueWithCredits from "../../../../components/arcade/ContinueWithCredits";
 import ReferrerBanner from "../../../../components/arcade/ReferrerBanner";
@@ -232,11 +232,23 @@ export default function ArcadeMode() {
   // that carries the game link, no referral-code / MLM mechanics. Native share
   // sheet on mobile, clipboard fallback on desktop.
   const [showShare, setShowShare] = useState(false);
+  // Spoiler-free emoji grid (Wordle's viral engine): each rung is a row where the
+  // ONE changed square lights up — shows the SHAPE of your climb without revealing
+  // the words. This is what made Wordle grow 90→3M on $0 marketing.
   const buildShareText = (run: RunState) => {
     const rungs = run.ladder.length - 1;
     const secs = secondsUsed(run);
     const score = computeScore(run.ladder, secs);
-    return `🪜 Blockwords — I climbed a ${rungs}-rung word ladder for ${score} pts in ${secs}s. Can you climb higher?`;
+    const grid = run.ladder
+      .slice(1)
+      .map((cur, i) => {
+        const prev = run.ladder[i];
+        let row = "";
+        for (let j = 0; j < WORD_LENGTH; j++) row += prev[j] !== cur[j] ? "🟦" : "⬛";
+        return row;
+      })
+      .join("\n");
+    return `🪜 Blockwords — ${rungs}-rung ladder · ${score} pts · ${secs}s${grid ? `\n${grid}` : ""}\nCan you climb higher?`;
   };
   const refreshIdentity = useCallback(async () => {
     const u = await getIdentity();
@@ -680,6 +692,22 @@ export default function ArcadeMode() {
     return computeScore(r.ladder, secondsUsed(r));
   }, [r, tick]);
   const stepCount = r ? r.ladder.length - 1 : 0;
+  // Score count-up on game-over (anticipation-of-reward juice) — respects reduced-motion.
+  const [displayScore, setDisplayScore] = useState(0);
+  const ended = r?.status === "ended";
+  useEffect(() => {
+    if (!ended) { setDisplayScore(0); return; }
+    if (prefersReducedMotion()) { setDisplayScore(finalScore); return; }
+    let raf = 0;
+    const start = performance.now();
+    const step = (now: number) => {
+      const p = Math.min(1, (now - start) / 600);
+      setDisplayScore(Math.round(finalScore * (1 - Math.pow(1 - p, 3))));
+      if (p < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [ended, finalScore]);
   const liveWord = r ? r.ladder[r.ladder.length - 1] : "";
   const keyboardHot = useMemo<Set<string>>(() => {
     if (!r) return new Set();
@@ -699,7 +727,12 @@ export default function ArcadeMode() {
           <a href="/" className="nav-logo" style={{ textDecoration: "none" }}>GAMERPLEX</a>
         </div>
         {/* Identity chip — ALWAYS visible (incl. mobile). Play-first: signed-out shows a subtle Sign in; the real conversion is the game-over save. */}
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          {streakInfo.streak > 0 && (
+            <span title={`${streakInfo.streak}-day streak`} style={{ display: "inline-flex", alignItems: "center", gap: 4, height: 32, padding: "0 12px", borderRadius: 99, border: "1px solid rgba(255,138,60,0.5)", background: "rgba(255,138,60,0.12)", color: "#ffb877", fontSize: 13, fontWeight: 800 }}>
+              🔥 {streakInfo.streak}
+            </span>
+          )}
           <button onClick={toggleMute} aria-label={muted ? "unmute sound" : "mute sound"} title={muted ? "Sound off — tap for sound" : "Sound on"} style={{ height: 32, width: 32, borderRadius: 99, border: "1px solid rgba(153,69,255,0.4)", background: "rgba(153,69,255,0.10)", color: "#e8e8f0", fontSize: 14, cursor: "pointer", lineHeight: 1 }}>
             {muted ? "🔇" : "🔊"}
           </button>
@@ -774,7 +807,7 @@ export default function ArcadeMode() {
 
             {r && r.status === "ended" && (
               <div style={{ position: "absolute", inset: 0, background: "rgba(5,5,20,0.94)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, padding: 20, overflowY: "auto" }}>
-                {stepCount >= WIN_LADDER_STEPS && (
+                {stepCount >= WIN_LADDER_STEPS && !prefersReducedMotion() && (
                   <Confetti />
                 )}
                 <div style={{ fontSize: 11, fontWeight: 800, color: stepCount >= WIN_LADDER_STEPS ? "#14F195" : "#ff5230", letterSpacing: 3, textTransform: "uppercase", zIndex: 1 }}>
@@ -792,7 +825,7 @@ export default function ArcadeMode() {
                   textShadow: "0 0 40px rgba(20,241,149,0.35)",
                   margin: "4px 0 2px",
                   zIndex: 1,
-                }}>{finalScore.toLocaleString()}</div>
+                }}>{displayScore.toLocaleString()}</div>
                 <div style={{ fontSize: 11, color: "#8a8aa0", letterSpacing: 1.5, textTransform: "uppercase", fontWeight: 700, marginBottom: 4, zIndex: 1 }}>
                   Your score
                 </div>
@@ -973,6 +1006,9 @@ export default function ArcadeMode() {
       </div>
 
       <style>{`
+        @media (prefers-reduced-motion: reduce) {
+          .bw-board-frame *, .bw-intro-overlay * { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+        }
         .bw-layout {
           display: grid;
           grid-template-columns: 1fr 340px;
