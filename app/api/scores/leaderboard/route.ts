@@ -14,8 +14,9 @@ export async function GET(req: NextRequest) {
   const gameId = u.searchParams.get('gameId') ?? '';
   const limit = u.searchParams.get('limit') ?? '50';
   const verifiedOnly = u.searchParams.get('verifiedOnly') === '1' ? '1' : '0';
+  const window = u.searchParams.get('window') === 'week' ? 'week' : 'all';
 
-  const qs = new URLSearchParams({ app: 'gamerplex', gameId, limit, verifiedOnly });
+  const qs = new URLSearchParams({ app: 'gamerplex', gameId, limit, verifiedOnly, window });
   const res = await fetch(`${IDENTITY_URL}/api/v1/scores/leaderboard?${qs}`, { cache: 'no-store' });
   const body = await res.json().catch(() => ({ leaderboard: [] }));
   return NextResponse.json(body, { status: res.ok ? 200 : res.status });

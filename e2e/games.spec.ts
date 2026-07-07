@@ -9,6 +9,7 @@ import { GAME_ROUTES } from './routes';
 
 const PLAY_AFFORDANCE = [
   'canvas',
+  'iframe', // Flipball's play surface is a cross-origin game iframe (flipball.gamerplex.com)
   '[class*="board"]',
   '[role="tablist"]', // Blockwords arcade mode-picker
   '[data-testid*="game"]',

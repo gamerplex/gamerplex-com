@@ -34,13 +34,14 @@ export default function ShellLeaderboard({
 }) {
   const [rows, setRows] = useState<LbRow[]>([]);
   const [verifiedOnly, setVerifiedOnly] = useState(false);
+  const [weekly, setWeekly] = useState(true);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch(
-        `/api/scores/leaderboard?gameId=${encodeURIComponent(gameId)}&limit=${limit}&verifiedOnly=${verifiedOnly ? 1 : 0}`,
+        `/api/scores/leaderboard?gameId=${encodeURIComponent(gameId)}&limit=${limit}&verifiedOnly=${verifiedOnly ? 1 : 0}&window=${weekly ? "week" : "all"}`,
         { cache: "no-store" },
       );
       const body = await res.json().catch(() => ({ leaderboard: [] }));
@@ -48,7 +49,7 @@ export default function ShellLeaderboard({
     } finally {
       setLoading(false);
     }
-  }, [gameId, limit, verifiedOnly]);
+  }, [gameId, limit, verifiedOnly, weekly]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -58,17 +59,44 @@ export default function ShellLeaderboard({
         <h3 style={{ fontSize: 13, fontWeight: 800, letterSpacing: 1, color: "#e8e8f0", margin: 0, textTransform: "uppercase" }}>
           🏆 Leaderboard
         </h3>
-        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "#b388ff", cursor: "pointer", userSelect: "none" }}>
-          <input type="checkbox" checked={verifiedOnly} onChange={(e) => setVerifiedOnly(e.target.checked)} style={{ accentColor: "#14F195" }} />
-          Verified only
-        </label>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", borderRadius: 8, overflow: "hidden", border: "1px solid rgba(153,69,255,0.3)" }}>
+            {([["week", "This week"], ["all", "All-time"]] as const).map(([w, label]) => {
+              const active = (w === "week") === weekly;
+              return (
+                <button
+                  key={w}
+                  type="button"
+                  onClick={() => setWeekly(w === "week")}
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    padding: "4px 9px",
+                    border: "none",
+                    cursor: "pointer",
+                    userSelect: "none",
+                    color: active ? "#0a0a12" : "#b388ff",
+                    background: active ? "#b388ff" : "transparent",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+          <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "#b388ff", cursor: "pointer", userSelect: "none" }}>
+            <input type="checkbox" checked={verifiedOnly} onChange={(e) => setVerifiedOnly(e.target.checked)} style={{ accentColor: "#14F195" }} />
+            Verified only
+          </label>
+        </div>
       </div>
 
       {loading ? (
         <div style={{ padding: 20, textAlign: "center", color: "#666", fontSize: 12 }}>Loading…</div>
       ) : rows.length === 0 ? (
         <div style={{ padding: 20, textAlign: "center", color: "#666", fontSize: 12 }}>
-          {verifiedOnly ? "No verified scores yet — be the first to save on-chain." : "No scores yet — play a game to get on the board."}
+          {verifiedOnly ? "No verified scores yet — be the first to save on-chain." : weekly ? "No scores this week yet — play now to top the board." : "No scores yet — play a game to get on the board."}
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>

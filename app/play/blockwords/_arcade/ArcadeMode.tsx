@@ -42,6 +42,7 @@ import { EconomyConsentModal, hasEconomyConsent } from "../../../../lib/arcade/e
 import { getIdentity, getCredits, type IdentityUser } from "../../../../lib/identity/client";
 import EmailLoginModal from "../../../../components/arcade/EmailLoginModal";
 import ShareSheet from "../../../../components/arcade/ShareSheet";
+import GoPlusModal from "../../../../components/arcade/GoPlusModal";
 import CommunityLinks from "../../../../components/CommunityLinks";
 import { sfxRung, sfxInvalid, sfxMilestone, sfxGameOver, haptic, isMuted, setMuted, prefersReducedMotion } from "../../../../lib/arcade/juice";
 import { earnCredits } from "../../../../lib/identity/client";
@@ -224,6 +225,7 @@ export default function ArcadeMode() {
   const meRef = useRef<IdentityUser | null>(null);
   const [credits, setCredits] = useState<number | null>(null);
   const [showLogin, setShowLogin] = useState(false);
+  const [showPlus, setShowPlus] = useState(false);
   const [muted, setMutedState] = useState(true);
   useEffect(() => { setMutedState(isMuted()); }, []);
   const toggleMute = useCallback(() => { const m = !isMuted(); setMuted(m); setMutedState(m); }, []);
@@ -869,6 +871,15 @@ export default function ArcadeMode() {
                   <a href="/arcade" style={{ ...brightBtn, textDecoration: "none", display: "inline-flex", alignItems: "center" }}>← Arcade</a>
                 </div>
                 ); })()}
+
+                {/* Gamerplex Plus fake-door — subtle WTP money-test. */}
+                <button
+                  onClick={() => { setShowPlus(true); track("plus_opened", { source: "gameover", game: "blockwords" }); }}
+                  style={{ marginTop: 12, background: "none", border: "none", cursor: "pointer", fontSize: 12.5, fontWeight: 800, color: "rgba(255,255,255,0.82)", zIndex: 1 }}
+                >
+                  ✦ Go Plus — more play, no ads
+                </button>
+                <GoPlusModal open={showPlus} onClose={() => setShowPlus(false)} source="gameover" />
 
                 {/* OPTIONAL on-chain "✓ Verified" save — advanced/secondary. Wallet only ever appears here. */}
                 <details style={{ width: "100%", maxWidth: 420, marginTop: 16, zIndex: 1 }}>

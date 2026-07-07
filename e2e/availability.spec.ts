@@ -17,6 +17,10 @@ const IGNORED = [
   /CORS/i,
   /net::ERR_/i,
   /favicon/i,
+  // Flipball's iframe sets frame-ancestors to the real gamerplex.com origin, so the
+  // browser blocks the embed (and logs this) when the shell is served off-origin
+  // (localhost / preview deploy). Harmless: the embed loads on the production origin.
+  /frame-ancestors/i,
 ];
 
 // Attach crash/error collectors. Returns getters the test asserts on.
@@ -43,13 +47,20 @@ async function assertViewable(page: Page, path: string, requireContent: boolean)
 
   // 2. Not Next's error/404 overlay.
   await expect(page.locator('body')).toBeVisible();
+
+  // Client content mounts after hydration, which lands after `domcontentloaded`.
+  // Wait for the body to carry real text before snapshotting it, so the assertions
+  // below check rendered output rather than racing an empty pre-hydration DOM.
+  if (requireContent) {
+    await expect
+      .poll(() => page.locator('body').innerText().then((t) => t.trim().length).catch(() => 0), {
+        message: `${path} rendered too little`,
+      })
+      .toBeGreaterThan(40);
+  }
+
   const bodyText = (await page.locator('body').innerText().catch(() => '')) || '';
   expect(bodyText, `${path} shows an app error`).not.toMatch(/Application error|Internal Server Error|This page could not be found/i);
-
-  // 3. Real content rendered (content pages only; dynamic pages may be sparse).
-  if (requireContent) {
-    expect(bodyText.trim().length, `${path} rendered too little`).toBeGreaterThan(40);
-  }
 
   // 4. No uncaught JS exception (a real crash).
   expect(pageErrors, `${path} threw: ${pageErrors.join(' | ')}`).toHaveLength(0);

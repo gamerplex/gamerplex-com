@@ -29,3 +29,5 @@ playwright-report/
 test-results/
 /blob-report/
 .playwright/
+
+.lb-harness-tmp/

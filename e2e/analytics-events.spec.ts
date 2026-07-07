@@ -68,6 +68,20 @@ async function persistedSuperProps(page: Page): Promise<Record<string, unknown> 
   });
 }
 
+// posthog-js flushes register()'d super-props to localStorage asynchronously, a beat
+// after it sets window.__posthog_initialized. Poll (bounded) until the platform props
+// have persisted so we read a settled store rather than racing the flush.
+async function waitForSuperProps(page: Page): Promise<Record<string, unknown> | null> {
+  try {
+    await expect
+      .poll(async () => (await persistedSuperProps(page))?.product ?? null, { timeout: 8_000, intervals: [100, 250, 500] })
+      .toBe('arcade');
+  } catch {
+    /* fall through — caller asserts on whatever (if anything) persisted */
+  }
+  return persistedSuperProps(page);
+}
+
 function watchCaptures(page: Page): Array<{ event: string; properties?: Record<string, unknown> }> {
   const captures: Array<{ event: string; properties?: Record<string, unknown> }> = [];
   page.on('request', (r) => {
@@ -76,17 +90,28 @@ function watchCaptures(page: Page): Array<{ event: string; properties?: Record<s
   return captures;
 }
 
+// PostHog initialises in a client useEffect that lands AFTER `domcontentloaded`, so
+// the flag isn't set the instant navigation resolves. Poll it (bounded) so the test
+// acts on a settled client instead of racing hydration; returns false if it never
+// initialises (key unset in this build) so the caller can skip cleanly.
+async function waitForPosthogInit(page: Page): Promise<boolean> {
+  return page
+    .waitForFunction(() => !!(window as Win).__posthog_initialized, undefined, { timeout: 8_000 })
+    .then(() => true)
+    .catch(() => false);
+}
+
 test.describe('posthog named events', () => {
   test('$pageview fires on the landing page, tagged test_traffic', async ({ page }) => {
     const captures = watchCaptures(page);
 
     await page.goto('/');
 
-    const initialised = await page.evaluate(() => !!(window as Win).__posthog_initialized);
+    const initialised = await waitForPosthogInit(page);
     test.skip(!initialised, 'PostHog key not configured in this build (NEXT_PUBLIC_POSTHOG_KEY unset)');
 
     // Hard gate: the client fired with the platform super-props, automation-tagged.
-    const sp = await persistedSuperProps(page);
+    const sp = await waitForSuperProps(page);
     expect(sp, 'posthog persisted its super-properties').not.toBeNull();
     expect(sp!.product, 'product super-prop').toBe('arcade');
     expect(sp!.surface, 'surface super-prop').toBe('gamerplex-com');
@@ -108,20 +133,21 @@ test.describe('posthog named events', () => {
 
     await page.goto('/games');
 
-    const initialised = await page.evaluate(() => !!(window as Win).__posthog_initialized);
+    const initialised = await waitForPosthogInit(page);
     test.skip(!initialised, 'PostHog key not configured in this build (NEXT_PUBLIC_POSTHOG_KEY unset)');
+
+    // Hard gate: the live client is tagging automation. Read the persisted super-props
+    // on /games (where init landed) BEFORE the click navigates away — localStorage
+    // survives the navigation, but the source page must have registered them first.
+    const sp = await waitForSuperProps(page);
+    expect(sp?.product, 'product super-prop').toBe('arcade');
+    expect(sp?.test_traffic, 'automated traffic tagged test_traffic=true').toBe(true);
 
     // The featured Magic Chess tile fires track("game_selected", { game: "magic-chess" })
     // on click (app/games/page.tsx). Open it in the same tab so the useEffect+click run.
     const chessTile = page.locator('a[href="/play/magic-chess"]').first();
     await expect(chessTile).toBeVisible();
     await chessTile.click();
-
-    // Hard gate: the live client is tagging automation (super-props merged into the
-    // game_selected capture the click just fired).
-    const sp = await persistedSuperProps(page);
-    expect(sp?.product, 'product super-prop').toBe('arcade');
-    expect(sp?.test_traffic, 'automated traffic tagged test_traffic=true').toBe(true);
 
     // Opportunistic wire assertion for the named event.
     if (captures.some((c) => c.event === 'game_selected')) {

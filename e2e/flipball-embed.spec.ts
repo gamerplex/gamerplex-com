@@ -14,7 +14,7 @@ for (const vp of [
     await page.goto('/play/flipball', { waitUntil: 'domcontentloaded' });
 
     // shell nav home link
-    await expect(page.getByRole('link', { name: 'GAMERPLEX' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'GAMERPLEX', exact: true })).toBeVisible();
     // the game iframe points at the flipball origin
     const frame = page.locator('iframe[src*="flipball.gamerplex.com"]');
     await expect(frame).toHaveCount(1);

@@ -9,6 +9,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import ShellLeaderboard from "./ShellLeaderboard";
+import GoPlusModal from "./GoPlusModal";
+import { track } from "../../lib/analytics";
 
 type SaveState = "saving" | "saved" | "signed_out" | "error";
 
@@ -37,6 +39,7 @@ export default function GameOverPanel({
 }) {
   const [save, setSave] = useState<SaveState>("saving");
   const [verify, setVerify] = useState<"idle" | "saving" | "verified" | "error">("idle");
+  const [showPlus, setShowPlus] = useState(false);
   const submitted = useRef(false);
 
   // Auto web2-save once, on mount.
@@ -116,6 +119,17 @@ export default function GameOverPanel({
         <button onClick={onPlayAgain} style={btn("#14F195")}>✦ Play Again</button>
         <button onClick={onHome} style={btn("#9945FF")}>← Home</button>
       </div>
+
+      {/* Subtle Gamerplex Plus fake-door — every game gets it via the shared shell. */}
+      <div style={{ marginTop: 14 }}>
+        <button
+          onClick={() => { setShowPlus(true); track("plus_opened", { source: "gameover", game: gameId }); }}
+          style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, color: "#b388ff", opacity: 0.85 }}
+        >
+          ✦ Go Plus — more play, no ads
+        </button>
+      </div>
+      <GoPlusModal open={showPlus} onClose={() => setShowPlus(false)} source="gameover" />
 
       <div style={{ marginTop: 18 }}>
         <ShellLeaderboard gameId={gameId} highlightUserId={userId ?? undefined} limit={10} />
