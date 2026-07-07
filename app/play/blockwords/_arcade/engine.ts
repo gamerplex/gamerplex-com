@@ -26,15 +26,34 @@ export function makeRng(seedBytes: Uint8Array): () => number {
   };
 }
 
+/** True iff `w` has at least one valid one-letter-change neighbor in the dictionary. */
+function hasLadderNeighbor(w: string): boolean {
+  for (let i = 0; i < w.length; i++) {
+    for (let c = 65; c <= 90; c++) {
+      const ch = String.fromCharCode(c);
+      if (ch === w[i]) continue;
+      if (WORD_SET.has(w.slice(0, i) + ch + w.slice(i + 1))) return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Deterministic subset of WORDS guaranteed to have >=1 valid ladder step — the
+ * ~10% of dead-end words (no one-letter neighbor) are excluded so no run ever
+ * starts on an unplayable board. Computed identically in the resolver mirror.
+ */
+export const PLAYABLE_STARTS: string[] = WORDS.filter(hasLadderNeighbor);
+
 export function startWordIndex(seed: Uint8Array): number {
   const rng = makeRng(seed);
   rng();
-  return rng() % WORDS.length;
+  return rng() % PLAYABLE_STARTS.length;
 }
 
 /** Deterministic START word of the ladder, derived from the session seed. */
 export function startWordForSeed(seed: Uint8Array): string {
-  return WORDS[startWordIndex(seed)];
+  return PLAYABLE_STARTS[startWordIndex(seed)];
 }
 
 /** True iff `w` is a real word in the fixed dictionary (case-insensitive). */

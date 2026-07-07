@@ -8,7 +8,7 @@ import {
   useConnection,
   useWallet,
 } from "@solana/wallet-adapter-react";
-import { WalletMultiButton, useWalletModal } from "@solana/wallet-adapter-react-ui";
+import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import ModeToggle from "../../../../components/games/ModeToggle";
 import ShellLeaderboard from "../../../../components/arcade/ShellLeaderboard";
 import {
@@ -39,6 +39,8 @@ import { getStoredReferrer } from "../../../../lib/arcade/referral";
 import { submitReplay, openSession } from "@gamerplex/sdk/arcade";
 import { track, identifyWallet } from "../../../../lib/analytics";
 import { EconomyConsentModal, hasEconomyConsent } from "../../../../lib/arcade/economy-gate";
+import { getIdentity, getCredits, type IdentityUser } from "../../../../lib/identity/client";
+import EmailLoginModal from "../../../../components/arcade/EmailLoginModal";
 import { earnCredits } from "../../../../lib/identity/client";
 import ContinueWithCredits from "../../../../components/arcade/ContinueWithCredits";
 import ReferrerBanner from "../../../../components/arcade/ReferrerBanner";
@@ -216,6 +218,40 @@ export default function ArcadeMode() {
   const [ownedThisRun, setOwnedThisRun] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
+  // Web2 identity (email-first). Wallet is separate + only powers the optional on-chain save.
+  const [me, setMe] = useState<IdentityUser | null>(null);
+  const meRef = useRef<IdentityUser | null>(null);
+  const [credits, setCredits] = useState<number | null>(null);
+  const [showLogin, setShowLogin] = useState(false);
+  const refreshIdentity = useCallback(async () => {
+    const u = await getIdentity();
+    setMe(u);
+    meRef.current = u;
+    if (u) {
+      const c = await getCredits();
+      setCredits(c?.perApp.find((a) => a.app === "gamerplex")?.balance ?? c?.total ?? 0);
+    } else {
+      setCredits(null);
+    }
+    return u;
+  }, []);
+  useEffect(() => {
+    void (async () => {
+      const u = await refreshIdentity();
+      // Magic-link round-trip: play → email → tap link → land back here signed in →
+      // save the score we stashed while signed out. Idempotent server-side (refId).
+      if (u && typeof window !== "undefined") {
+        const pend = window.localStorage.getItem("bw_pending_score");
+        if (pend) {
+          try {
+            await fetch("/api/scores/submit", { method: "POST", headers: { "content-type": "application/json" }, body: pend });
+          } catch {}
+          window.localStorage.removeItem("bw_pending_score");
+        }
+      }
+    })();
+  }, [refreshIdentity]);
+
   useEffect(() => {
     if (!publicKey) {
       setProfileExists(null);
@@ -269,10 +305,15 @@ export default function ArcadeMode() {
       void earnCredits("game_win", `blockwords:win:${r.startedAt}`);
     }
     // Arcade Shell: free web2 leaderboard save — no wallet, just the email session.
+    const payload = JSON.stringify({ gameId: "blockwords", score, refId: `blockwords:${r.startedAt}`, durationSec: secondsUsed(r) });
     void fetch("/api/scores/submit", {
       method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ gameId: "blockwords", score, refId: `blockwords:${r.startedAt}`, durationSec: secondsUsed(r) }),
+      body: payload,
     }).catch(() => {});
+    // If signed out, stash it so it saves the moment they tap their email sign-in link.
+    if (!meRef.current && typeof window !== "undefined") {
+      window.localStorage.setItem("bw_pending_score", payload);
+    }
     if (r.mode === "daily" && steps.length >= WIN_LADDER_STEPS) {
       const { streak } = recordDailyWin();
       setStreakInfo({ lastPlayedYmd: todayYmd(), streak, playedToday: true });
@@ -616,6 +657,11 @@ export default function ArcadeMode() {
     if (!r) return new Set();
     return currentWordLetters(r.current, liveWord);
   }, [r, tick, liveWord]);
+  // In a run at all (active OR game-over): the board frame fills the viewport and
+  // the marketing/how-to/leaderboard panels below it are hidden — so both play and
+  // game-over are self-contained full-screen states (the game-over shows its own
+  // leaderboard inside the overlay). Only the idle START screen is the long page.
+  const inRun = !!r;
 
   return (
     <div style={{ minHeight: "100vh", background: "#050508", color: "#e8e8f0", fontFamily: "'Space Grotesk', sans-serif" }}>
@@ -623,30 +669,34 @@ export default function ArcadeMode() {
       <nav className="top-nav" style={{ padding: "14px 24px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <a href="/" className="nav-logo" style={{ textDecoration: "none" }}>GAMERPLEX</a>
-          <span className="devnet-badge">Devnet</span>
         </div>
-        <div className="nav-links">
-          <a href="/#featured">Play</a>
-          <a href="/docs">Build</a>
-          <a href="/leaderboard">Leaderboard</a>
-          <a href="/profile">Profile</a>
-          <WalletMultiButton
-            style={{
-              background: "rgba(153,69,255,0.12)",
-              color: "#e8e8f0",
-              fontSize: 11,
-              height: 32,
-              padding: "0 12px",
-              borderRadius: 99,
-              border: "1px solid rgba(153,69,255,0.4)",
-              fontWeight: 700,
-            }}
-          />
+        {/* Identity chip — ALWAYS visible (incl. mobile). Play-first: signed-out shows a subtle Sign in; the real conversion is the game-over save. */}
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <a href="/leaderboard" className="nav-links" style={{ textDecoration: "none" }}>Leaderboard</a>
+          {me ? (
+            <a
+              href="/profile"
+              style={{ display: "inline-flex", alignItems: "center", gap: 8, height: 32, padding: "0 12px", borderRadius: 99, border: "1px solid rgba(153,69,255,0.4)", background: "rgba(153,69,255,0.12)", color: "#e8e8f0", fontSize: 12, fontWeight: 700, textDecoration: "none" }}
+            >
+              <span style={{ maxWidth: 90, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{me.handle || me.email?.split("@")[0] || "you"}</span>
+              {credits != null && <span style={{ color: "#14F195", fontWeight: 800 }}>⚡{credits}</span>}
+            </a>
+          ) : (
+            <button
+              onClick={() => { setShowLogin(true); track("login_prompt", { game: "blockwords", source: "nav" }); }}
+              style={{ height: 32, padding: "0 16px", borderRadius: 99, border: "1px solid rgba(153,69,255,0.4)", background: "rgba(153,69,255,0.10)", color: "#e8e8f0", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+            >
+              Sign in
+            </button>
+          )}
         </div>
       </nav>
 
-      <div className="bw-layout" style={{ maxWidth: 1400, margin: "0 auto", padding: "16px 16px 24px", gap: 16 }}>
+      <EmailLoginModal open={showLogin} onClose={() => { setShowLogin(false); void refreshIdentity(); }} />
+
+      <div className="bw-layout" style={{ maxWidth: 1400, margin: "0 auto", padding: inRun ? "16px 16px 24px" : "64px 16px 24px", gap: 16 }}>
         <div>
+          {inRun ? null : (
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, flexWrap: "wrap", gap: 10 }}>
             <ModeToggle
               gameLabel="Blockwords"
@@ -655,12 +705,13 @@ export default function ArcadeMode() {
               battle={{ status: "live-devnet", href: "/play/blockwords?mode=battle", programId: "3XA1rz4f83FoTyvB7g1XHhsb4bx9SrUSBDtpLtAttU4o" }}
             />
           </div>
+          )}
 
-          <div className="bw-board-frame" style={{ position: "relative", width: "100%", borderRadius: 16, overflow: "hidden", border: "1px solid rgba(153,69,255,0.4)", background: "linear-gradient(135deg, rgba(25,10,45,0.95), rgba(2,6,20,0.95))", boxShadow: "0 0 40px rgba(153,69,255,0.18)" }}>
+          <div className="bw-board-frame" style={{ position: "relative", width: "100%", borderRadius: 16, overflow: "hidden", border: "1px solid rgba(153,69,255,0.4)", background: "linear-gradient(135deg, rgba(25,10,45,0.95), rgba(2,6,20,0.95))", boxShadow: "0 0 40px rgba(153,69,255,0.18)", ...(inRun ? { minHeight: "calc(100dvh - 92px)", marginTop: 10, display: "flex", flexDirection: "column" } : {}) }}>
             {!r ? (
               <IntroOverlay onStart={startNewRun} streak={streakInfo} />
             ) : (
-              <div style={{ display: "flex", flexDirection: "column" }}>
+              <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
                 <RunHud
                   remainingSec={remainingSec}
                   totalSec={RUN_DURATION_SEC}
@@ -669,14 +720,16 @@ export default function ArcadeMode() {
                   status={r.status}
                 />
 
-                <LadderView
-                  ladder={r.ladder}
-                  current={r.current}
-                  status={r.status}
-                  invalid={Date.now() < r.invalidUntil}
-                  invalidMsg={r.invalidMsg}
-                  lastRungIndex={r.lastRungIndex}
-                />
+                <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", justifyContent: "center", overflowY: "auto" }}>
+                  <LadderView
+                    ladder={r.ladder}
+                    current={r.current}
+                    status={r.status}
+                    invalid={Date.now() < r.invalidUntil}
+                    invalidMsg={r.invalidMsg}
+                    lastRungIndex={r.lastRungIndex}
+                  />
+                </div>
 
                 <Keyboard
                   hot={keyboardHot}
@@ -730,65 +783,75 @@ export default function ArcadeMode() {
                   <ContinueWithCredits item="retry" game="blockwords" onSuccess={() => startNewRun(r.mode)} />
                 </div>
 
-                {connected ? (
-                  <>
-                    {!savedThisRun && (
-                      <div style={{ width: "100%", maxWidth: 420, marginBottom: 4 }}>
-                        <PaymentMethodPicker
-                          value={paymentToken}
-                          onChange={setPaymentToken}
-                          basePriceMicroUsd={new BN(SCORE_COMMIT_MICRO_USD)}
-                        />
-                      </div>
-                    )}
-                    <ProgressiveUpgradeStack
-                      busy={busy}
-                      profileExists={profileExists}
-                      savedThisRun={savedThisRun}
-                      verifiedThisRun={verifiedThisRun}
-                      ownedThisRun={ownedThisRun}
-                      showAdvanced={showAdvanced}
-                      setShowAdvanced={setShowAdvanced}
-                      onSave={onSaveOnChain}
-                      onVerify={onVerifyRun}
-                      onMintReceipt={onMintReceipt}
-                      onWrapCnft={() => setOnchainError("T4 cNFT wrap ships in v1.3 — Metaplex Bubblegum integration pending.")}
-                      onRestart={() => startNewRun(r.mode)}
-                    />
-                  </>
-                ) : (
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, marginTop: 4, width: "100%", maxWidth: 420, zIndex: 1 }}>
-                    <button
-                      onClick={() => setWalletModalVisible(true)}
-                      style={{
-                        background: "linear-gradient(90deg, #9945FF, #14F195)",
-                        color: "#000",
-                        padding: "16px 28px",
-                        border: "none",
-                        borderRadius: 10,
-                        fontSize: 16,
-                        fontWeight: 900,
-                        letterSpacing: 0.5,
-                        cursor: "pointer",
-                        fontFamily: "inherit",
-                        boxShadow: "0 0 32px rgba(20,241,149,0.55), 0 0 64px rgba(153,69,255,0.35)",
-                        width: "100%",
-                        maxWidth: 360,
-                      }}
-                    >
-                      💾 SAVE SCORE — CONNECT WALLET
-                    </button>
-                    <div style={{ fontSize: 11, color: "#8a8aa0", textAlign: "center", lineHeight: 1.5 }}>
-                      First save free on devnet · GPX5 memo on Solana, permanent
+                {/* WEB2-FIRST save — the primary path (email, no wallet). Play-first, save-anchored (loss-aversion), per the portal benchmark. */}
+                {me ? (
+                  <div style={{ width: "100%", maxWidth: 380, textAlign: "center", zIndex: 1 }}>
+                    <div style={{ fontSize: 14, color: "#14F195", fontWeight: 800 }}>✓ Saved to the leaderboard</div>
+                    <div style={{ fontSize: 12, color: "#a8a8c0", marginTop: 4, lineHeight: 1.5 }}>
+                      🔥 Come back tomorrow to keep your streak{credits != null ? ` · ⚡ ${credits} Credits` : ""}
                     </div>
-                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center", marginTop: 4 }}>
-                      <button onClick={() => startNewRun("random")} style={{ ...btnSecondary, minHeight: 40 }}>↻ Play Again</button>
-                      <a href="/arcade" style={{ ...btnSecondary, textDecoration: "none", display: "inline-flex", alignItems: "center", minHeight: 40 }}>
-                        ← Back
-                      </a>
+                  </div>
+                ) : (
+                  <div style={{ width: "100%", maxWidth: 340, zIndex: 1 }}>
+                    <button
+                      onClick={() => { setShowLogin(true); track("login_prompt", { game: "blockwords", source: "gameover" }); }}
+                      style={{ width: "100%", height: 52, border: "none", borderRadius: 12, background: "linear-gradient(90deg,#9945FF,#7c3aed)", color: "#fff", fontSize: 15, fontWeight: 900, cursor: "pointer" }}
+                    >
+                      💾 Save your score &amp; streak
+                    </button>
+                    <div style={{ fontSize: 11, color: "#8a8aa0", textAlign: "center", marginTop: 8, lineHeight: 1.5 }}>
+                      Free · email sign-in, no wallet · don&apos;t lose your spot on the leaderboard
                     </div>
                   </div>
                 )}
+
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center", marginTop: 12, zIndex: 1 }}>
+                  <button onClick={() => startNewRun("random")} style={{ ...btnSecondary, minHeight: 44 }}>↻ Play again</button>
+                  <a href="/arcade" style={{ ...btnSecondary, textDecoration: "none", display: "inline-flex", alignItems: "center", minHeight: 44 }}>← Arcade</a>
+                </div>
+
+                {/* OPTIONAL on-chain "✓ Verified" save — advanced/secondary. Wallet only ever appears here. */}
+                <details style={{ width: "100%", maxWidth: 420, marginTop: 14, zIndex: 1 }}>
+                  <summary style={{ cursor: "pointer", fontSize: 12, color: "#c99aff", fontWeight: 700, textAlign: "center", listStyle: "none" }}>
+                    🔒 Save on-chain forever — ✓ Verified ($0.05) ▾
+                  </summary>
+                  <div style={{ marginTop: 12 }}>
+                    {connected ? (
+                      <>
+                        {!savedThisRun && (
+                          <div style={{ width: "100%", marginBottom: 8 }}>
+                            <PaymentMethodPicker
+                              value={paymentToken}
+                              onChange={setPaymentToken}
+                              basePriceMicroUsd={new BN(SCORE_COMMIT_MICRO_USD)}
+                            />
+                          </div>
+                        )}
+                        <ProgressiveUpgradeStack
+                          busy={busy}
+                          profileExists={profileExists}
+                          savedThisRun={savedThisRun}
+                          verifiedThisRun={verifiedThisRun}
+                          ownedThisRun={ownedThisRun}
+                          showAdvanced={showAdvanced}
+                          setShowAdvanced={setShowAdvanced}
+                          onSave={onSaveOnChain}
+                          onVerify={onVerifyRun}
+                          onMintReceipt={onMintReceipt}
+                          onWrapCnft={() => setOnchainError("T4 cNFT wrap ships in v1.3 — Metaplex Bubblegum integration pending.")}
+                          onRestart={() => startNewRun(r.mode)}
+                        />
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => setWalletModalVisible(true)}
+                        style={{ width: "100%", height: 48, border: "1px solid rgba(153,69,255,0.5)", borderRadius: 12, background: "rgba(153,69,255,0.12)", color: "#e8e8f0", fontSize: 14, fontWeight: 800, cursor: "pointer" }}
+                      >
+                        Connect wallet to save on-chain
+                      </button>
+                    )}
+                  </div>
+                </details>
 
                 {onchainError && (
                   <div style={{ fontSize: 11, color: "#ff5252", maxWidth: 420, textAlign: "center", marginTop: 4, zIndex: 1 }}>
@@ -814,11 +877,17 @@ export default function ArcadeMode() {
                     )}
                   </div>
                 )}
+
+                {/* Leaderboard lives INSIDE the game-over now (the below-page one is hidden in-run). */}
+                <div style={{ width: "100%", maxWidth: 460, marginTop: 20, zIndex: 1 }}>
+                  <ShellLeaderboard gameId="blockwords" />
+                </div>
               </div>
             )}
           </div>
 
           {/* 2026 minimalist how-to — single line, expandable details */}
+          {inRun ? null : (
           <details style={{ marginTop: 12, padding: "10px 14px", background: "#0c0c14", border: "1px solid #252540", borderRadius: 10, fontSize: 11, color: "#8a8aa0" }}>
             <summary style={{ cursor: "pointer", listStyle: "none", display: "flex", alignItems: "center", gap: 6, userSelect: "none", flexWrap: "wrap" }}>
               <span style={{ color: ACCENT, fontWeight: 700 }}>How to play</span>
@@ -831,8 +900,10 @@ export default function ArcadeMode() {
               No repeats. Longer ladders and rarer letters score more; finish fast for a speed bonus. Beat the {RUN_DURATION_SEC}s clock.
             </div>
           </details>
+          )}
         </div>
 
+        {inRun ? null : (
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <ShellLeaderboard gameId="blockwords" />
 
@@ -856,6 +927,7 @@ export default function ArcadeMode() {
             </div>
           </details>
         </div>
+        )}
       </div>
 
       <style>{`
@@ -929,9 +1001,9 @@ function IntroOverlay({
         }}
       />
       <div className="bw-intro-emoji" style={{ fontSize: 56, zIndex: 1 }}>🪜</div>
-      <div className="bw-title" style={{ fontSize: 44, fontWeight: 900, color: ACCENT, letterSpacing: 4, textAlign: "center", textShadow: "0 0 22px rgba(153,69,255,0.6), 0 0 48px rgba(20,241,149,0.25)", animation: "bwTitleGlow 3s ease-in-out infinite", zIndex: 1, lineHeight: 1.1 }}>
+      <div className="bw-title" style={{ fontSize: 40, fontWeight: 900, color: "#f4f2fb", letterSpacing: 3, textAlign: "center", zIndex: 1, lineHeight: 1.1 }}>
         BLOCKWORDS<br />
-        <span style={{ fontSize: 24, color: "#14F195", letterSpacing: 6 }}>· WORD LADDER ·</span>
+        <span style={{ fontSize: 20, color: ACCENT, letterSpacing: 5, fontWeight: 800 }}>Word Ladder</span>
       </div>
       <div style={{ fontSize: 14, color: "#a8a8c0", textAlign: "center", maxWidth: 440, zIndex: 1, lineHeight: 1.5 }}>
         Change <strong style={{ color: CHANGED }}>one letter at a time</strong> to build the longest chain of real words before the{" "}
@@ -951,10 +1023,9 @@ function IntroOverlay({
               : "linear-gradient(135deg, #9945FF, #7a2fe0)",
             color: streak.playedToday ? "#062015" : "#fff",
             border: "none",
-            borderRadius: 10,
+            borderRadius: 12,
             cursor: "pointer",
-            boxShadow: "0 0 28px rgba(153,69,255,0.45), inset 0 1px 0 rgba(255,255,255,0.2)",
-            animation: streak.playedToday ? "none" : "bwStartPulse 2s ease-in-out infinite",
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.18)",
             fontFamily: "'Space Grotesk', sans-serif",
           }}
         >
@@ -1234,15 +1305,15 @@ function Keyboard({
         disabled={disabled}
         style={{
           position: "relative",
-          flex: opts?.wide ? "1.6" : "1",
-          minWidth: 28,
-          height: 44,
-          padding: "0 6px",
+          flex: opts?.wide ? "1.6 1 0" : "1 1 0",
+          minWidth: 0,
+          height: "clamp(40px, 8.2vw, 52px)",
+          padding: 0,
           background: bg,
           color,
           border,
           borderRadius: 8,
-          fontSize: opts?.wide ? 11 : 14,
+          fontSize: opts?.wide ? "clamp(9px, 2.4vw, 11px)" : "clamp(13px, 4.2vw, 18px)",
           fontWeight: 700,
           fontFamily: "'Space Grotesk', sans-serif",
           letterSpacing: opts?.wide ? 1 : 0,
@@ -1258,15 +1329,15 @@ function Keyboard({
   };
 
   return (
-    <div style={{ padding: "12px 12px 18px", display: "flex", flexDirection: "column", alignItems: "center", gap: 6, background: "rgba(0,0,0,0.18)" }}>
+    <div style={{ padding: "10px clamp(4px,2vw,10px) calc(12px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", alignItems: "stretch", gap: "clamp(4px,1.2vw,7px)", background: "rgba(0,0,0,0.18)", width: "100%", maxWidth: 620, marginInline: "auto" }}>
       {KB_ROWS.map((row, idx) => (
         <div
           key={idx}
           style={{
             display: "flex",
-            gap: 4,
+            gap: "clamp(3px,1vw,6px)",
             justifyContent: "center",
-            width: "min(560px, 96vw)",
+            width: "100%",
           }}
         >
           {idx === 2 && renderKey("Enter", onSubmit, { wide: true })}

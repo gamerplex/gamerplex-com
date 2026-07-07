@@ -7,6 +7,7 @@ import {
   makeRng,
   startWordIndex,
   startWordForSeed,
+  PLAYABLE_STARTS,
   isRealWord,
   letterDiffCount,
   isValidLadderStep,
@@ -53,14 +54,14 @@ describe("blockwords: start word derivation (deterministic from seed)", () => {
     const seed = seedOf([42, 7, 1, 9, 200, 3, 88, 15]);
     const i = startWordIndex(seed);
     expect(i).toBeGreaterThanOrEqual(0);
-    expect(i).toBeLessThan(WORDS.length);
+    expect(i).toBeLessThan(PLAYABLE_STARTS.length);
     expect(startWordIndex(seed)).toBe(i);
   });
 
   it("same seed → same start word (fixed vector)", () => {
     const seed = seedOf([42, 7, 1, 9, 200, 3, 88, 15]);
-    expect(startWordForSeed(seed)).toBe("KALON");
-    expect(startWordForSeed(seed)).toBe(WORDS[startWordIndex(seed)]);
+    expect(startWordForSeed(seed)).toBe("YEARD");
+    expect(startWordForSeed(seed)).toBe(PLAYABLE_STARTS[startWordIndex(seed)]);
     expect(startWordForSeed(seed).length).toBe(WORD_LENGTH);
   });
 
@@ -207,33 +208,33 @@ describe("blockwords: ladder move-log encode/decode round-trip", () => {
 
 describe("blockwords: replayLadder (start word + step validation + no-repeat)", () => {
   it("replays a valid ladder from a seed whose start matches the first prev", () => {
-    // Seed → KALON; a hand-verified continuation.
+    // Seed → YEARD; a hand-verified continuation.
     const seed = seedOf([42, 7, 1, 9, 200, 3, 88, 15]);
-    expect(startWordForSeed(seed)).toBe("KALON");
-    const steps = ["SALON", "TALON", "TAXON", "CAXON", "CANON"];
+    expect(startWordForSeed(seed)).toBe("YEARD");
+    const steps = ["BEARD", "BEARM", "REARM", "REALM"];
     const { ladder, valid, reason } = replayLadder(seed, steps);
     expect(valid).toBe(true);
     expect(reason).toBeNull();
-    expect(ladder).toEqual(["KALON", ...steps]);
+    expect(ladder).toEqual(["YEARD", ...steps]);
   });
 
   it("fails when a step is more than one letter from the previous rung", () => {
-    const seed = seedOf([42, 7, 1, 9, 200, 3, 88, 15]); // KALON
-    const { valid, reason } = replayLadder(seed, ["SALON", "MELON"]); // SALON→MELON = 2 diffs
+    const seed = seedOf([42, 7, 1, 9, 200, 3, 88, 15]); // YEARD
+    const { valid, reason } = replayLadder(seed, ["BEARD", "HEART"]); // BEARD→HEART = 2 diffs
     expect(valid).toBe(false);
     expect(reason).toMatch(/not a valid one-letter move/);
   });
 
   it("fails when a step repeats an already-used word", () => {
-    const seed = seedOf([42, 7, 1, 9, 200, 3, 88, 15]); // KALON
-    const { valid, reason } = replayLadder(seed, ["SALON", "TALON", "SALON"]);
+    const seed = seedOf([42, 7, 1, 9, 200, 3, 88, 15]); // YEARD
+    const { valid, reason } = replayLadder(seed, ["BEARD", "BEARM", "BEARD"]);
     expect(valid).toBe(false);
     expect(reason).toMatch(/already used/);
   });
 
   it("fails when a step is not a real word", () => {
-    const seed = seedOf([42, 7, 1, 9, 200, 3, 88, 15]); // KALON
-    const { valid, reason } = replayLadder(seed, ["KALOZ"]); // one letter off, not a word
+    const seed = seedOf([42, 7, 1, 9, 200, 3, 88, 15]); // YEARD
+    const { valid, reason } = replayLadder(seed, ["YEARZ"]); // one letter off, not a word
     expect(valid).toBe(false);
     expect(reason).toMatch(/not a valid one-letter move/);
   });

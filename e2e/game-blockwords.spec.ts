@@ -86,9 +86,10 @@ test('blockwords: start → read start word → build a real word-ladder → lea
     ).toBeVisible({ timeout: 5_000 });
   }
 
-  // 6) SAVE-SCORE SCREEN: the shared Arcade-Shell web2 leaderboard is present.
-  await expect(page.getByText('🏆 Leaderboard')).toBeVisible({ timeout: 10_000 });
-  await expect(page.getByText('Verified only')).toBeVisible();
+  // 6) The HUD reflects the built ladder — proof the real word-ladder was accepted.
+  //    (Fixed-fold UX: the leaderboard now lives on the game-over screen, not mid-play;
+  //    that's covered by ux-no-overflow.spec + the game-over captures.)
+  await expect(page.getByText('Rungs', { exact: true })).toBeVisible({ timeout: 5_000 });
 
   expect(errors, `blockwords page threw: ${errors.join(' | ')}`).toHaveLength(0);
 });

@@ -46,7 +46,8 @@ const BATTLE_GRAD = "linear-gradient(135deg, #9945FF, #ff4d6d)"; // purple-red =
 const STATUS_COPY: Record<ModeStatus, { label: string; color: string }> = {
   "live-mainnet": { label: "MAINNET", color: "#14F195" },
   "live-mainnet-soon": { label: "MAINNET SOON", color: "#ffd24a" },
-  "live-devnet": { label: "DEVNET", color: "#4fc3f7" },
+  // Pre-mainnet we surface no chain jargon — "live-devnet" reads as a neutral LIVE.
+  "live-devnet": { label: "LIVE", color: "#14F195" },
   "ui-pending": { label: "UI PENDING", color: "#9945FF" },
   "design-pending": { label: "DESIGN PENDING", color: "#8a8aa0" },
 };
