@@ -17,7 +17,7 @@ import { seedFrom } from "../_game/frame";
 
 type Phase = "ready" | "playing" | "over";
 
-const HUD0: HudState = { phase: "playing", score: 0, timeLeft: 30, hull: 100, gates: 0, level: 1 };
+const HUD0: HudState = { phase: "playing", score: 0, timeLeft: 30, hull: 100, boost: 100, gates: 0, level: 1, loop: false, lastNum: 0, pattern: "PRIMES" };
 
 export default function TimeGateMode() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -34,7 +34,9 @@ export default function TimeGateMode() {
       case "kill": sfxRung(2); break;
       case "level": sfxMilestone(); haptic("milestone"); break;
       case "miss":
-      case "hurt": sfxInvalid(); haptic("invalid"); break;
+      case "hurt":
+      case "loop": sfxInvalid(); haptic("invalid"); break;
+      case "escaped": sfxMilestone(); break;
       case "over": sfxGameOver(false); haptic("gameover"); break;
     }
   }, []);
@@ -103,17 +105,43 @@ export default function TimeGateMode() {
                   <div style={{ fontSize: 11, color: "#9fb0d0" }}>LVL {hud.level} · ◇{hud.gates}</div>
                 </div>
               </div>
-              {/* hull bar */}
-              <div style={{ position: "absolute", top: 44, left: 12, width: "min(38vw,160px)", height: 8, background: "rgba(255,255,255,0.12)", borderRadius: 6, overflow: "hidden", pointerEvents: "none" }}>
-                <div style={{ width: `${hud.hull}%`, height: "100%", background: hud.hull < 30 ? "#ff5b7b" : "#35e0ff", transition: "width 120ms linear" }} />
+              {/* current rule (the pattern to follow) */}
+              <div style={{ position: "absolute", top: 8, left: 0, right: 0, textAlign: "center", pointerEvents: "none", fontFamily: "monospace" }}>
+                <div style={{ fontSize: 11, color: "#7f8ba8", letterSpacing: 1 }}>SEQUENCE</div>
+                <div style={{ fontSize: "clamp(13px,4vw,17px)", fontWeight: 800, color: "#b388ff" }}>{hud.pattern}{hud.lastNum ? ` · last ${hud.lastNum}` : ""}</div>
               </div>
+              {/* hull + boost bars */}
+              <div style={{ position: "absolute", top: 48, left: 12, display: "flex", flexDirection: "column", gap: 5, pointerEvents: "none" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 9, color: "#8fa0c0", width: 30 }}>HULL</span>
+                  <div style={{ width: "min(34vw,150px)", height: 7, background: "rgba(255,255,255,0.12)", borderRadius: 6, overflow: "hidden" }}>
+                    <div style={{ width: `${hud.hull}%`, height: "100%", background: hud.hull < 30 ? "#ff5b7b" : "#35e0ff", transition: "width 120ms linear" }} />
+                  </div>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 9, color: "#8fa0c0", width: 30 }}>BOOST</span>
+                  <div style={{ width: "min(34vw,150px)", height: 7, background: "rgba(255,255,255,0.12)", borderRadius: 6, overflow: "hidden" }}>
+                    <div style={{ width: `${hud.boost}%`, height: "100%", background: "#ffd24a", transition: "width 100ms linear" }} />
+                  </div>
+                </div>
+              </div>
+
+              {/* TIME LOOP warning */}
+              {hud.loop && (
+                <div style={{ position: "absolute", top: "38%", left: 0, right: 0, textAlign: "center", pointerEvents: "none" }}>
+                  <div style={{ display: "inline-block", padding: "10px 18px", background: "rgba(255,20,50,0.18)", border: "2px solid #ff2a44", borderRadius: 10, color: "#ff6b7f", fontWeight: 900, fontFamily: "monospace", fontSize: "clamp(13px,4vw,18px)", letterSpacing: 1, animation: "tgFlash 0.5s steps(2) infinite" }}>
+                    ⚠ WARNING: INSIDE TIME LOOP<br />CRITICAL DAMAGE — HOLD BOOST TO ESCAPE
+                  </div>
+                </div>
+              )}
+
               {/* mobile controls: FIRE + BOOST (desktop uses space/shift) */}
               <div style={{ position: "absolute", bottom: "calc(16px + env(safe-area-inset-bottom))", left: 0, right: 0, display: "flex", justifyContent: "space-between", padding: "0 18px", pointerEvents: "none" }}>
                 <button
-                  onPointerDown={(e) => { e.preventDefault(); gameRef.current?.setBoost(1); }}
-                  onPointerUp={() => gameRef.current?.setBoost(0)}
-                  onPointerLeave={() => gameRef.current?.setBoost(0)}
-                  style={{ ...ctrlBtn, pointerEvents: "auto", color: "#7fd7ff", borderColor: "rgba(127,215,255,0.5)" }}
+                  onPointerDown={(e) => { e.preventDefault(); gameRef.current?.setBoost(true); }}
+                  onPointerUp={() => gameRef.current?.setBoost(false)}
+                  onPointerLeave={() => gameRef.current?.setBoost(false)}
+                  style={{ ...ctrlBtn, pointerEvents: "auto", color: "#ffd24a", borderColor: "rgba(255,210,74,0.5)" }}
                 >» BOOST</button>
                 <button
                   onPointerDown={(e) => { e.preventDefault(); gameRef.current?.setFiring(true); }}
@@ -123,8 +151,9 @@ export default function TimeGateMode() {
                 >⦿ FIRE</button>
               </div>
               <div style={{ position: "absolute", bottom: "calc(58px + env(safe-area-inset-bottom))", left: 0, right: 0, textAlign: "center", fontSize: 11, color: "#7f8ba8", pointerEvents: "none" }}>
-                drag to fly · hold to fire · fly through the gates
+                fly the ring with the next number in the sequence · wrong number = time loop
               </div>
+              <style>{`@keyframes tgFlash{0%{opacity:1}50%{opacity:0.4}100%{opacity:1}}`}</style>
             </>
           )}
 
@@ -148,10 +177,10 @@ export default function TimeGateMode() {
         <div style={{ maxWidth: 560, margin: "0 auto", padding: "48px 20px", textAlign: "center" }}>
           <div style={{ fontSize: "clamp(32px,9vw,54px)", fontWeight: 900, background: "linear-gradient(90deg,#7fd7ff,#14F195)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", letterSpacing: 1 }}>TIME GATE</div>
           <p style={{ color: "#9fb0d0", fontSize: 15, lineHeight: 1.5, marginTop: 8 }}>
-            Fly through the gates. Blast what gets in your way. Every gate buys you time — miss one and your hull takes the hit.
+            The rings are numbered. Fly the one that continues the sequence — <b style={{ color: "#b388ff" }}>primes, then ×3, squares, Fibonacci…</b> harder each level. Rings top up your <b style={{ color: "#ffd24a" }}>time + boost</b>. Take the <b style={{ color: "#ff6b7f" }}>wrong number</b> and you're pulled into a <b style={{ color: "#ff6b7f" }}>TIME LOOP</b> — hold BOOST to escape. Blast the enemies for score.
           </p>
-          <div style={{ display: "flex", gap: 18, justifyContent: "center", margin: "18px 0 8px", flexWrap: "wrap", fontSize: 13, color: "#7f8ba8" }}>
-            <span>◇ gates = score + time</span><span>⦿ enemies = score</span><span>🛡 hull = lives</span>
+          <div style={{ display: "flex", gap: 16, justifyContent: "center", margin: "18px 0 8px", flexWrap: "wrap", fontSize: 13, color: "#7f8ba8" }}>
+            <span>◇ right number = time + boost</span><span>⚠ wrong = time loop</span><span>⦿ enemies = score</span>
           </div>
           <button
             onClick={begin}
