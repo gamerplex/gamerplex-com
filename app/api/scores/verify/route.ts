@@ -39,11 +39,14 @@ export async function POST(req: NextRequest) {
   const userId: string | undefined = me?.user?.id;
   if (!userId) return NextResponse.json({ error: 'not_signed_in' }, { status: 401 });
 
+  // Forward only the client fields, with server-controlled userId/app set LAST so
+  // a client-supplied `userId`/`app` can't override them (that would let a caller
+  // attach a tx / flip verified on another user's leaderboard row).
   const res = await fetch(`${IDENTITY_URL}/api/v1/scores/attach-tx`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-identity-api-key': apiKey },
     cache: 'no-store',
-    body: JSON.stringify({ userId, app: 'gamerplex', ...body }),
+    body: JSON.stringify({ gameId: body.gameId, refId: body.refId, txSig: body.txSig, userId, app: 'gamerplex' }),
   });
   const result = await res.json().catch(() => ({}));
   if (!res.ok) return NextResponse.json({ error: result.error ?? 'verify_failed' }, { status: res.status });

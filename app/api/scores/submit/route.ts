@@ -38,7 +38,8 @@ export async function POST(req: NextRequest) {
   // Defense-in-depth sanity bounds on the client-asserted score. The FREE web2
   // board is inherently client-trusted; the trustworthy path is the on-chain
   // "✓ Verified" replay (resolver-validated). These bounds reject the egregious
-  // spoofs (negatives, non-integers, absurd values, impossible durations).
+  // spoofs (negatives, non-integers, absurd values, impossible durations, and
+  // scores that are implausible for the claimed play duration).
   const gameId = typeof body.gameId === 'string' ? body.gameId : '';
   const SCORE_CEILING: Record<string, number> = { blockwords: 10_000, 'magic-chess': 100_000, 'cyber-snake': 200_000, flipball: 2_000_000 };
   const ceiling = SCORE_CEILING[gameId] ?? 1_000_000;
@@ -47,8 +48,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'invalid_score' }, { status: 400 });
   }
   const dur = body.durationSec;
-  if (dur !== undefined && (typeof dur !== 'number' || !Number.isFinite(dur) || dur < 0 || dur > 3600)) {
+  if (dur !== undefined && (typeof dur !== 'number' || !Number.isFinite(dur) || !Number.isInteger(dur) || dur < 0 || dur > 3600)) {
     return NextResponse.json({ error: 'invalid_duration' }, { status: 400 });
+  }
+
+  // Per-game per-second rate cap (defense-in-depth against the classic
+  // "durationSec≈0, score=ceiling" spoof). Caps are set FAR above each game's
+  // realistic max rate — legit runs never trip them; they only reject scores
+  // that couldn't have been earned in the claimed time. A tiny grace window
+  // absorbs off-by-one rounding on very short runs. Only enforced when a
+  // duration is supplied (every first-party client sends one).
+  const MAX_PER_SEC: Record<string, number> = { blockwords: 400, 'magic-chess': 4_000, 'cyber-snake': 8_000, flipball: 80_000 };
+  const perSec = MAX_PER_SEC[gameId];
+  if (perSec !== undefined && typeof dur === 'number') {
+    const GRACE_SEC = 3;
+    if (score > perSec * (dur + GRACE_SEC)) {
+      return NextResponse.json({ error: 'implausible_rate' }, { status: 400 });
+    }
   }
 
   const cookie = req.headers.get('cookie') ?? '';
@@ -61,11 +77,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }
 
+  // Forward ONLY the validated fields, with server-controlled userId/app set LAST
+  // so a client-supplied `userId`/`app` in the body can never override them (that
+  // would let a signed-in caller write a score row owned by another user / app).
   const res = await fetch(`${IDENTITY_URL}/api/v1/scores/submit`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-identity-api-key': apiKey },
     cache: 'no-store',
-    body: JSON.stringify({ userId, app: 'gamerplex', ...body }),
+    body: JSON.stringify({
+      gameId,
+      score,
+      refId: body.refId,
+      variant: body.variant,
+      durationSec: dur,
+      metadata: body.metadata,
+      userId,
+      app: 'gamerplex',
+    }),
   });
   const result = await res.json().catch(() => ({}));
   if (!res.ok) return NextResponse.json({ error: result.error ?? 'submit_failed' }, { status: res.status });
