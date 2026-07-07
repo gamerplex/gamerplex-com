@@ -1054,37 +1054,33 @@ function IntroOverlay({
         style={{
           position: "absolute",
           inset: 0,
-          backgroundImage:
-            "radial-gradient(circle at 30% 30%, rgba(153,69,255,0.2), transparent 50%), radial-gradient(circle at 70% 70%, rgba(20,241,149,0.12), transparent 50%)",
+          background: "linear-gradient(160deg, #5b2ba8 0%, #8b3fd6 52%, #c13ba0 100%)",
           pointerEvents: "none",
         }}
       />
-      <div className="bw-intro-emoji" style={{ fontSize: 56, zIndex: 1 }}>🪜</div>
-      <div className="bw-title" style={{ fontSize: 40, fontWeight: 900, color: "#f4f2fb", letterSpacing: 3, textAlign: "center", zIndex: 1, lineHeight: 1.1 }}>
+      <div className="bw-intro-emoji" style={{ fontSize: 60, zIndex: 1 }}>🪜</div>
+      <div className="bw-title" style={{ fontSize: 44, fontWeight: 900, color: "#fff", letterSpacing: 3, textAlign: "center", zIndex: 1, lineHeight: 1.1, textShadow: "0 4px 24px rgba(0,0,0,0.25)" }}>
         BLOCKWORDS<br />
-        <span style={{ fontSize: 20, color: ACCENT, letterSpacing: 5, fontWeight: 800 }}>Word Ladder</span>
+        <span style={{ fontSize: 20, color: "#8defff", letterSpacing: 5, fontWeight: 800 }}>Word Ladder</span>
       </div>
-      <div style={{ fontSize: 14, color: "#a8a8c0", textAlign: "center", maxWidth: 440, zIndex: 1, lineHeight: 1.5 }}>
-        Change <strong style={{ color: CHANGED }}>one letter at a time</strong> to build the longest chain of real words before the{" "}
-        <strong style={{ color: ACCENT }}>{RUN_DURATION_SEC}s</strong> timer runs out. Longer + rarer + faster = higher score.
+      <div style={{ fontSize: 14, color: "rgba(255,255,255,0.9)", textAlign: "center", maxWidth: 440, zIndex: 1, lineHeight: 1.5 }}>
+        Change <strong style={{ color: "#8defff" }}>one letter at a time</strong> to build the longest chain of real words before the{" "}
+        <strong style={{ color: "#ffe27a" }}>{RUN_DURATION_SEC}s</strong> timer runs out. Longer + rarer + faster = higher score.
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 6, zIndex: 1, alignItems: "stretch", width: "min(320px, 90%)" }}>
         <button
           onClick={() => onStart("daily")}
           style={{
-            padding: "14px 24px",
-            fontSize: 15,
-            fontWeight: 800,
-            letterSpacing: 2,
+            padding: "16px 24px",
+            fontSize: 16,
+            fontWeight: 900,
             textTransform: "uppercase",
-            background: streak.playedToday
-              ? "linear-gradient(135deg, #14F195, #0fa572)"
-              : "linear-gradient(135deg, #9945FF, #7a2fe0)",
-            color: streak.playedToday ? "#062015" : "#fff",
+            background: "#fff",
+            color: "#9c27b0",
             border: "none",
-            borderRadius: 12,
+            borderRadius: 14,
             cursor: "pointer",
-            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.18)",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.2)",
             fontFamily: "'Space Grotesk', sans-serif",
           }}
         >
@@ -1093,15 +1089,14 @@ function IntroOverlay({
         <button
           onClick={() => onStart("random")}
           style={{
-            padding: "12px 24px",
-            fontSize: 14,
-            fontWeight: 700,
-            letterSpacing: 2,
+            padding: "14px 24px",
+            fontSize: 15,
+            fontWeight: 800,
             textTransform: "uppercase",
-            background: "transparent",
-            color: ACCENT,
-            border: `1px solid ${ACCENT}`,
-            borderRadius: 10,
+            background: "rgba(255,255,255,0.16)",
+            color: "#fff",
+            border: "1.5px solid rgba(255,255,255,0.55)",
+            borderRadius: 14,
             cursor: "pointer",
             fontFamily: "'Space Grotesk', sans-serif",
           }}
@@ -1109,10 +1104,10 @@ function IntroOverlay({
           ▶ Random Run
         </button>
       </div>
-      <div style={{ fontSize: 11, color: "#6a6a80", zIndex: 1, textAlign: "center" }}>
+      <div style={{ fontSize: 12, color: "rgba(255,255,255,0.8)", zIndex: 1, textAlign: "center", fontWeight: 600 }}>
         {streak.streak > 0
           ? `🔥 ${streak.streak}-day streak${streak.playedToday ? " (today done)" : ""}`
-          : "Free to play — on-chain scoring optional at game over."}
+          : "Free to play — no wallet needed"}
       </div>
     </div>
   );
