@@ -1137,70 +1137,86 @@ function changedIndex(prev: string, next: string): number {
   return count === 1 ? idx : -1;
 }
 
+// One rung of the ladder. The ONE changed letter is the glowing cyan hero;
+// unchanged letters ghost back so the eye follows the single letter morphing as
+// the ladder climbs. Rungs (and the live input) show a connector nub above the
+// changed column — the visual signature that says "word LADDER", not "guess grid".
 function WordRow({
   word,
   prev,
   variant,
   pop,
+  rungNo,
 }: {
   word: string;
   prev: string | null;
   variant: "start" | "rung" | "input";
   pop: boolean;
+  rungNo?: number;
 }) {
   const changed = prev ? changedIndex(prev, word.replace(/ /g, "")) : -1;
   const letters = word.padEnd(WORD_LENGTH, " ").split("");
   const isInput = variant === "input";
   const isStart = variant === "start";
+  const tileSize = "min(15vw, 60px)";
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: `repeat(${WORD_LENGTH}, 1fr)`,
-        gap: 6,
-        width: "min(360px, 84vw)",
-        animation: pop ? `bwRungPop ${POP_DURATION_MS}ms ease-out` : "none",
-      }}
-    >
-      {letters.map((ch, i) => {
-        const filled = ch && ch !== " ";
-        const isChanged = !isInput && changed === i && changed >= 0;
-        let bg: string = TILE_DEFAULT;
-        let borderColor: string = filled ? "#5a5a70" : TILE_BORDER_DEFAULT;
-        let color = "#e8e8f0";
-        if (isStart) {
-          bg = `linear-gradient(135deg, ${ACCENT}, ${ACCENT_2})`; borderColor = ACCENT; color = "#fff";
-        } else if (isChanged) {
-          bg = "rgba(34,211,238,0.16)"; borderColor = CHANGED; color = "#c4f6ff";
-        } else if (!isInput && filled) {
-          bg = "rgba(153,69,255,0.08)"; borderColor = "rgba(153,69,255,0.3)"; color = "#d8c8ff";
-        }
-        return (
-          <div
-            key={i}
-            style={{
-              position: "relative",
-              aspectRatio: "1 / 1",
-              background: bg,
-              border: `2px solid ${borderColor}`,
-              borderRadius: 12,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "min(7vw, 30px)",
-              fontWeight: 800,
-              color,
-              fontFamily: "monospace",
-              textTransform: "uppercase",
-              boxShadow: isStart ? `0 0 14px ${ACCENT}55` : isChanged ? `0 0 12px ${CHANGED}44` : "none",
-              transition: "background 80ms, border-color 80ms",
-            }}
-            aria-label={filled ? `letter ${ch}` : "empty"}
-          >
-            {filled ? ch : ""}
-          </div>
-        );
-      })}
+    <div style={{ display: "flex", alignItems: "center", gap: 8, animation: pop ? `bwRungPop ${POP_DURATION_MS}ms ease-out` : "none" }}>
+      {/* rung index up the rail */}
+      <div style={{ width: 16, textAlign: "right", fontSize: 11, fontWeight: 800, fontFamily: "monospace", color: isStart ? ACCENT : "#5a5a70" }}>
+        {isStart ? "▸" : isInput ? "" : rungNo ?? ""}
+      </div>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: `repeat(${WORD_LENGTH}, ${tileSize})`,
+          gap: 6,
+        }}
+      >
+        {letters.map((ch, i) => {
+          const filled = ch && ch !== " ";
+          const isChanged = changed === i && changed >= 0;
+          let bg: string = TILE_DEFAULT;
+          let borderColor: string = filled ? "rgba(153,69,255,0.22)" : TILE_BORDER_DEFAULT;
+          let color = filled ? "#8f83b5" : "#3a3550"; // unchanged letters ghost back
+          let glow = "none";
+          if (isStart) {
+            bg = `linear-gradient(135deg, ${ACCENT}, ${ACCENT_2})`; borderColor = ACCENT; color = "#fff"; glow = `0 0 16px ${ACCENT}66`;
+          } else if (isChanged) {
+            bg = "rgba(34,211,238,0.18)"; borderColor = CHANGED; color = "#d6faff"; glow = `0 0 16px ${CHANGED}88`;
+          } else if (isInput && filled) {
+            bg = "rgba(153,69,255,0.10)"; borderColor = "rgba(153,69,255,0.5)"; color = "#e8e8f0";
+          }
+          return (
+            <div key={i} style={{ position: "relative" }}>
+              {/* connector nub above the CHANGED column — the climbing link between rungs */}
+              {isChanged && !isStart && (
+                <div style={{ position: "absolute", left: "50%", top: -8, transform: "translateX(-50%)", width: 3, height: 8, background: CHANGED, borderRadius: 2, boxShadow: `0 0 6px ${CHANGED}` }} />
+              )}
+              <div
+                style={{
+                  aspectRatio: "1 / 1",
+                  background: bg,
+                  border: `2px solid ${borderColor}`,
+                  borderRadius: 12,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "min(7vw, 28px)",
+                  fontWeight: 800,
+                  color,
+                  fontFamily: "monospace",
+                  textTransform: "uppercase",
+                  boxShadow: glow,
+                  transition: "background 80ms, border-color 80ms, color 80ms",
+                }}
+                aria-label={filled ? `letter ${ch}` : "empty"}
+              >
+                {filled ? ch : ""}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -1227,51 +1243,54 @@ function LadderView({
   }, [ladder.length, current]);
 
   return (
-    <div style={{ padding: "16px 16px 12px", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
-      <div
-        ref={scrollRef}
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: 6,
-          maxHeight: "min(46vh, 380px)",
-          overflowY: "auto",
-          width: "100%",
-          paddingRight: 4,
-        }}
-      >
-        {ladder.map((w, idx) => (
-          <WordRow
-            key={idx}
-            word={w}
-            prev={idx > 0 ? ladder[idx - 1] : null}
-            variant={idx === 0 ? "start" : "rung"}
-            pop={idx === lastRungIndex && idx > 0}
-          />
-        ))}
-
-        {status === "active" && (
-          <div
-            style={{
-              animation: invalid ? `bwShake ${SHAKE_DURATION_MS}ms ease-in-out` : "none",
-            }}
-          >
+    <div style={{ padding: "12px 16px 10px", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+      {/* The LADDER: rungs stacked between two rails, climbing down toward the input
+          you type. Distinct at a glance from a Wordle guess-grid. */}
+      <div style={{ position: "relative", padding: "8px 0" }}>
+        {/* side rails */}
+        <div aria-hidden style={{ position: "absolute", left: 18, top: 0, bottom: 0, width: 4, borderRadius: 3, background: "linear-gradient(180deg, rgba(153,69,255,0.5), rgba(153,69,255,0.15))" }} />
+        <div aria-hidden style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 4, borderRadius: 3, background: "linear-gradient(180deg, rgba(153,69,255,0.5), rgba(153,69,255,0.15))" }} />
+        <div
+          ref={scrollRef}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 8,
+            maxHeight: "min(46vh, 400px)",
+            overflowY: "auto",
+            padding: "0 14px",
+          }}
+        >
+          {ladder.map((w, idx) => (
             <WordRow
-              word={current}
-              prev={null}
-              variant="input"
-              pop={false}
+              key={idx}
+              word={w}
+              prev={idx > 0 ? ladder[idx - 1] : null}
+              variant={idx === 0 ? "start" : "rung"}
+              pop={idx === lastRungIndex && idx > 0}
+              rungNo={idx}
             />
-          </div>
-        )}
+          ))}
+
+          {status === "active" && (
+            <div style={{ animation: invalid ? `bwShake ${SHAKE_DURATION_MS}ms ease-in-out` : "none" }}>
+              <WordRow
+                word={current}
+                prev={ladder[ladder.length - 1]}
+                variant="input"
+                pop={false}
+              />
+            </div>
+          )}
+        </div>
       </div>
 
-      <div style={{ minHeight: 18, fontSize: 12, fontWeight: 700, color: invalid ? "#ff5230" : "#6a6a80", textAlign: "center" }}>
+      <div style={{ minHeight: 18, fontSize: 12, fontWeight: 700, color: invalid ? "#ff5230" : "#8a7fb0", textAlign: "center" }}>
         {invalid && invalidMsg
           ? `⚠ ${invalidMsg}`
           : status === "active"
-          ? `Change one letter of ${ladder[ladder.length - 1]}`
+          ? `🪜 Change one letter to climb higher`
           : ""}
       </div>
     </div>
