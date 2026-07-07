@@ -44,8 +44,6 @@ import EmailLoginModal from "../../../../components/arcade/EmailLoginModal";
 import ShareSheet from "../../../../components/arcade/ShareSheet";
 import { sfxRung, sfxInvalid, sfxMilestone, sfxGameOver, haptic, isMuted, setMuted, prefersReducedMotion } from "../../../../lib/arcade/juice";
 import { earnCredits } from "../../../../lib/identity/client";
-import ContinueWithCredits from "../../../../components/arcade/ContinueWithCredits";
-import ReferrerBanner from "../../../../components/arcade/ReferrerBanner";
 import {
   startWordForSeed,
   computeScore,
@@ -720,9 +718,9 @@ export default function ArcadeMode() {
   const inRun = !!r;
 
   return (
-    <div style={{ minHeight: "100vh", background: "#050508", color: "#e8e8f0", fontFamily: "'Space Grotesk', sans-serif" }}>
+    <div style={{ minHeight: "100vh", background: "#050508", color: "#e8e8f0", fontFamily: "'Space Grotesk', sans-serif", ...(inRun ? { height: "100dvh", minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column", paddingTop: "calc(64px + env(safe-area-inset-top))", boxSizing: "border-box" } : {}) }}>
       {/* 2026 minimalist top nav — matches home page */}
-      <nav className="top-nav" style={{ padding: "14px 24px" }}>
+      <nav className="top-nav" style={{ padding: "14px 24px", flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <a href="/" className="nav-logo" style={{ textDecoration: "none" }}>GAMERPLEX</a>
         </div>
@@ -758,8 +756,8 @@ export default function ArcadeMode() {
 
       <EmailLoginModal open={showLogin} onClose={() => { setShowLogin(false); void refreshIdentity(); }} />
 
-      <div className="bw-layout" style={{ maxWidth: 1400, margin: "0 auto", padding: inRun ? "16px 16px 24px" : "64px 16px 24px", gap: 16 }}>
-        <div>
+      <div className="bw-layout" style={{ maxWidth: 1400, margin: "0 auto", padding: inRun ? "8px 12px 12px" : "64px 16px 24px", gap: 16, ...(inRun ? { flex: 1, minHeight: 0, display: "flex", flexDirection: "column", width: "100%", maxWidth: 680 } : {}) }}>
+        <div style={inRun ? { flex: 1, minHeight: 0, display: "flex", flexDirection: "column" } : undefined}>
           {inRun ? null : (
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, flexWrap: "wrap", gap: 10 }}>
             <ModeToggle
@@ -771,7 +769,7 @@ export default function ArcadeMode() {
           </div>
           )}
 
-          <div className="bw-board-frame" style={{ position: "relative", width: "100%", borderRadius: 16, overflow: "hidden", border: "1px solid rgba(153,69,255,0.4)", background: "linear-gradient(135deg, rgba(25,10,45,0.95), rgba(2,6,20,0.95))", boxShadow: "0 0 40px rgba(153,69,255,0.18)", ...(inRun ? { minHeight: "calc(100dvh - 92px)", marginTop: 10, display: "flex", flexDirection: "column" } : {}) }}>
+          <div className="bw-board-frame" style={{ position: "relative", width: "100%", borderRadius: 16, overflow: "hidden", border: "1px solid rgba(153,69,255,0.4)", background: "linear-gradient(135deg, rgba(25,10,45,0.95), rgba(2,6,20,0.95))", boxShadow: "0 0 40px rgba(153,69,255,0.18)", ...(inRun ? { flex: 1, minHeight: 0, display: "flex", flexDirection: "column" } : {}) }}>
             {!r ? (
               <IntroOverlay onStart={startNewRun} streak={streakInfo} />
             ) : (
@@ -806,52 +804,33 @@ export default function ArcadeMode() {
             )}
 
             {r && r.status === "ended" && (
-              <div style={{ position: "absolute", inset: 0, background: "rgba(5,5,20,0.94)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, padding: 20, overflowY: "auto" }}>
+              <div style={{ position: "absolute", inset: 0, background: stepCount >= WIN_LADDER_STEPS ? "linear-gradient(165deg, #6a1fb0 0%, #b3149c 55%, #ff5e62 100%)" : "linear-gradient(165deg, #4a2ea0 0%, #7b3ff2 60%, #b13bd8 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", gap: 4, padding: "26px 20px calc(24px + env(safe-area-inset-bottom))", overflowY: "auto" }}>
                 {stepCount >= WIN_LADDER_STEPS && !prefersReducedMotion() && (
                   <Confetti />
                 )}
-                <div style={{ fontSize: 11, fontWeight: 800, color: stepCount >= WIN_LADDER_STEPS ? "#14F195" : "#ff5230", letterSpacing: 3, textTransform: "uppercase", zIndex: 1 }}>
-                  {stepCount >= WIN_LADDER_STEPS ? `● ${stepCount}-rung ladder` : "● Time's up"}
+                <div style={{ fontSize: 15, fontWeight: 900, color: "#fff", letterSpacing: 0.5, zIndex: 1 }}>
+                  {stepCount >= WIN_LADDER_STEPS ? "🎉 Nice climb!" : "⏱️ Time's up!"}
                 </div>
-                {/* SCORE is the hero — huge gradient italic */}
+                {/* SCORE hero — huge bright white on the celebratory gradient */}
                 <div style={{
-                  fontSize: "clamp(56px, 11vw, 96px)",
+                  fontSize: "clamp(68px, 17vw, 116px)",
                   fontWeight: 900,
                   fontStyle: "italic",
                   lineHeight: 1,
-                  background: "linear-gradient(135deg, #14F195, #00f2ff)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  textShadow: "0 0 40px rgba(20,241,149,0.35)",
-                  margin: "4px 0 2px",
+                  color: "#fff",
+                  textShadow: "0 6px 34px rgba(0,0,0,0.28)",
+                  margin: "2px 0",
                   zIndex: 1,
                 }}>{displayScore.toLocaleString()}</div>
-                <div style={{ fontSize: 11, color: "#8a8aa0", letterSpacing: 1.5, textTransform: "uppercase", fontWeight: 700, marginBottom: 4, zIndex: 1 }}>
-                  Your score
-                </div>
-                <div style={{ fontSize: 13, color: "#a8a8c0", display: "flex", gap: 8, alignItems: "center", zIndex: 1, flexWrap: "wrap", justifyContent: "center" }}>
-                  <span>Ladder:</span>
-                  <span style={{ color: ACCENT, fontFamily: "monospace", fontWeight: 800, letterSpacing: 2, fontSize: 15 }}>
-                    {r.ladder.join(" → ")}
-                  </span>
-                </div>
-                <div style={{ fontSize: 12, color: "#8a8aa0", zIndex: 1 }}>
-                  {stepCount} {stepCount === 1 ? "rung" : "rungs"} · {secondsUsed(r)}s
+                <div style={{ fontSize: 14, color: "rgba(255,255,255,0.92)", fontWeight: 800, letterSpacing: 0.5, zIndex: 1, marginBottom: 14 }}>
+                  🪜 {stepCount} {stepCount === 1 ? "rung" : "rungs"} · {secondsUsed(r)}s
                 </div>
 
-                <div style={{ width: "100%", maxWidth: 420, marginTop: 8 }}>
-                  <ReferrerBanner connectedWallet={publicKey ?? null} />
-                </div>
-
-                <div style={{ width: "100%", maxWidth: 420, marginTop: 8, marginBottom: 4, zIndex: 1 }}>
-                  <ContinueWithCredits item="retry" game="blockwords" onSuccess={() => startNewRun(r.mode)} />
-                </div>
-
-                {/* WEB2-FIRST save — the primary path (email, no wallet). Play-first, save-anchored (loss-aversion), per the portal benchmark. */}
+                {/* WEB2-FIRST save — primary path. Bright white button pops on the gradient. */}
                 {me ? (
-                  <div style={{ width: "100%", maxWidth: 380, textAlign: "center", zIndex: 1 }}>
-                    <div style={{ fontSize: 14, color: "#14F195", fontWeight: 800 }}>✓ Saved to the leaderboard</div>
-                    <div style={{ fontSize: 12, color: "#a8a8c0", marginTop: 4, lineHeight: 1.5 }}>
+                  <div style={{ width: "100%", maxWidth: 380, textAlign: "center", zIndex: 1, marginBottom: 4 }}>
+                    <div style={{ fontSize: 16, color: "#fff", fontWeight: 900 }}>✓ Saved!</div>
+                    <div style={{ fontSize: 13, color: "rgba(255,255,255,0.85)", marginTop: 4, lineHeight: 1.5 }}>
                       🔥 Come back tomorrow to keep your streak{credits != null ? ` · ⚡ ${credits} Credits` : ""}
                     </div>
                   </div>
@@ -859,17 +838,17 @@ export default function ArcadeMode() {
                   <div style={{ width: "100%", maxWidth: 340, zIndex: 1 }}>
                     <button
                       onClick={() => { setShowLogin(true); track("login_prompt", { game: "blockwords", source: "gameover" }); }}
-                      style={{ width: "100%", height: 52, border: "none", borderRadius: 12, background: "linear-gradient(90deg,#9945FF,#7c3aed)", color: "#fff", fontSize: 15, fontWeight: 900, cursor: "pointer" }}
+                      style={{ width: "100%", height: 56, border: "none", borderRadius: 14, background: "#fff", color: "#9c27b0", fontSize: 16, fontWeight: 900, cursor: "pointer", boxShadow: "0 8px 24px rgba(0,0,0,0.2)" }}
                     >
-                      💾 Save your score &amp; streak
+                      💾 Save my score
                     </button>
-                    <div style={{ fontSize: 11, color: "#8a8aa0", textAlign: "center", marginTop: 8, lineHeight: 1.5 }}>
-                      Free · email sign-in, no wallet · don&apos;t lose your spot on the leaderboard
+                    <div style={{ fontSize: 12, color: "rgba(255,255,255,0.8)", textAlign: "center", marginTop: 8, lineHeight: 1.4 }}>
+                      Free · just your email · keep your spot 🏆
                     </div>
                   </div>
                 )}
 
-                <button onClick={() => { setShowShare(true); track("share_open", { game: "blockwords" }); }} style={{ marginTop: 12, width: "100%", maxWidth: 340, height: 46, border: "1px solid rgba(20,241,149,0.5)", borderRadius: 12, background: "rgba(20,241,149,0.10)", color: "#14F195", fontSize: 14, fontWeight: 800, cursor: "pointer", zIndex: 1 }}>
+                <button onClick={() => { setShowShare(true); track("share_open", { game: "blockwords" }); }} style={{ marginTop: 12, width: "100%", maxWidth: 340, height: 50, border: "none", borderRadius: 14, background: "rgba(255,255,255,0.16)", color: "#fff", fontSize: 15, fontWeight: 900, cursor: "pointer", zIndex: 1, backdropFilter: "blur(2px)" }}>
                   🔗 Challenge a friend
                 </button>
                 <ShareSheet
@@ -880,14 +859,16 @@ export default function ArcadeMode() {
                   onShared={(m) => track("share_result", { game: "blockwords", method: m })}
                 />
 
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center", marginTop: 10, zIndex: 1 }}>
-                  <button onClick={() => startNewRun("random")} style={{ ...btnSecondary, minHeight: 44 }}>↻ Play again</button>
-                  <a href="/arcade" style={{ ...btnSecondary, textDecoration: "none", display: "inline-flex", alignItems: "center", minHeight: 44 }}>← Arcade</a>
+                {(() => { const brightBtn: React.CSSProperties = { height: 46, padding: "0 22px", borderRadius: 12, border: "1.5px solid rgba(255,255,255,0.55)", background: "rgba(255,255,255,0.10)", color: "#fff", fontSize: 14, fontWeight: 800, cursor: "pointer" }; return (
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center", marginTop: 12, zIndex: 1 }}>
+                  <button onClick={() => startNewRun("random")} style={brightBtn}>↻ Play again</button>
+                  <a href="/arcade" style={{ ...brightBtn, textDecoration: "none", display: "inline-flex", alignItems: "center" }}>← Arcade</a>
                 </div>
+                ); })()}
 
                 {/* OPTIONAL on-chain "✓ Verified" save — advanced/secondary. Wallet only ever appears here. */}
-                <details style={{ width: "100%", maxWidth: 420, marginTop: 14, zIndex: 1 }}>
-                  <summary style={{ cursor: "pointer", fontSize: 12, color: "#c99aff", fontWeight: 700, textAlign: "center", listStyle: "none" }}>
+                <details style={{ width: "100%", maxWidth: 420, marginTop: 16, zIndex: 1 }}>
+                  <summary style={{ cursor: "pointer", fontSize: 12, color: "rgba(255,255,255,0.75)", fontWeight: 700, textAlign: "center", listStyle: "none" }}>
                     🔒 Save on-chain forever — ✓ Verified ($0.05) ▾
                   </summary>
                   <div style={{ marginTop: 12 }}>
