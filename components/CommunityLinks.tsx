@@ -1,8 +1,9 @@
 // Shared community links — one place so every game + the site link the same way.
 // Add Discord/Telegram here later and they appear everywhere at once.
 
-const LINKS: { label: string; href: string; icon: string }[] = [
-  { label: "Follow @gamerplex_com on X", href: "https://x.com/gamerplex_com", icon: "𝕏" },
+const LINKS: { label: string; href: string; icon: string; text: string }[] = [
+  { label: "Follow @gamerplex_com on X", href: "https://x.com/gamerplex_com", icon: "𝕏", text: "@gamerplex_com" },
+  { label: "Join @gamerplex_com on Telegram", href: "https://t.me/gamerplex_com", icon: "✈", text: "Telegram" },
 ];
 
 export default function CommunityLinks({ tone = "dark", compact = false }: { tone?: "light" | "dark"; compact?: boolean }) {
@@ -35,7 +36,7 @@ export default function CommunityLinks({ tone = "dark", compact = false }: { ton
           }}
         >
           <span style={{ fontSize: 15, fontWeight: 900 }}>{l.icon}</span>
-          {!compact && <span>@gamerplex_com</span>}
+          {!compact && <span>{l.text}</span>}
         </a>
       ))}
     </div>
