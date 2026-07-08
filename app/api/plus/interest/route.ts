@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
             product: 'gamerplex-plus',
             price_usd: 4.99,
             server_side: true,
-            network: process.env.NEXT_PUBLIC_SOLANA_NETWORK || 'devnet',
+            network: process.env.NEXT_PUBLIC_SOLANA_NETWORK || 'mainnet',
           },
         }),
       });

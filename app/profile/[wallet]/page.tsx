@@ -30,7 +30,7 @@ async function resolveIdentifier(raw: string, connection: Connection): Promise<P
 }
 
 // Reuse the arcade RPC env for consistency.
-const NETWORK = process.env.NEXT_PUBLIC_SOLANA_NETWORK || "devnet";
+const NETWORK = process.env.NEXT_PUBLIC_SOLANA_NETWORK || "mainnet";
 const DEFAULT_RPC =
   NETWORK === "mainnet"
     ? "https://api.mainnet-beta.solana.com"

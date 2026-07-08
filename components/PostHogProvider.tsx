@@ -21,7 +21,7 @@ export default function PostHogProvider({ children }: { children: React.ReactNod
       product: "arcade",
       surface: "gamerplex-com",
       // Segment devnet test noise from mainnet metrics (one PostHog project).
-      network: process.env.NEXT_PUBLIC_SOLANA_NETWORK || "devnet",
+      network: process.env.NEXT_PUBLIC_SOLANA_NETWORK || "mainnet",
       // Tag automated/E2E traffic (Playwright sets navigator.webdriver) so it's filterable.
       ...(typeof navigator !== "undefined" && navigator.webdriver ? { test_traffic: true } : {}),
     });

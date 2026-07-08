@@ -32,7 +32,7 @@ import "@solana/wallet-adapter-react-ui/styles.css";
 // RPC endpoint follows NEXT_PUBLIC_SOLANA_NETWORK. Operators should override
 // with a paid endpoint (Helius/Triton/Alchemy) on mainnet via NEXT_PUBLIC_SOLANA_RPC
 // to avoid rate-limit hiccups on the public default.
-const NETWORK = process.env.NEXT_PUBLIC_SOLANA_NETWORK || "devnet";
+const NETWORK = process.env.NEXT_PUBLIC_SOLANA_NETWORK || "mainnet";
 const DEFAULT_RPC =
   NETWORK === "mainnet"
     ? "https://api.mainnet-beta.solana.com"

@@ -12,7 +12,7 @@ import { NextResponse } from "next/server";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 
-const NETWORK = process.env.NEXT_PUBLIC_SOLANA_NETWORK || "devnet";
+const NETWORK = process.env.NEXT_PUBLIC_SOLANA_NETWORK || "mainnet";
 const RPC =
   process.env.NEXT_PUBLIC_SOLANA_RPC ||
   (NETWORK === "mainnet"

@@ -32,11 +32,11 @@ import bs58 from "bs58";
 import idlJson from "./idl.json";
 
 // ───── Constants ──────────────────────────────────────────────────────
-// Network selector: "mainnet" | "devnet". Flip NEXT_PUBLIC_SOLANA_NETWORK
-// before build/deploy to point arcade at mainnet. Defaults to devnet so a
-// forgotten env var can't accidentally charge real USDC.
+// Network selector: "mainnet" | "devnet". Defaults to MAINNET (production) so a
+// forgotten env var can't accidentally leave prod on devnet. Set
+// NEXT_PUBLIC_SOLANA_NETWORK=devnet for local/dev testing.
 export const ARCADE_NETWORK =
-  (process.env.NEXT_PUBLIC_SOLANA_NETWORK as "mainnet" | "devnet") || "devnet";
+  (process.env.NEXT_PUBLIC_SOLANA_NETWORK as "mainnet" | "devnet") || "mainnet";
 
 // Per-network program IDs (mainnet ≠ devnet). NEXT_PUBLIC_ARCADE_PROGRAM_ID
 // overrides; otherwise selected by network, defaulting to devnet.

@@ -9,7 +9,7 @@ import "@solana/wallet-adapter-react-ui/styles.css";
 
 // Same network selection as the arcade layout — /profile must query the same
 // chain the user played on.
-const NETWORK = process.env.NEXT_PUBLIC_SOLANA_NETWORK || "devnet";
+const NETWORK = process.env.NEXT_PUBLIC_SOLANA_NETWORK || "mainnet";
 const DEFAULT_RPC =
   NETWORK === "mainnet"
     ? "https://api.mainnet-beta.solana.com"

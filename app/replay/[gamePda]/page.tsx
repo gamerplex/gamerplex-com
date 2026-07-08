@@ -88,7 +88,7 @@ function parseGameState(data: Buffer) {
 
 const RPC_URL =
   process.env.NEXT_PUBLIC_SOLANA_RPC ||
-  ((process.env.NEXT_PUBLIC_SOLANA_NETWORK || "devnet") === "mainnet"
+  ((process.env.NEXT_PUBLIC_SOLANA_NETWORK || "mainnet") === "mainnet"
     ? "https://api.mainnet-beta.solana.com"
     : "https://api.devnet.solana.com");
 

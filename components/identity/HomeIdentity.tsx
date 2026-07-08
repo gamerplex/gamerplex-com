@@ -19,7 +19,7 @@ import { StreakWidget } from "./StreakWidget";
 
 import "@solana/wallet-adapter-react-ui/styles.css";
 
-const NETWORK = process.env.NEXT_PUBLIC_SOLANA_NETWORK || "devnet";
+const NETWORK = process.env.NEXT_PUBLIC_SOLANA_NETWORK || "mainnet";
 const RPC_URL =
   process.env.NEXT_PUBLIC_SOLANA_RPC ||
   (NETWORK === "mainnet" ? "https://api.mainnet-beta.solana.com" : "https://api.devnet.solana.com");

@@ -13,7 +13,7 @@ import { PhantomWalletAdapter } from "@solana/wallet-adapter-phantom";
 
 import "@solana/wallet-adapter-react-ui/styles.css";
 
-const NETWORK = process.env.NEXT_PUBLIC_SOLANA_NETWORK || "devnet";
+const NETWORK = process.env.NEXT_PUBLIC_SOLANA_NETWORK || "mainnet";
 const DEFAULT_RPC =
   NETWORK === "mainnet"
     ? "https://api.mainnet-beta.solana.com"

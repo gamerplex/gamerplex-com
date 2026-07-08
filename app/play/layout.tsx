@@ -15,7 +15,7 @@ import "@solana/wallet-adapter-react-ui/styles.css";
 
 // Network-driven RPC (honors NEXT_PUBLIC_SOLANA_RPC; mainnet default when the
 // network is mainnet). This ConnectionProvider wraps the whole /play/* tree.
-const NETWORK = process.env.NEXT_PUBLIC_SOLANA_NETWORK || "devnet";
+const NETWORK = process.env.NEXT_PUBLIC_SOLANA_NETWORK || "mainnet";
 const RPC_ENDPOINT =
   process.env.NEXT_PUBLIC_SOLANA_RPC ||
   (NETWORK === "mainnet"
