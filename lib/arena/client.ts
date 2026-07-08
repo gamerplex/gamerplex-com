@@ -15,6 +15,11 @@ export const MAGIC_PROGRAM_ID = new PublicKey("Magic1111111111111111111111111111
 export const MAGIC_CONTEXT_ID = new PublicKey("MagicContext1111111111111111111111111111111");
 export const ER_RPC = process.env.NEXT_PUBLIC_ARENA_ER_RPC || "https://devnet.magicblock.app";
 
+// Arena (real-time PvP: chess-live, PLG battles) is NOT deployed to mainnet.
+// The "live" mode / arena surfaces are hidden unless this is explicitly enabled.
+// Flip NEXT_PUBLIC_ARENA_ENABLED=1 once arena ships on the target network.
+export const ARENA_ENABLED = process.env.NEXT_PUBLIC_ARENA_ENABLED === "1";
+
 const MATCH_SEED = Buffer.from("match");
 const DISC = {
   submitAction: Buffer.from([222, 59, 32, 151, 194, 137, 175, 150]),

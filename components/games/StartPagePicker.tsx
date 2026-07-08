@@ -8,6 +8,8 @@
 // gamerplex-com's @gamerplex/sdk dep is bumped to include the save/ subpath, then
 // this should import { getGameModes } from "@gamerplex/sdk/save".
 
+import { ARENA_ENABLED } from "../../lib/arena/client";
+
 export type GameMode = "casual" | "ranked" | "live" | "wager";
 
 export interface GameManifest {
@@ -25,7 +27,7 @@ const CARDS: Record<GameMode, { title: string; cost: string; blurb: string; icon
 
 export function getGameModes(m: GameManifest): GameMode[] {
   const modes: GameMode[] = ["casual", "ranked"];
-  if (m.supportsArena) modes.push("live");
+  if (m.supportsArena && ARENA_ENABLED) modes.push("live"); // arena not on mainnet → hidden
   if (m.supportsWager) modes.push("wager");
   return modes;
 }

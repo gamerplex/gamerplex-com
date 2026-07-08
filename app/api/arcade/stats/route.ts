@@ -12,13 +12,18 @@ import { NextResponse } from "next/server";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 
-const ARCADE_PROGRAM_ID = new PublicKey("4FVwdxxBp6PTax2tAcPyHE9rYt8tyNf2YBGrSnSqmx8t");
 const NETWORK = process.env.NEXT_PUBLIC_SOLANA_NETWORK || "devnet";
 const RPC =
   process.env.NEXT_PUBLIC_SOLANA_RPC ||
   (NETWORK === "mainnet"
     ? "https://api.mainnet-beta.solana.com"
     : "https://api.devnet.solana.com");
+const ARCADE_PROGRAM_ID = new PublicKey(
+  process.env.NEXT_PUBLIC_ARCADE_PROGRAM_ID ||
+    (NETWORK === "mainnet"
+      ? "GAMEbo12FjDbrobsgy8RbPhMs5kAQtJce3pARCi1cakV"
+      : "4FVwdxxBp6PTax2tAcPyHE9rYt8tyNf2YBGrSnSqmx8t")
+);
 
 const USDC_MAINNET = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
 const USDC_DEVNET  = new PublicKey("4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU");
@@ -28,7 +33,9 @@ const USDC_MINT    = NETWORK === "mainnet" ? USDC_MAINNET : USDC_DEVNET;
 // endpoint we read it from env (avoids an extra RPC call on every request).
 // Fallback: the deploy wallet used during initialize_config.
 const TREASURY_WALLET = process.env.ARCADE_TREASURY_WALLET ||
-  "BEzD7tvdTJa6kT43GhxHqsH4ythbM9QVz9JhTGgU2rtA";
+  (NETWORK === "mainnet"
+    ? "8w4w8jBEM9RiRLHapdqnBqrLd1yuXyCJY8Fx9BqJCyDi" // Squads v4 vault
+    : "BEzD7tvdTJa6kT43GhxHqsH4ythbM9QVz9JhTGgU2rtA");
 
 // In-memory cache: { data, expiresAt }
 let cache: { data: ArcadeStats; expiresAt: number } | null = null;

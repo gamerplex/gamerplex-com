@@ -13,7 +13,14 @@ import { track } from "../../lib/analytics";
 
 import "@solana/wallet-adapter-react-ui/styles.css";
 
-const DEVNET_RPC = "https://api.devnet.solana.com";
+// Network-driven RPC (honors NEXT_PUBLIC_SOLANA_RPC; mainnet default when the
+// network is mainnet). This ConnectionProvider wraps the whole /play/* tree.
+const NETWORK = process.env.NEXT_PUBLIC_SOLANA_NETWORK || "devnet";
+const RPC_ENDPOINT =
+  process.env.NEXT_PUBLIC_SOLANA_RPC ||
+  (NETWORK === "mainnet"
+    ? "https://api.mainnet-beta.solana.com"
+    : "https://api.devnet.solana.com");
 
 // Fires `wallet_connected` once the first time each wallet address connects
 // (the web2→web3 funnel step). Dedupes per-address so re-renders don't re-emit.
@@ -36,7 +43,7 @@ export default function PlayLayout({ children }: { children: React.ReactNode }) 
   const wallets = useMemo(() => [new PhantomWalletAdapter()], []);
 
   return (
-    <ConnectionProvider endpoint={DEVNET_RPC}>
+    <ConnectionProvider endpoint={RPC_ENDPOINT}>
       <WalletProvider wallets={wallets} autoConnect>
         <WalletModalProvider>
           <WalletConnectTracker />

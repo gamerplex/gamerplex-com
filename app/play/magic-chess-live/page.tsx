@@ -10,7 +10,7 @@ import { useWallet, useConnection } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { Keypair, PublicKey, Transaction } from "@solana/web3.js";
 import { initBoard, getValid, execMove, isW, PIECES } from "../magic-chess/_shared/chess-engine";
-import { ixSubmitAction, signAndSend, decodeMatch, matchPda, erConnection, type SignTx } from "../../../lib/arena/client";
+import { ixSubmitAction, signAndSend, decodeMatch, matchPda, erConnection, ARENA_ENABLED, type SignTx } from "../../../lib/arena/client";
 
 const ARENA_CHESS_GAME_ID = Number(process.env.NEXT_PUBLIC_ARENA_CHESS_GAME_ID || "1");
 const RESOLVER = process.env.NEXT_PUBLIC_RESOLVER_URL || "https://resolver.gamerplex.com";
@@ -38,6 +38,23 @@ function useSigner(): { publicKey: PublicKey | null; signTransaction: SignTx | u
 }
 
 export default function LivePvPPage() {
+  // Arena isn't on mainnet — block direct-URL access (the tile is hidden too).
+  if (!ARENA_ENABLED) {
+    return (
+      <div style={{ maxWidth: 460, margin: "60px auto", textAlign: "center", padding: 24, color: "#c8bfe6" }}>
+        <div style={{ fontSize: 40 }}>⚔</div>
+        <h1 style={{ fontSize: 22 }}>Live PvP — coming to mainnet soon</h1>
+        <p style={{ color: "#8a8aa0" }}>
+          Real-time matches launch with the arena contract. For now, play{" "}
+          <a href="/play/magic-chess" style={{ color: "#14F195" }}>Magic Chess</a>.
+        </p>
+      </div>
+    );
+  }
+  return <LivePvPInner />;
+}
+
+function LivePvPInner() {
   const { publicKey, signTransaction } = useSigner();
   const { connection } = useConnection();
   const er = useRef(erConnection());
