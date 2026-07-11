@@ -25,7 +25,7 @@ interface ScoreMemo {
 }
 
 const GAME_META: Record<string, { emoji: string; label: string; route: string; accent: string }> = {
-  flipball: { emoji: "🎯", label: "Flipball", route: "https://flipball.gamerplex.com", accent: "#00ffd1" },
+  flipball: { emoji: "🎯", label: "Flipball", route: "/play/flipball", accent: "#00ffd1" },
   "cyber-snake": { emoji: "🐍", label: "Cyber Snake", route: "/play/cyber-snake", accent: "#4fc3f7" },
   "chess-puzzles": { emoji: "♟", label: "Magic Chess Puzzles", route: "/play/magic-chess", accent: "#c99aff" },
   blockwords: { emoji: "🔮", label: "Blockwords", route: "/play/blockwords", accent: "#ffd24a" },
