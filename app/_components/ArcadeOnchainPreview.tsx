@@ -15,7 +15,7 @@ const RESOLVER =
   process.env.NEXT_PUBLIC_RESOLVER_URL || "https://resolver.gamerplex.com";
 
 const GAMES = [
-  { slug: "flipball",      label: "Flipball",      emoji: "🎯", color: "#00ffd1", route: "https://flipball.gamerplex.com" },
+  { slug: "flipball",      label: "Flipball",      emoji: "🎯", color: "#00ffd1", route: "/play/flipball" },
   { slug: "cyber-snake",   label: "Cyber Snake",   emoji: "🐍", color: "#4fc3f7", route: "/play/cyber-snake?mode=arcade" },
   { slug: "chess-puzzles", label: "Magic Chess",   emoji: "♟",  color: "#c99aff", route: "/play/magic-chess?mode=arcade" },
   { slug: "blockwords",    label: "Blockwords",    emoji: "🔮", color: "#ffd24a", route: "/play/blockwords?mode=arcade" },

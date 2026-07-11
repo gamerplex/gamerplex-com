@@ -1,26 +1,25 @@
 "use client";
 
-// Flipball inside the Gamerplex Arcade Shell. Flipball is a separate Astro +
-// Rapier app (its own bundle/stack), so we embed it as an iframe here and bridge
-// its score out via postMessage. The shell (this page, same gamerplex.com origin)
-// owns nav + login + the free web2 leaderboard save — so flipball needs NO wallet
-// to be ranked, fixing its "Select Wallet"-only dead-end. Fully responsive.
+// Flipball inside the Gamerplex Arcade Shell. The game (raw three.js + Rapier)
+// runs same-origin — mounted directly via <FlipballGame /> (no iframe, no separate
+// subdomain). It emits its score as a `flipball:gameover` window CustomEvent that
+// this shell listens for. The shell owns nav + login + the free web2 leaderboard
+// save — so flipball needs NO wallet to be ranked. Fully responsive.
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import ShellLeaderboard from "../../../components/arcade/ShellLeaderboard";
 import CommunityLinks from "../../../components/CommunityLinks";
 import EmailLoginModal from "../../../components/arcade/EmailLoginModal";
+import FlipballGame from "./FlipballGame";
 import { getIdentity, getCredits, type IdentityUser } from "../../../lib/identity/client";
-
-const FLIPBALL_ORIGIN = "https://flipball.gamerplex.com";
 
 export default function FlipballShell() {
   const [saved, setSaved] = useState<null | "saving" | "saved" | "signed_out">(null);
   const lastRun = useRef<string | null>(null);
 
   // Web2 identity (email-first) — sign-in is a shell modal here, not just the /?login=1
-  // redirect; the actual score save still happens inside the iframed flipball app.
+  // redirect; the score save happens here on the game's flipball:gameover event.
   const [me, setMe] = useState<IdentityUser | null>(null);
   const [credits, setCredits] = useState<number | null>(null);
   const [showLogin, setShowLogin] = useState(false);
@@ -37,12 +36,10 @@ export default function FlipballShell() {
   useEffect(() => { void refreshIdentity(); }, []);
 
   useEffect(() => {
-    const onMsg = (e: MessageEvent) => {
-      // Only trust messages from the embedded flipball origin.
-      if (e.origin !== FLIPBALL_ORIGIN) return;
-      const d = e.data;
-      if (!d || d.type !== "flipball:gameover" || typeof d.score !== "number") return;
-      const refId = `flipball:${d.runId ?? d.score}:${Math.floor(d.durationSec ?? 0)}`;
+    const onGameOver = (e: Event) => {
+      const d = (e as CustomEvent<{ score: number; durationSec?: number }>).detail;
+      if (!d || typeof d.score !== "number") return;
+      const refId = `flipball:${d.score}:${Math.floor(d.durationSec ?? 0)}`;
       if (lastRun.current === refId) return; // de-dupe
       lastRun.current = refId;
       setSaved("saving");
@@ -54,8 +51,8 @@ export default function FlipballShell() {
         .then((r) => setSaved(r.status === 401 ? "signed_out" : "saved"))
         .catch(() => setSaved("saved"));
     };
-    window.addEventListener("message", onMsg);
-    return () => window.removeEventListener("message", onMsg);
+    window.addEventListener("flipball:gameover", onGameOver);
+    return () => window.removeEventListener("flipball:gameover", onGameOver);
   }, []);
 
   return (
@@ -92,12 +89,7 @@ export default function FlipballShell() {
           screen tall). The leaderboard flows just below it (reached by a short scroll). */}
       <div style={{ height: "calc(100dvh - 56px - env(safe-area-inset-top))", minHeight: 420, display: "flex", flexDirection: "column", padding: "10px clamp(12px, 3vw, 20px)", boxSizing: "border-box" }}>
         <div style={{ flex: 1, minHeight: 0, position: "relative", maxWidth: 640, width: "100%", margin: "0 auto", borderRadius: 14, overflow: "hidden", border: "1px solid rgba(153,69,255,0.3)", background: "#000" }}>
-          <iframe
-            src={FLIPBALL_ORIGIN}
-            title="Flipball"
-            allow="autoplay; fullscreen"
-            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none" }}
-          />
+          <FlipballGame />
         </div>
         {saved && (
           <div style={{ marginTop: 8, textAlign: "center", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>

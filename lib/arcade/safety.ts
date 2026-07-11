@@ -10,7 +10,6 @@ import { ARCADE_NETWORK } from "./client";
 const PROD_HOSTS = new Set([
   "gamerplex.com",
   "www.gamerplex.com",
-  "flipball.gamerplex.com",
 ]);
 
 export class NetworkMismatchError extends Error {
