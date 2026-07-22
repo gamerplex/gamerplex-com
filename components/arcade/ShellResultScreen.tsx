@@ -16,6 +16,7 @@
 
 import { useEffect, useState } from "react";
 import { web3Blocked } from "../../lib/geo";
+import { sfx, celebrate } from "../../lib/juice";
 
 type SaveStatus = "saving" | "saved" | "signed_out" | "error";
 type Theme = "gradient" | "dark";
@@ -96,6 +97,14 @@ export default function ShellResultScreen({
   const bestKnown = Math.max(best ?? 0, localBest ?? 0, score); // best is at least this run
   const isNewBest = hasBest && score >= bestKnown;              // this run tied/beat the record
   const toBeat = hasBest && !isNewBest ? bestKnown - score : null;
+
+  // The reward beat — every game routes its game-over through here, so juicing this once
+  // gives all of them a satisfying end: fanfare + haptic on a win/new-best, a soft blip otherwise.
+  useEffect(() => {
+    if (win || isNewBest) celebrate("complete");
+    else sfx("xp");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div style={{ width: "100%", maxWidth: 400, margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", zIndex: 1 }}>
