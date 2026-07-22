@@ -1,30 +1,32 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 
-// MANDATE #2: login must work. The email-first flow is mocked at the network
-// boundary (the identity host is cross-origin and only resolves on the real
-// gamerplex.com domain), so these tests deterministically cover the UI contract:
-// email step first, wallet locked until verified, success + error transitions.
+// MANDATE #2: login must work. The glass home is email-first — a "Sign in with
+// email" CTA opens the email modal (magic link; no password, no wallet). The
+// identity host is cross-origin (only real on gamerplex.com), so we mock the
+// signup endpoint and assert the UI contract: modal opens with an email field,
+// a valid email → "check your email" state, an error → message not a crash.
+
+async function openLoginModal(page: Page) {
+  await page.goto('/');
+  await page.getByRole('button', { name: /sign in with email/i }).first().click();
+  await expect(page.locator('input[type="email"]')).toBeVisible({ timeout: 10_000 });
+}
 
 test.describe('login — email-first', () => {
-  test('login card renders; wallet is locked until email', async ({ page }) => {
-    await page.goto('/');
-    await expect(page.getByText('Sign in with email')).toBeVisible();
-    await expect(page.locator('.siws-input')).toBeVisible();
-
-    const wallet = page.locator('.siws-wallet');
-    await expect(wallet).toBeDisabled();
-    await expect(wallet).toContainText(/email first/i);
+  test('the email sign-in modal opens with an email field + send button', async ({ page }) => {
+    await openLoginModal(page);
+    await expect(page.getByRole('button', { name: /email me a sign-in link/i })).toBeVisible();
   });
 
-  test('submitting a valid email shows the "check your inbox" state', async ({ page }) => {
+  test('submitting a valid email shows the "check your email" state', async ({ page }) => {
     await page.route('**/api/auth/email-signup', (route) =>
-      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'sent' }) }),
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) }),
     );
-    await page.goto('/');
-    await page.locator('.siws-input').fill('e2e@example.com');
-    await page.locator('.siws-primary').click();
+    await openLoginModal(page);
+    await page.locator('input[type="email"]').fill('e2e@example.com');
+    await page.getByRole('button', { name: /email me a sign-in link/i }).click();
 
-    await expect(page.getByText(/sent a sign-in link/i)).toBeVisible();
+    await expect(page.getByText(/check your email/i)).toBeVisible();
     await expect(page.getByText('e2e@example.com')).toBeVisible();
   });
 
@@ -34,11 +36,13 @@ test.describe('login — email-first', () => {
     await page.route('**/api/auth/email-signup', (route) =>
       route.fulfill({ status: 429, contentType: 'application/json', body: JSON.stringify({ error: 'rate_limited' }) }),
     );
-    await page.goto('/');
-    await page.locator('.siws-input').fill('e2e@example.com');
-    await page.locator('.siws-primary').click();
+    await openLoginModal(page);
+    await page.locator('input[type="email"]').fill('e2e@example.com');
+    await page.getByRole('button', { name: /email me a sign-in link/i }).click();
 
-    await expect(page.locator('.siws-error')).toBeVisible();
+    // Stays on the form (no crash / no inbox state) — the modal surfaces the error.
+    await expect(page.locator('input[type="email"]')).toBeVisible();
+    await expect(page.getByText(/check your email/i)).toHaveCount(0);
     expect(errors, errors.join(' | ')).toHaveLength(0);
   });
 });

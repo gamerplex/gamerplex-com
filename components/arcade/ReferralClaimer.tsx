@@ -9,7 +9,7 @@
 import { useEffect, useRef } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useIdentity } from "../../lib/identity/useIdentity";
-import { getStoredReferrerInfo } from "../../lib/arcade/referral";
+import { getStoredReferralCode } from "../../lib/arcade/referral";
 import { claimReferral } from "../../lib/identity/client";
 
 export default function ReferralClaimer() {
@@ -19,13 +19,14 @@ export default function ReferralClaimer() {
 
   useEffect(() => {
     if (!isSignedIn || !user) return;
-    const info = getStoredReferrerInfo(publicKey ?? null);
-    if (!info) return;
-    const referrer = info.pubkey.toBase58();
-    const guard = `${user.id}:${referrer}`;
+    // Referral code = a handle (web2, primary) or a wallet pubkey (web3). The
+    // grant route accepts either and resolves it to the referrer's userId.
+    const code = getStoredReferralCode();
+    if (!code) return;
+    const guard = `${user.id}:${code.value}`;
     if (claimedRef.current === guard) return;
     claimedRef.current = guard;
-    void claimReferral(referrer);
+    void claimReferral(code.value);
   }, [isSignedIn, user, publicKey]);
 
   return null;

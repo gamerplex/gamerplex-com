@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { SiteNav } from "../../components/SiteNav";
+import GlassShell from "../../components/GlassShell";
+import { glassPanel } from "../../components/glass";
 
 const SECTIONS = [
   { id: "intro", label: "What is Gamerplex?", group: "Overview" },
@@ -22,16 +23,15 @@ const SECTIONS = [
   { id: "platform-risk", label: "Platform Risk", group: "Decentralization" },
   { id: "web3-identity", label: "Web3 Identity + SNS", group: "Decentralization" },
 
-  { id: "three-games", label: "Three Games, One Stack", group: "Games" },
+  { id: "three-games", label: "Four Games, One Stack", group: "Games" },
   { id: "magic-chess", label: "Magic Chess", group: "Games" },
   { id: "blockwords", label: "Blockwords", group: "Games" },
-  { id: "pet-legends", label: "Pet Legends Arena", group: "Games" },
   { id: "agents", label: "Gamerplex Agents", group: "Games" },
 
   { id: "gamer-token", label: "$GAME Token", group: "Economics" },
+  { id: "credits", label: "Credits & Referrals", group: "Economics" },
   { id: "fees", label: "Fees & Revenue", group: "Economics" },
 
-  { id: "mainnet-gate", label: "Mainnet Readiness Gate", group: "Roadmap" },
   { id: "roadmap", label: "Roadmap", group: "Roadmap" },
   { id: "open-source", label: "Open Source", group: "Roadmap" },
 ];
@@ -47,40 +47,13 @@ export default function DocsPage() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "#050508", color: "#e8e8f0", fontFamily: "'Space Grotesk', sans-serif" }}>
-      {/* Header */}
-      <div style={{
-        position: "sticky", top: 0, zIndex: 10,
-        display: "flex", justifyContent: "space-between", alignItems: "center",
-        padding: "12px 16px", borderBottom: "1px solid #252540",
-        background: "rgba(5,5,8,0.95)", backdropFilter: "blur(12px)",
-      }}>
-        <div style={{display:"flex",alignItems:"center",gap:10}}>
-          <Link href="/" style={{
-            textDecoration: "none", fontSize: 22, fontWeight: 900, fontStyle: "italic",
-            background: "linear-gradient(135deg, #9945FF, #14F195)",
-            WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-            paddingRight: 8, display: "inline-block",
-          }}>GAMERPLEX</Link>
-          <span className="devnet-badge">Devnet</span>
-        </div>
-        <SiteNav
-          links={[
-            { href: "/#featured", label: "Play" },
-            { href: "/docs", label: "Build", active: true },
-            { href: "/leaderboard", label: "Leaderboard" },
-            { href: "/profile", label: "Profile" },
-            { href: "https://x.com/gamerplex_com", label: "𝕏", external: true },
-          ]}
-        />
-      </div>
-
-      <div style={{ display: "flex", maxWidth: 1200, margin: "0 auto" }}>
+    <GlassShell activeLabel="Docs">
+      <div style={{ display: "flex", gap: 8, margin: "0 auto" }}>
         {/* Sidebar */}
-        <aside style={{
-          width: 240, flexShrink: 0, padding: "32px 16px 32px 24px",
-          borderRight: "1px solid #252540", minHeight: "calc(100vh - 54px)",
-          position: "sticky", top: 54, alignSelf: "flex-start", maxHeight: "calc(100vh - 54px)",
+        <aside className="docs-sidebar" style={{
+          width: 240, flexShrink: 0, padding: "6px 16px 32px 4px",
+          borderRight: "1px solid rgba(255,255,255,0.12)",
+          position: "sticky", top: 14, alignSelf: "flex-start", maxHeight: "calc(100vh - 40px)",
           overflowY: "auto",
         }}>
           {GROUPS.map(group => (
@@ -106,14 +79,14 @@ export default function DocsPage() {
         </aside>
 
         {/* Content */}
-        <main style={{ flex: 1, padding: "48px 48px 96px", maxWidth: 820 }}>
+        <main className="docs-main" style={{ flex: 1, padding: "4px 8px 64px 28px", maxWidth: 820, minWidth: 0 }}>
           <h1 style={{
             fontSize: 40, fontWeight: 700, marginBottom: 12, lineHeight: 1.1,
             background: "linear-gradient(135deg, #9945FF, #14F195)",
             WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
           }}>Gamerplex Docs</h1>
           <p style={{ fontSize: 15, color: "#888", marginBottom: 48, lineHeight: 1.6 }}>
-            The on-chain game arena. Portable ratings, multiple payment options, every move a real Solana transaction.
+            The on-chain game arena — <strong style={{color:"#14F195"}}>the Gamerplex Arcade contract is live on Solana mainnet</strong>. Portable ratings, multiple payment options, every saved score a real Solana transaction.
           </p>
 
           {/* Overview */}
@@ -197,15 +170,10 @@ export default function DocsPage() {
           </Section>
 
           <Section id="programs" title="Smart Contracts">
-            <P>The Gamerplex Arcade ships on a single upgradeable program. Each game registers a <code>game_id</code> against the arcade registry.</P>
+            <P>The Gamerplex Arcade runs on a single upgradeable Anchor program, <strong style={{color:"#14F195"}}>live on Solana mainnet</strong>. Each game registers a <code>game_id</code> against the arcade registry.</P>
             <CodeBlock>
-{`Gamerplex Arcade v1.4    4FVwdxxBp6PTax2tAcPyHE9rYt8tyNf2YBGrSnSqmx8t
-Magic Chess              3LVg8uUsHtq6fusjrSfyGUCLQ83TFegDKmY3bCNz3QYr
-Gamerplex Orchestrator   tsHnDDmYyqpcRyQejKcvai6fECRWyNQ4F87QgKcHg4d
-SOAR                     SoarNNzwQHMwcfdkdLc6kvbkoMSxcHy89gTHrjhJYkk
-$GAME Token (MAINNET ✅)  7TTBUfDomCKBMemv7FF37Tg3y52cRkAxn8vJnvKD4rsE
-$GAME Token (devnet)     8eGnj5jkW6zTGYieGhtejPjLtGmnKfCdk7FamoJ5LLvD
-Mock USDF (devnet)       9Lc5ftsVbVS1T8c6D9Yan83fNaPryo3xpKp4DgKtyKhK`}
+{`Gamerplex Arcade (Solana mainnet ✅)   GAMEbo12FjDbrobsgy8RbPhMs5kAQtJce3pARCi1cakV
+$GAME Token (issued by Flipcash)       7TTBUfDomCKBMemv7FF37Tg3y52cRkAxn8vJnvKD4rsE`}
             </CodeBlock>
             <P><strong>Arcade program instructions:</strong></P>
             <List items={[
@@ -418,13 +386,13 @@ Pet Legends: GPX1|pla|BEzD...|GYYw...|w|12|8|15|atk,blk,spc,atk,...`}</CodeBlock
               The launch plan: <strong>four diverse games, all on the same unified Gamerplex Arcade stack</strong>, proving the protocol works across very different game types. Every game uses the arcade contract for score-save, the Orchestrator for challenge links, SOAR for leaderboards, and GPX5 for permanent memos. <strong style={{color:"#14F195"}}>Same stack, same economics, different games.</strong>
             </P>
             <List items={[
-              <><strong>Cyber Snake</strong> — classic Tron-style snake. Solo arcade flavor live on devnet.</>,
-              <><strong>Magic Chess</strong> — deep skill strategy. ER-native. 1.2M positions verified.</>,
-              <><strong>Blockwords</strong> — timed 5-letter word puzzle. 90s sprint, 6 guesses, on-chain leaderboard.</>,
-              <><strong>Flipball</strong> — pinball with on-chain leaderboard. Live on devnet.</>,
+              <><strong>Cyber Snake</strong> — Tron-style arcade snake. Live on mainnet.</>,
+              <><strong>Magic Chess</strong> — 3D chess vs AI bots, every move on MagicBlock ER. Live.</>,
+              <><strong>Blockwords</strong> — solo word-ladder race: change one letter at a time to build the longest chain before the timer. Live on mainnet.</>,
+              <><strong>Flipball</strong> — physics arcade with an on-chain leaderboard. Live on mainnet.</>,
             ]} />
             <P>
-              All four are proving the stack on devnet. When the <Link href="#mainnet-gate" style={{color:"#9945FF"}}>arcade mainnet gate</Link> is green, they launch together on mainnet. Then we scale: more games from the Forever Games list — Go, Reversi, Four in a Row, Checkers, Backgammon — each plugging into the same stack from day one.
+              All four run on one unified stack, live on Solana mainnet. Next: more games from the Forever Games list — Go, Reversi, Four in a Row, Checkers, Backgammon — each plugging into the same stack from day one.
             </P>
           </Section>
 
@@ -446,35 +414,16 @@ Pet Legends: GPX1|pla|BEzD...|GYYw...|w|12|8|15|atk,blk,spc,atk,...`}</CodeBlock
 
           <Section id="blockwords" title="Blockwords">
             <P>
-              Hidden-information word puzzle on a <strong style={{color:"#e0b3ff"}}>Private Ephemeral Rollup (PER)</strong>. One player picks a secret word. Others guess letter by letter.
-            </P>
-            <P>
-              The word lives inside Intel TDX hardware. <strong>Nobody — not the validator, not MagicBlock, not us — can see the word.</strong> A SHA256 hash is committed on L1 when the game starts. When the word is revealed, anyone can verify it was never changed.
+              A fast solo word game. You start on a random word; each rung must be a real word that differs from the one above by <strong>exactly one letter</strong> (e.g. STARE → STORE → SCORE). Build the longest ladder you can before the timer runs out.
             </P>
             <List items={[
-              "Daily-puzzle arcade flavor: pick the secret 5-letter word in 6 guesses, 90s timer",
-              "Hash commitment on L1 → provable fairness",
-              "PER permissions: host WRITE, program READ, everyone else NO ACCESS, reveal at game-end",
-              "Score-save via arcade contract (atomic, on-chain GPX5 memo)",
-              "Challenge links via Orchestrator (zero-cost creation, ephemeral rent on claim)",
+              "90-second sprints — chain as many valid rungs as you can",
+              "Free web2 leaderboard; upgrade a run to a permanent, verified on-chain save",
+              "Score-save via the arcade contract (atomic on-chain GPX5 memo)",
+              "Challenge links to invite friends",
             ]} />
             <P>
-              Status: arcade flavor live on devnet; gamerplex-com/app/arcade/blockwords/ is the playable surface.
-            </P>
-          </Section>
-
-          <Section id="pet-legends" title="Pet Legends Arena">
-            <P>
-              NFT pet RPG. Pick a PFP Trainer NFT (Mad Lads, Famous Foxes — passive class buffs), a Pet NFT (unique base stats), and equip partner memecoins as items. Watch the deterministic simulation play out in real time.
-            </P>
-            <List items={[
-              <><strong>Pure skill, zero RNG</strong> — outcomes are mathematically certain based on inputs. Preserves Skillz-style legal skill-game exemption.</>,
-              <>200ms ER tick rate for smooth animations; final outcome commits to L1 via <code>BattleOutcome</code> PDA → SOAR leaderboard.</>,
-              <>Existing brand: <strong style={{color:"#ff69b4"}}>@PetLegends_com</strong> — 4,000 X followers, domain owned since 2021. Operated by Pet Legends LLC-FZ (UAE), separate from Gamerplex Pty Ltd.</>,
-              <>Full rewrite in progress to unify on the Gamerplex Arcade stack (arcade contract, Orchestrator, SOAR, GPX5).</>,
-            ]} />
-            <P>
-              Status: existing Anchor workspace. Rewrite in progress. Ships on devnet with the unified stack.
+              <strong style={{color:"#14F195"}}>Live on Solana mainnet.</strong>
             </P>
           </Section>
 
@@ -519,6 +468,10 @@ SF3000  — Superhuman (Stockfish skill 20)`}
                 Ticker symbols are not reserved — any token calling itself &ldquo;$GAME&rdquo; at a
                 different address is <strong>not the one Gamerplex accepts</strong>. Always check the mint address above.
               </span>
+              <br/>
+              <a href="https://app.flipcash.com/token/7TTBUfDomCKBMemv7FF37Tg3y52cRkAxn8vJnvKD4rsE" target="_blank" rel="noopener noreferrer" style={{display:"inline-block", marginTop:10, color:"#14F195", fontWeight:700, fontSize:13, textDecoration:"none"}}>
+                View $GAME on Flipcash →
+              </a>
             </P>
             <List items={[
               "Issued and managed by Flipcash via their smart contract — Gamerplex is a merchant that accepts it, not the issuer",
@@ -530,6 +483,15 @@ SF3000  — Superhuman (Stockfish skill 20)`}
               security, or ownership stake</strong>, and confers no profit expectation, dividend, or governance right.
               Gamerplex makes no representation as to its value; any token economics are determined solely by
               Flipcash&apos;s smart contract.
+            </P>
+          </Section>
+
+          <Section id="credits" title="Credits & Referrals">
+            <P>
+              <strong>Credits</strong> are free in-game points earned by playing — a web2 engagement layer, entirely separate from $GAME. Credits are <strong>not money</strong>: non-cash, non-transferable for value, never convertible to $GAME or fiat, and they cannot be cashed out.
+            </P>
+            <P>
+              <strong>Referrals reward Credits only.</strong> Share your link; when a friend signs up and completes their profile, you both earn Credits. No token is ever paid to a referrer, and no purchase is required — it&apos;s a single-level &ldquo;invite a friend, both get free points&rdquo; mechanic.
             </P>
           </Section>
 
@@ -548,32 +510,8 @@ SF3000  — Superhuman (Stockfish skill 20)`}
             </P>
             <P>Other fee streams:</P>
             <Table cols={["Stream", "Rate", "Paid by"]} rows={[
-              ["Affiliate referrals", "20% of payment", "Protocol → referrer (on-chain, accrual; min $0.15)"],
               ["Tipping (optional)", "0%", "Tippers — direct wallet-to-wallet"],
             ]} />
-          </Section>
-
-          <Section id="mainnet-gate" title="Mainnet Readiness Gate">
-            <P>
-              <strong style={{color:"#14F195"}}>Arcade Gate — 12 items.</strong> Narrow, focused, AU-legal. When all 12 are green the arcade contract flips to mainnet.
-            </P>
-            <List items={[
-              "Arcade program deployed to mainnet (devnet program ID will be reused)",
-              "Frontend points at mainnet RPC + canonical USDC mint (env-driven, ready)",
-              "T&C signMessage flow + /terms + /privacy live (already shipped)",
-              "Geofence — Cloudflare WAF + Next.js edge middleware + /unavailable page (middleware live, WAF expression pending)",
-              "Devnet stress test 170/170 (✅ 2026-04-23)",
-              "Contract hardening — instructions-sysvar introspection, stablecoin allowlist, deadline gating (✅ 2026-04-23)",
-              "Counsel memo on skill-arcade framing (pending counsel engagement)",
-              "Hardware wallet (Ledger min) holds mainnet upgrade authority",
-              "Squads multisig (2-of-3 minimum) for upgrade authority",
-              "Sentry + uptime monitoring",
-              "Leaderboard live (✅ shipped)",
-              "Profile pages live (✅ shipped)",
-            ]} />
-            <P>
-              Mainnet funding for the arcade ceremony is incoming. The current state maps to our <a href="https://github.com/gamerplex" target="_blank" rel="noopener noreferrer" style={{color:"#9945FF"}}>open-source repos</a> — every item references specific tests or code.
-            </P>
           </Section>
 
           {/* Roadmap */}
@@ -582,23 +520,14 @@ SF3000  — Superhuman (Stockfish skill 20)`}
               Single track: skill arcade to mainnet, then scale the catalog.
             </P>
             <div style={{display:"flex",flexDirection:"column",gap:16,marginTop:16}}>
-              <RoadmapCard phase="Now (June 2026)" status="Live on Devnet" color="#14F195" items={[
-                "Skill arcade live on devnet — 4 games playable, 4-tier permanence, 170/170 stress test green",
-                "Hardened arcade contract v1.4 ($GAME 20% discount, multi-token: USDC/SOL/$GAME/USDT/USDF, affiliate referrals)",
-                "@gamerplex/sdk v0.3.0 shipped (github URL install)",
+              <RoadmapCard phase="Now" status="Live on Mainnet" color="#14F195" items={[
+                "Skill arcade live on mainnet — 4 games playable, 4-tier permanence",
+                "Hardened arcade contract ($GAME 20% discount, multi-token: USDC/SOL/$GAME/USDT/USDF)",
+                "@gamerplex/sdk shipped",
                 "Challenge links + dynamic OG image for X/Discord previews",
                 "Sovereign MCP + dev server (gamerplex-mcp, gamerplex-dev)",
               ]} />
-              <RoadmapCard phase="Track A — Arcade to Mainnet" status="Funds Pending" color="#ffd740" items={[
-                "Squads 2-of-3 multisig setup for arcade upgrade authority",
-                "Fresh deploy keypair generation (not reused from devnet)",
-                "solana program deploy — arcade contract to mainnet (~3.5 SOL rent + buffer)",
-                "register_game(1, cyber-snake) on mainnet",
-                "Frontend env switch: NEXT_PUBLIC_SOLANA_NETWORK=mainnet-beta + canonical USDC mint",
-                "Smoke test 1 paid save end-to-end on mainnet",
-                "Counsel memo on file (skill-arcade framing)",
-              ]} />
-              <RoadmapCard phase="Post-Mainnet — Scale" status="Planned" color="#888" items={[
+              <RoadmapCard phase="Scale" status="Planned" color="#888" items={[
                 "One new arcade game a week (Time Gate, Tetris-Arcade, Math Drills, etc.)",
                 "SNS identity integration",
                 "IPFS/Arweave frontend mirror",
@@ -629,29 +558,29 @@ SF3000  — Superhuman (Stockfish skill 20)`}
             </P>
           </Section>
 
-          <div style={{marginTop:64,padding:"24px 28px",background:"#0c0c14",border:"1px solid #252540",borderRadius:12,textAlign:"center"}}>
-            <div style={{fontSize:14,color:"#888",marginBottom:12}}>Ready to play?</div>
+          <div style={{...glassPanel,marginTop:64,padding:"24px 28px",borderRadius:16,textAlign:"center"}}>
+            <div style={{fontSize:14,color:"#c8c8d4",marginBottom:12}}>Ready to play?</div>
             <div style={{display:"flex",gap:12,justifyContent:"center",flexWrap:"wrap"}}>
-              <Link href="/play/chess" style={{
-                padding:"10px 24px",borderRadius:8,textDecoration:"none",
-                background:"linear-gradient(90deg, #9945ff, #00f0ff)",
-                color:"#050508",fontSize:13,fontWeight:700,
+              <Link href="/play/magic-chess" style={{
+                padding:"10px 24px",borderRadius:999,textDecoration:"none",
+                background:"linear-gradient(100deg, #9945ff, #14f195)",
+                color:"#04120b",fontSize:13,fontWeight:800,
               }}>🧙‍♂️ Play Magic Chess</Link>
-              <Link href="/games" style={{
-                padding:"10px 24px",borderRadius:8,textDecoration:"none",
-                background:"transparent",border:"1px solid #252540",
+              <Link href="/#featured" style={{
+                padding:"10px 24px",borderRadius:999,textDecoration:"none",
+                background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.2)",
                 color:"#e8e8f0",fontSize:13,fontWeight:600,
               }}>All Games</Link>
-              <Link href="/leaderboard" style={{
-                padding:"10px 24px",borderRadius:8,textDecoration:"none",
-                background:"transparent",border:"1px solid #252540",
+              <Link href="/#leaderboard" style={{
+                padding:"10px 24px",borderRadius:999,textDecoration:"none",
+                background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.2)",
                 color:"#e8e8f0",fontSize:13,fontWeight:600,
               }}>Leaderboard</Link>
             </div>
           </div>
         </main>
       </div>
-    </div>
+    </GlassShell>
   );
 }
 
@@ -659,7 +588,7 @@ SF3000  — Superhuman (Stockfish skill 20)`}
 function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
   return (
     <section id={id} style={{ marginBottom: 48, scrollMarginTop: 80 }}>
-      <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 16, color: "#fff", borderBottom: "1px solid #252540", paddingBottom: 10 }}>{title}</h2>
+      <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 16, color: "#fff", borderBottom: "1px solid rgba(255,255,255,0.14)", paddingBottom: 10 }}>{title}</h2>
       {children}
     </section>
   );
@@ -685,7 +614,7 @@ function List({ items }: { items: React.ReactNode[] }) {
 function CodeBlock({ children }: { children: React.ReactNode }) {
   return (
     <pre style={{
-      background: "#0c0c14", border: "1px solid #252540", borderRadius: 8,
+      background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 8,
       padding: "16px 20px", fontSize: 12, color: "#e0b3ff", fontFamily: "monospace",
       overflow: "auto", marginBottom: 14, lineHeight: 1.6,
     }}><code>{children}</code></pre>
@@ -696,7 +625,7 @@ function Stats({ items }: { items: { label: string; value: string }[] }) {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 10, marginTop: 16, marginBottom: 14 }}>
       {items.map(s => (
-        <div key={s.label} style={{ padding: "12px 14px", background: "#0c0c14", border: "1px solid #252540", borderRadius: 8 }}>
+        <div key={s.label} style={{ padding: "12px 14px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 8 }}>
           <div style={{ fontSize: 20, fontWeight: 700, color: "#14F195", marginBottom: 2 }}>{s.value}</div>
           <div style={{ fontSize: 10, color: "#555", letterSpacing: 1, textTransform: "uppercase", fontWeight: 700 }}>{s.label}</div>
         </div>
@@ -707,10 +636,10 @@ function Stats({ items }: { items: { label: string; value: string }[] }) {
 
 function Table({ cols, rows }: { cols: string[]; rows: string[][] }) {
   return (
-    <div style={{ background: "#0c0c14", border: "1px solid #252540", borderRadius: 8, overflow: "hidden", marginBottom: 14 }}>
+    <div style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 8, overflow: "hidden", marginBottom: 14 }}>
       <div style={{
         display: "grid", gridTemplateColumns: `repeat(${cols.length}, 1fr)`,
-        padding: "10px 14px", borderBottom: "1px solid #252540",
+        padding: "10px 14px", borderBottom: "1px solid rgba(255,255,255,0.14)",
         fontSize: 10, color: "#555", textTransform: "uppercase", letterSpacing: 1, fontWeight: 700,
       }}>
         {cols.map(c => <div key={c}>{c}</div>)}
@@ -718,7 +647,7 @@ function Table({ cols, rows }: { cols: string[]; rows: string[][] }) {
       {rows.map((row, i) => (
         <div key={i} style={{
           display: "grid", gridTemplateColumns: `repeat(${cols.length}, 1fr)`,
-          padding: "10px 14px", borderBottom: i < rows.length - 1 ? "1px solid #1a1a28" : "none",
+          padding: "10px 14px", borderBottom: i < rows.length - 1 ? "1px solid rgba(255,255,255,0.1)" : "none",
           fontSize: 13, color: "#aaa",
         }}>
           {row.map((c, j) => <div key={j}>{c}</div>)}
@@ -730,7 +659,7 @@ function Table({ cols, rows }: { cols: string[]; rows: string[][] }) {
 
 function RoadmapCard({ phase, status, color, items }: { phase: string; status: string; color: string; items: string[] }) {
   return (
-    <div style={{ padding: "18px 22px", background: "#0c0c14", border: `1px solid ${color}40`, borderRadius: 12, borderLeft: `3px solid ${color}` }}>
+    <div style={{ padding: "18px 22px", background: "rgba(255,255,255,0.05)", border: `1px solid ${color}40`, borderRadius: 12, borderLeft: `3px solid ${color}` }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
         <div style={{ fontSize: 14, fontWeight: 700, color: "#e8e8f0" }}>{phase}</div>
         <div style={{ fontSize: 9, fontWeight: 800, color, letterSpacing: 1, textTransform: "uppercase", padding: "2px 8px", border: `1px solid ${color}`, borderRadius: 4 }}>{status}</div>

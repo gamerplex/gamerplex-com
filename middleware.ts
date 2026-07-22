@@ -1,39 +1,44 @@
-// Edge geofencing for paid-action routes.
+// Edge geofencing — path-segregated by web2-free vs web3-money.
 //
-// Blocks requests from prohibited jurisdictions before the page renders.
-// This is defense-layer 1 of 2. Layer 2 is a Cloudflare WAF rule at the edge
-// (see docs for expression). Both layers target the same list so a single
-// slip-up in either doesn't expose us.
+// THE RULE (see ENGINEERING/OPERATIONS/GEOFENCE.md + LEGAL.md):
+//  • FREE routes — all games, Credits, everything web2 — are NEVER geofenced.
+//    Free non-cashable Credits play isn't gambling anywhere and moves no token,
+//    so it's open worldwide (ECOSYSTEM_RULES R2: Credits = the growth faucet).
+//  • WEB3 routes — anything that moves a token — live under their own prefixes
+//    and carry the geo blocks:
+//      /wallet      → consumptive wallet actions (on-chain "save forever",
+//                     $GAME spends). OFAC sanctions block only.
+//      /wager, /tournament → money-PRIZE skill contests. OFAC + the Singapore
+//                     RGA + the 10-US-state cash-prize bans.
+//  On the free routes we don't block — we only stamp a `gp_web3block` cookie so
+//  an inline web3 affordance (e.g. the on-chain-save button on a game-over
+//  screen) can hide itself in a sanctioned region until that action is fully
+//  moved onto a /wallet page. No token ever moves on a free route in a blocked
+//  region.
 //
-// We geofence the arcade routes only — not the marketing homepage, /terms,
-// /privacy, or /unavailable. Prohibited-region users can still read what the
-// product is and why they can't use it; they just can't connect a wallet or
-// pay.
-//
-// Detection priority:
-//   1. Cloudflare: cf-ipcountry + cf-region-code (most reliable on Cloudflare edge)
-//   2. Vercel: x-vercel-ip-country + x-vercel-ip-country-region (if hosted on Vercel)
-//   3. Fallback: allow (don't fail-closed — false positives worse than false negatives
-//      for a first-line filter, since Cloudflare WAF is the hard gate in production)
+// Defense-layer 1 of 2. Layer 2 = the Cloudflare WAF (GEOFENCE.md §Layer 2) and
+// MUST fence only the web3 prefixes too, or the edge will over-block free play.
 
 import { NextRequest, NextResponse } from "next/server";
 
-const BLOCKED_COUNTRIES = new Set([
-  "CU", "IR", "KP", "SY", // US OFAC comprehensive sanctions
-  "SG", // Singapore — Remote Gambling Act skill-not-gambling friction
-]);
+// OFAC comprehensive sanctions — any token movement is prohibited.
+const SANCTIONED_COUNTRIES = new Set(["CU", "IR", "KP", "SY"]);
 
-// 10 US states + USVI where skill-money contests are restricted.
-const BLOCKED_US_REGIONS = new Set([
+// Money-PRIZE (pay-to-play cash-prize) restrictions — money-prize routes only.
+const WAGER_BLOCKED_COUNTRIES = new Set(["SG"]);
+const WAGER_BLOCKED_US_REGIONS = new Set([
   "AZ", "AR", "CT", "DE", "LA", "MT", "SC", "SD", "TN", "VI",
 ]);
 
-// Routes where paid actions can happen. Marketing + legal pages stay open
-// so users can understand what Gamerplex is even if they can't use it.
-const PROTECTED_PREFIXES = ["/arcade", "/play", "/games", "/challenge"];
+// Free web2 — games, Credits. NEVER blocked (we only stamp the geo cookie).
+const FREE_PREFIXES = ["/play", "/arcade", "/challenge"];
+// Web3 consumptive wallet actions — OFAC block.
+const WALLET_PREFIXES = ["/wallet"];
+// Web3 money-prize wagering — OFAC + cash-prize block. (Not live yet.)
+const MONEY_PREFIXES = ["/wager", "/tournament"];
 
-function isProtected(pathname: string): boolean {
-  return PROTECTED_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"));
+function onAnyPrefix(pathname: string, prefixes: string[]): boolean {
+  return prefixes.some((p) => pathname === p || pathname.startsWith(p + "/"));
 }
 
 function detectRegion(req: NextRequest): { country: string; region: string } {
@@ -48,24 +53,54 @@ function detectRegion(req: NextRequest): { country: string; region: string } {
   return { country: country.toUpperCase(), region: region.toUpperCase() };
 }
 
-export function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl;
-  if (!isProtected(pathname)) return NextResponse.next();
-
-  const { country, region } = detectRegion(req);
-
-  const countryBlocked = country && BLOCKED_COUNTRIES.has(country);
-  const usRegionBlocked = country === "US" && region && BLOCKED_US_REGIONS.has(region);
-
-  if (!countryBlocked && !usRegionBlocked) return NextResponse.next();
-
-  const regionLabel = usRegionBlocked ? `US-${region}` : country;
+function block(req: NextRequest, label: string) {
   const url = req.nextUrl.clone();
   url.pathname = "/unavailable";
-  url.searchParams.set("region", regionLabel);
+  url.searchParams.set("region", label);
   return NextResponse.rewrite(url);
 }
 
+export function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl;
+  // Static assets (banner art etc.) render everywhere.
+  if (/\.[a-z0-9]+$/i.test(pathname)) return NextResponse.next();
+
+  const onFree = onAnyPrefix(pathname, FREE_PREFIXES);
+  const onWallet = onAnyPrefix(pathname, WALLET_PREFIXES);
+  const onMoney = onAnyPrefix(pathname, MONEY_PREFIXES);
+  if (!onFree && !onWallet && !onMoney) return NextResponse.next();
+
+  const { country, region } = detectRegion(req);
+  const sanctioned = !!country && SANCTIONED_COUNTRIES.has(country);
+  const wagerBlocked =
+    (!!country && WAGER_BLOCKED_COUNTRIES.has(country)) ||
+    (country === "US" && !!region && WAGER_BLOCKED_US_REGIONS.has(region));
+
+  // Web3 money-prize routes: OFAC + cash-prize bans.
+  if (onMoney && (sanctioned || wagerBlocked)) {
+    return block(req, country === "US" && wagerBlocked ? `US-${region}` : country);
+  }
+  // Web3 wallet routes: OFAC only (consumptive sinks aren't cash-prize contests).
+  if (onWallet && sanctioned) return block(req, country);
+
+  // Free routes are NEVER blocked. Stamp the geo signal so an inline web3
+  // affordance can self-hide in a sanctioned region (no token moves there).
+  const res = NextResponse.next();
+  res.cookies.set("gp_web3block", sanctioned ? "1" : "0", {
+    path: "/",
+    sameSite: "lax",
+    maxAge: 3600,
+  });
+  return res;
+}
+
 export const config = {
-  matcher: ["/arcade/:path*", "/play/:path*", "/games/:path*", "/challenge/:path*"],
+  matcher: [
+    "/play/:path*",
+    "/arcade/:path*",
+    "/challenge/:path*",
+    "/wallet/:path*",
+    "/wager/:path*",
+    "/tournament/:path*",
+  ],
 };

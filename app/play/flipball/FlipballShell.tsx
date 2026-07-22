@@ -1,32 +1,44 @@
 "use client";
 
-// Flipball inside the Gamerplex Arcade Shell. Flipball is a separate Astro +
-// Rapier app (its own bundle/stack), so we embed it as an iframe here and bridge
-// its score out via postMessage. The shell (this page, same gamerplex.com origin)
-// owns nav + login + the free web2 leaderboard save — so flipball needs NO wallet
-// to be ranked, fixing its "Select Wallet"-only dead-end. Fully responsive.
+// Flipball inside the Gamerplex Arcade Shell. The game (raw three.js + Rapier)
+// now runs same-origin — mounted directly via <FlipballGame /> (no iframe, no
+// separate subdomain). It emits its score as a `flipball:gameover` window
+// CustomEvent that this shell listens for. The shell owns nav + login + the free
+// web2 leaderboard save — so flipball needs NO wallet to be ranked. Responsive.
 
-import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
+import { useCallback, useEffect, useRef, useState } from "react";
 import ShellLeaderboard from "../../../components/arcade/ShellLeaderboard";
+import BackToGames from "../../../components/arcade/BackToGames";
 import CommunityLinks from "../../../components/CommunityLinks";
 import EmailLoginModal from "../../../components/arcade/EmailLoginModal";
-import { getIdentity, getCredits, type IdentityUser } from "../../../lib/identity/client";
+import ShellResultScreen from "../../../components/arcade/ShellResultScreen";
+import ShareSheet from "../../../components/arcade/ShareSheet";
+import ClaimHandleModal from "../../../components/arcade/ClaimHandleModal";
+import FlipballGame from "./FlipballGame";
+import { getIdentity, getCredits, claimReferral, type IdentityUser } from "../../../lib/identity/client";
+import { buildShareUrl, getStoredReferralCode } from "../../../lib/arcade/referral";
+import { track } from "../../../lib/analytics";
 
-const FLIPBALL_ORIGIN = "https://flipball.gamerplex.com";
+const PENDING_KEY = "flipball_pending_score";
 
 export default function FlipballShell() {
-  const [saved, setSaved] = useState<null | "saving" | "saved" | "signed_out">(null);
+  const [saved, setSaved] = useState<null | "saving" | "saved" | "signed_out" | "error">(null);
+  const [lastScore, setLastScore] = useState<number | null>(null);   // triggers the result overlay
+  const [savedBest, setSavedBest] = useState<number | null>(null);   // server-returned personal best
+  const [showShare, setShowShare] = useState(false);
+  const [showClaim, setShowClaim] = useState(false);
   const lastRun = useRef<string | null>(null);
 
   // Web2 identity (email-first) — sign-in is a shell modal here, not just the /?login=1
-  // redirect; the actual score save still happens inside the iframed flipball app.
+  // redirect; the score save happens here on the game's flipball:gameover event.
   const [me, setMe] = useState<IdentityUser | null>(null);
+  const meRef = useRef<IdentityUser | null>(null);
   const [credits, setCredits] = useState<number | null>(null);
   const [showLogin, setShowLogin] = useState(false);
   const refreshIdentity = async () => {
     const u = await getIdentity();
     setMe(u);
+    meRef.current = u;
     if (u) {
       const c = await getCredits();
       setCredits(c?.perApp.find((a) => a.app === "gamerplex")?.balance ?? c?.total ?? 0);
@@ -36,33 +48,80 @@ export default function FlipballShell() {
   };
   useEffect(() => { void refreshIdentity(); }, []);
 
+  // Submit a flipball score to the free web2 board. Distinguishes the three
+  // outcomes HONESTLY (the old code showed "saved" on a network error and never
+  // stashed, silently losing the run): 401 → signed_out, non-2xx/network → error.
+  // On signed_out OR error we stash the payload so it replays on sign-in (parity
+  // with blockwords/chess/snake) — a run is never dropped.
+  const submitScore = useCallback((payload: string) => {
+    setSaved("saving");
+    void fetch("/api/scores/submit", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: payload,
+    })
+      .then(async (r) => {
+        if (r.status === 401) return { status: "signed_out" as const, best: null };
+        if (!r.ok) return { status: "error" as const, best: null };
+        const b = await r.json().catch(() => ({}));
+        return { status: "saved" as const, best: typeof b?.best === "number" ? b.best : null };
+      })
+      .catch(() => ({ status: "error" as const, best: null }))
+      .then((res) => {
+        setSaved(res.status);
+        if (res.status === "saved") {
+          if (res.best != null) setSavedBest(res.best);
+          try { window.localStorage.removeItem(PENDING_KEY); } catch {}
+          // A score now exists — re-attempt any pending referral. The route only
+          // pays out once BOTH sides are fully onboarded (proof-of-life gate).
+          const rc = getStoredReferralCode();
+          if (rc && meRef.current) void claimReferral(rc.value);
+        } else {
+          // signed_out OR transient error — keep the run so sign-in / retry saves it.
+          try { window.localStorage.setItem(PENDING_KEY, payload); } catch {}
+        }
+        track(res.status === "saved" ? "score_save_succeeded" : res.status === "signed_out" ? "login_prompt" : "score_save_failed", { game: "flipball", reason: res.status });
+      });
+  }, []);
+
   useEffect(() => {
-    const onMsg = (e: MessageEvent) => {
-      // Only trust messages from the embedded flipball origin.
-      if (e.origin !== FLIPBALL_ORIGIN) return;
-      const d = e.data;
-      if (!d || d.type !== "flipball:gameover" || typeof d.score !== "number") return;
-      const refId = `flipball:${d.runId ?? d.score}:${Math.floor(d.durationSec ?? 0)}`;
+    const onGameOver = (e: Event) => {
+      const d = (e as CustomEvent<{ score: number; durationSec?: number; runId?: string }>).detail;
+      if (!d || typeof d.score !== "number") return;
+      const refId = d.runId ? `flipball:${d.runId}` : `flipball:${d.score}:${Math.floor(d.durationSec ?? 0)}`;
       if (lastRun.current === refId) return; // de-dupe
       lastRun.current = refId;
-      setSaved("saving");
-      void fetch("/api/scores/submit", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ gameId: "flipball", score: d.score, refId, durationSec: d.durationSec }),
-      })
-        .then((r) => setSaved(r.status === 401 ? "signed_out" : "saved"))
-        .catch(() => setSaved("saved"));
+      setLastScore(d.score);
+      setSavedBest(null);
+      track("game_over", { game: "flipball", score: d.score, signed_in: !!meRef.current });
+      submitScore(JSON.stringify({ gameId: "flipball", score: d.score, refId, durationSec: d.durationSec }));
     };
-    window.addEventListener("message", onMsg);
-    return () => window.removeEventListener("message", onMsg);
+    window.addEventListener("flipball:gameover", onGameOver);
+    return () => window.removeEventListener("flipball:gameover", onGameOver);
+  }, [submitScore]);
+
+  useEffect(() => {
+    const onStart = () => { track("game_started", { game: "flipball" }); track("play_started", { game: "flipball" }); };
+    window.addEventListener("flipball:gamestart", onStart);
+    return () => window.removeEventListener("flipball:gamestart", onStart);
   }, []);
+
+  // Replay a stashed run once the player signs in (they saw "sign in to save",
+  // signed in via the modal — now actually save it). Parity with the other games.
+  useEffect(() => {
+    if (!me) return;
+    let pend: string | null = null;
+    try { pend = window.localStorage.getItem(PENDING_KEY); } catch {}
+    if (pend) submitScore(pend);
+  }, [me, submitScore]);
+
+  const closeResult = () => { setLastScore(null); setSaved(null); };
 
   return (
     <div style={{ minHeight: "100dvh", background: "#0d001a", color: "#e8e8f0", fontFamily: "'Space Grotesk', system-ui, sans-serif", display: "flex", flexDirection: "column", overflowX: "hidden", paddingTop: "calc(56px + env(safe-area-inset-top))", boxSizing: "border-box" }}>
       {/* Fixed nav — consistent with the other arcade games (.top-nav is position:fixed). */}
       <nav style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "10px clamp(12px, 4vw, 20px)", borderBottom: "1px solid rgba(153,69,255,0.2)", background: "rgba(13,0,26,0.85)", backdropFilter: "blur(12px)", boxSizing: "border-box" }}>
-        <Link href="/" style={{ fontWeight: 900, letterSpacing: 1, color: "#e8e8f0", textDecoration: "none" }}>GAMERPLEX</Link>
+        <BackToGames />
         <span style={{ fontWeight: 800, color: "#b388ff", letterSpacing: 2 }}>FLIPBALL</span>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <CommunityLinks compact />
@@ -82,7 +141,6 @@ export default function FlipballShell() {
               Sign in
             </button>
           )}
-          <Link href="/#featured" style={{ fontSize: 12, color: "#b0b0c8", textDecoration: "none" }}>← Arcade</Link>
         </div>
       </nav>
 
@@ -92,21 +150,47 @@ export default function FlipballShell() {
           screen tall). The leaderboard flows just below it (reached by a short scroll). */}
       <div style={{ height: "calc(100dvh - 56px - env(safe-area-inset-top))", minHeight: 420, display: "flex", flexDirection: "column", padding: "10px clamp(12px, 3vw, 20px)", boxSizing: "border-box" }}>
         <div style={{ flex: 1, minHeight: 0, position: "relative", maxWidth: 640, width: "100%", margin: "0 auto", borderRadius: 14, overflow: "hidden", border: "1px solid rgba(153,69,255,0.3)", background: "#000" }}>
-          <iframe
-            src={FLIPBALL_ORIGIN}
-            title="Flipball"
-            allow="autoplay; fullscreen"
-            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none" }}
-          />
+          <FlipballGame />
+
+          {/* Canonical Arcade Shell game-over — matches Blockwords. Overlays the game
+              area; the game's own reset drives Play again (we just clear the overlay). */}
+          {lastScore !== null && (
+            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(165deg, #4a2ea0 0%, #7b3ff2 60%, #b13bd8 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", padding: "26px 20px calc(24px + env(safe-area-inset-bottom))", overflowY: "auto" }}>
+              <ShellResultScreen
+                theme="gradient"
+                headline="🎱 Game over!"
+                score={lastScore}
+                saveStatus={saved ?? "saving"}
+                best={savedBest}
+                credits={credits}
+                onPlayAgain={closeResult}
+                onSignIn={() => setShowLogin(true)}
+                onShare={() => setShowShare(true)}
+                shareLabel="🔗 Challenge"
+                needsHandle={!!me && !me.handle}
+                onClaimName={() => setShowClaim(true)}
+                arcadeHref="/#featured"
+              />
+
+              <div style={{ width: "100%", maxWidth: 460, marginTop: 20, zIndex: 1 }}>
+                <ShellLeaderboard gameId="flipball" highlightUserId={me?.id} selfScore={lastScore} selfHandle={me?.handle} />
+              </div>
+
+              <div style={{ marginTop: 18, zIndex: 1 }}>
+                <CommunityLinks tone="light" />
+              </div>
+            </div>
+          )}
         </div>
-        {saved && (
-          <div style={{ marginTop: 8, textAlign: "center", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
-            {saved === "saving" && <span style={{ color: "#888" }}>Saving to leaderboard…</span>}
-            {saved === "saved" && <span style={{ color: "#14F195" }}>✓ Saved to leaderboard · 🔥 come back tomorrow to keep your streak</span>}
-            {saved === "signed_out" && <a href="/?login=1" style={{ color: "#000", background: "linear-gradient(90deg,#9945FF,#14F195)", padding: "8px 14px", borderRadius: 8, textDecoration: "none" }}>Sign in to save your score & rank →</a>}
-          </div>
-        )}
       </div>
+
+      <ShareSheet
+        open={showShare}
+        onClose={() => setShowShare(false)}
+        text={`🎱 FLIPBALL — I scored ${(lastScore ?? 0).toLocaleString()}! Can you beat it?`}
+        url={buildShareUrl("https://gamerplex.com/play/flipball", me?.id)}
+      />
+      <ClaimHandleModal open={showClaim} onClose={() => setShowClaim(false)} onClaimed={() => { setShowClaim(false); void refreshIdentity(); }} />
 
       {/* The shared leaderboard — below the fold, full-width, no vw sizing. */}
       <div style={{ maxWidth: 640, width: "100%", margin: "0 auto", padding: "8px clamp(12px, 3vw, 20px) calc(24px + env(safe-area-inset-bottom))", boxSizing: "border-box" }}>

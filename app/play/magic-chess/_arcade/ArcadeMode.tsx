@@ -20,19 +20,23 @@ import {
   CATEGORY, SCORE_COMMIT_MICRO_USD, VERIFIED_COMMIT_MICRO_USD, REPLAY_RECEIPT_MICRO_USD,
   MAGIC_CHESS_GAME_ID, ARCADE_NETWORK,
 } from "../../../../lib/arcade/client";
-import { getStoredReferrer } from "../../../../lib/arcade/referral";
+import { getStoredReferrer, buildShareUrl, getStoredReferralCode } from "../../../../lib/arcade/referral";
 import { submitReplay } from "@gamerplex/sdk/arcade";
 import { track, identifyWallet } from "../../../../lib/analytics";
 import { EconomyConsentModal, hasEconomyConsent } from "../../../../lib/arcade/economy-gate";
-import { earnCredits, getIdentity, getCredits, type IdentityUser } from "../../../../lib/identity/client";
+import { earnCredits, getIdentity, getCredits, claimReferral, type IdentityUser } from "../../../../lib/identity/client";
 import ContinueWithCredits from "../../../../components/arcade/ContinueWithCredits";
+import BackToGames from "../../../../components/arcade/BackToGames";
 import ReferrerBanner from "../../../../components/arcade/ReferrerBanner";
 import { buildSaveScorePaymentIxs } from "../../../../lib/arcade/save-score-payment";
 import { PAYMENT_TOKENS, type PaymentTokenDef } from "../../../../lib/arcade/tokens";
 import PaymentMethodPicker from "../../../../components/arcade/PaymentMethodPicker";
 import { purchasesEnabled } from "../../../../lib/arcade/killswitch";
 import ShellLeaderboard from "../../../../components/arcade/ShellLeaderboard";
+import ShellResultScreen from "../../../../components/arcade/ShellResultScreen";
+import ClaimHandleModal from "../../../../components/arcade/ClaimHandleModal";
 import EmailLoginModal from "../../../../components/arcade/EmailLoginModal";
+import ShareSheet from "../../../../components/arcade/ShareSheet";
 import GoPlusModal from "../../../../components/arcade/GoPlusModal";
 import CommunityLinks from "../../../../components/CommunityLinks";
 import { sfxRung, sfxInvalid, sfxMilestone, sfxGameOver, haptic, isMuted, setMuted } from "../../../../lib/arcade/juice";
@@ -40,6 +44,9 @@ import "../_shared/magic.css";
 
 const Chess3DBoard = dynamic(() => import("../_shared/Chess3DBoard"), { ssr: false });
 const EXPLORER_SUFFIX = ARCADE_NETWORK === "mainnet" ? "" : `?cluster=${ARCADE_NETWORK}`;
+// Floor to attempt an on-chain save: network fee + account rent are paid in SOL
+// regardless of the payment token. ~0.01 SOL covers PDA rent + tx fees.
+const MIN_SAVE_LAMPORTS = 10_000_000;
 
 type Phase = "ready" | "playing" | "gameover";
 
@@ -97,7 +104,10 @@ export default function ArcadeMode() {
   const [me, setMe] = useState<IdentityUser | null>(null);
   const meRef = useRef<IdentityUser | null>(null);
   const [credits, setCredits] = useState<number | null>(null);
+  const [savedBest, setSavedBest] = useState<number | null>(null);  // server-returned personal best
+  const [showClaim, setShowClaim] = useState(false);                // free username claim modal
   const [showLogin, setShowLogin] = useState(false);
+  const [showShare, setShowShare] = useState(false);
   const [showPlus, setShowPlus] = useState(false);
   const [muted, setMutedState] = useState(true);
   useEffect(() => { setMutedState(isMuted()); }, []);
@@ -123,10 +133,11 @@ export default function ArcadeMode() {
       if (u && typeof window !== "undefined") {
         const pend = window.localStorage.getItem("chess_pending_score");
         if (pend) {
+          // Only clear the stash on a CONFIRMED save — a failed replay must keep it.
           try {
-            await fetch("/api/scores/submit", { method: "POST", headers: { "content-type": "application/json" }, body: pend });
-          } catch {}
-          window.localStorage.removeItem("chess_pending_score");
+            const res = await fetch("/api/scores/submit", { method: "POST", headers: { "content-type": "application/json" }, body: pend });
+            if (res.ok) window.localStorage.removeItem("chess_pending_score");
+          } catch { /* keep stash for the next attempt */ }
         }
       }
     })();
@@ -135,29 +146,47 @@ export default function ArcadeMode() {
   const timerRef = useRef<any>(null);
   const histRef = useRef<HTMLDivElement>(null);
 
+  // Live mirrors of turn/phase so the countdown interval reads the CURRENT value
+  // at fire time instead of a stale closure — the timeout must end the game for
+  // whoever is actually to move, and must never fire after the game is over.
+  const wTurnRef = useRef(wTurn);
+  const phaseRef = useRef(phase);
+  useEffect(() => { wTurnRef.current = wTurn; }, [wTurn]);
+  useEffect(() => { phaseRef.current = phase; }, [phase]);
+
   useEffect(() => {
     if (!publicKey) { setProfileExists(null); return; }
     const [pda] = profilePda(publicKey);
     connection.getAccountInfo(pda).then(info => setProfileExists(!!info)).catch(() => setProfileExists(null));
   }, [publicKey, connection]);
 
+  // ONE interval per game (deps: phase only — NOT wTurn). Re-running on every
+  // turn flip used to reset the countdown and, worse, leave the interval closed
+  // over a stale `wTurn`, so an edge-aligned tick during the "bot thinking"
+  // window could end the game for the wrong side (looked like an abrupt
+  // restart/end). Per-turn reset is handled by the move handlers via setTimer.
   useEffect(() => {
     if (phase !== "playing") return;
     setTimer(turnTimeSec);
-    timerRef.current = setInterval(() => {
+    const id = setInterval(() => {
+      // Guard: an orphaned tick must not re-drive game-over.
+      if (phaseRef.current !== "playing") { clearInterval(id); return; }
       setTimer(t => {
         if (t <= 1) {
-          clearInterval(timerRef.current);
-          setWon(!wTurn);
+          clearInterval(id);
+          const whiteToMove = wTurnRef.current; // whoever is to move ran out of time
+          setWon(!whiteToMove);
           setPhase("gameover");
-          setStatus(`${wTurn ? "White" : "Black"} timed out`);
+          setStatus(`${whiteToMove ? "White" : "Black"} timed out`);
+          track("game_over", { game: "magic-chess", reason: "timeout", won: !whiteToMove });
           return 0;
         }
         return t - 1;
       });
     }, 1000);
-    return () => clearInterval(timerRef.current);
-  }, [phase, wTurn]);
+    timerRef.current = id;
+    return () => clearInterval(id);
+  }, [phase, turnTimeSec]);
 
   // Web2 Credits earn on a win (fire-and-forget; capped + idempotent server-side, CREDITS only — never $GAME).
   const earnedThisRunRef = useRef(false);
@@ -191,7 +220,7 @@ export default function ArcadeMode() {
     lastMoveAtRef.current = 0;
     setSavedThisRun(false); setVerifiedThisRun(false); setOwnedThisRun(false);
     setLastSaveSig(null); setLastVerifySig(null); setLastReceiptSig(null);
-    setOnchainError(null);
+    setOnchainError(null); setSavedBest(null);
   }, []);
 
   const startGame = useCallback(() => {
@@ -229,8 +258,10 @@ export default function ArcadeMode() {
       if (r.cap > 0) { sfxMilestone(); haptic("milestone"); } else { sfxRung(0); haptic("rung"); }
 
       if (r.go) {
-        setWon(r.win === 1 ? true : r.win === 2 ? false : null); setPhase("gameover");
+        const w = r.win === 1 ? true : r.win === 2 ? false : null;
+        setWon(w); setPhase("gameover");
         setStatus(r.win === 1 || r.win === 2 ? "Checkmate!" : "Stalemate");
+        track("game_over", { game: "magic-chess", reason: r.win === 1 || r.win === 2 ? "checkmate" : "stalemate", won: w });
         return;
       }
       const bk = r.nb.indexOf(13);
@@ -257,7 +288,7 @@ export default function ArcadeMode() {
             am.push({ f, t, s });
           }
         }
-        if (!am.length) { setWon(true); setPhase("gameover"); setStatus("Bot has no moves!"); return; }
+        if (!am.length) { setWon(true); setPhase("gameover"); setStatus("Bot has no moves!"); track("game_over", { game: "magic-chess", reason: "bot_no_moves", won: true }); return; }
         am.sort((a, b) => b.s - a.s);
         const pick = am[Math.floor(Math.random() * Math.min(3, am.length))];
         recordMove({ from: pick.f, to: pick.t, promotion: 0 });
@@ -268,9 +299,11 @@ export default function ArcadeMode() {
         // Juice: bot reply — a slightly lower blip so the two turns are audibly distinct.
         if (r2.cap > 0) { sfxInvalid(); haptic("invalid"); } else { sfxRung(0); }
         if (r2.go) {
-          setWon(r2.win === 1 ? true : r2.win === 2 ? false : null);
+          const w2 = r2.win === 1 ? true : r2.win === 2 ? false : null;
+          setWon(w2);
           setPhase("gameover");
           setStatus(r2.win === 1 ? "Checkmate!" : r2.win === 2 ? "Checkmate!" : "Stalemate");
+          track("game_over", { game: "magic-chess", reason: r2.win === 1 || r2.win === 2 ? "checkmate" : "stalemate", won: w2 });
           return;
         }
         const wk = r2.nb.indexOf(12);
@@ -304,14 +337,26 @@ export default function ArcadeMode() {
       variant: `${bot.id}|${turnTimeSec}`,
       durationSec: Math.max(1, Math.floor((Date.now() - startedAt) / 1000)),
     });
+    // Stash up-front so the run is NEVER lost — signed-out (replays on sign-in) or
+    // a signed-in save that fails on a flaky network (replays on next visit). We
+    // clear it only on a CONFIRMED 2xx save. (Old code stashed only when signed
+    // out, so a signed-in network failure showed "saved" and silently dropped it.)
+    const stashKey = "chess_pending_score";
+    try { if (typeof window !== "undefined") window.localStorage.setItem(stashKey, payload); } catch {}
     void fetch("/api/scores/submit", {
       method: "POST", headers: { "content-type": "application/json" },
       body: payload,
-    }).catch(() => {});
-    // If signed out, stash it so it saves the moment they tap their email sign-in link.
-    if (!meRef.current && typeof window !== "undefined") {
-      window.localStorage.setItem("chess_pending_score", payload);
-    }
+    }).then((res) => (res.ok ? res.json() : null))
+      .then((b) => {
+        if (!b) return; // 401 / non-2xx — leave the stash for retry
+        try { if (typeof window !== "undefined") window.localStorage.removeItem(stashKey); } catch {}
+        if (typeof b.best === "number") setSavedBest(b.best);
+        // A score now exists (a completion step) — re-attempt any pending referral.
+        // The route only pays out once BOTH sides are fully onboarded (#3 proof-of-life).
+        const rc = getStoredReferralCode();
+        if (rc && meRef.current) void claimReferral(rc.value);
+      })
+      .catch(() => { /* network error — stash already set, retry on next visit */ });
     // Juice: gentle milestone flourish confirming the score landed on the leaderboard.
     sfxMilestone();
   }, [phase, finalScore, startedAt, bot, turnTimeSec]);
@@ -330,6 +375,15 @@ export default function ArcadeMode() {
       setShowEconomyGate(true);
       return;
     }
+    // Pre-flight SOL check — fees + account rent are paid in SOL no matter which
+    // token you pay the fee in, so a dry wallet fails cryptically. Warn clearly.
+    try {
+      const bal = await connection.getBalance(publicKey);
+      if (bal < MIN_SAVE_LAMPORTS) {
+        setOnchainError(`⛽ Not enough SOL for the network fee (~0.01 SOL needed). Top up this wallet and try again:\n${publicKey.toBase58()}`);
+        return;
+      }
+    } catch { /* balance read failed — let the tx surface the real error below */ }
     setBusy("save"); setOnchainError(null);
     track("score_save_attempted", { game: "magic-chess", bot: bot.id, turn_time_sec: turnTimeSec, score: finalScore, token: paymentToken.symbol });
     identifyWallet(publicKey.toBase58());
@@ -488,13 +542,13 @@ export default function ArcadeMode() {
       {/* 2026 minimalist top nav — matches home page (position:fixed) */}
       <nav className="top-nav" style={{ padding: "12px 16px", flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <Link href="/" className="nav-logo" style={{ textDecoration: "none" }}>GAMERPLEX</Link>
+          <BackToGames />
           <span className="devnet-badge">Devnet</span>
         </div>
         <div className="nav-links">
           {!isMobile && <>
             <Link href="/#featured">Play</Link>
-            <Link href="/docs">Build</Link>
+            <Link href="/docs">Docs</Link>
             <Link href="/leaderboard">Leaderboard</Link>
             <Link href="/profile">Profile</Link>
           </>}
@@ -688,7 +742,7 @@ export default function ArcadeMode() {
             {/* Resign */}
             {phase === "playing" && (
               <div style={{ pointerEvents: "auto", display: "flex", justifyContent: "center", gap: 8, padding: 8 }}>
-                <button onClick={() => { setWon(false); setPhase("gameover"); setStatus("You resigned"); }} style={{
+                <button onClick={() => { setWon(false); setPhase("gameover"); setStatus("You resigned"); track("game_over", { game: "magic-chess", reason: "resign", won: false }); }} style={{
                   padding: "6px 16px", fontSize: 11, fontWeight: 600, borderRadius: 6, cursor: "pointer",
                   background: "rgba(10,0,20,0.7)", border: "1px solid #ff1744", color: "#ff1744", backdropFilter: "blur(8px)",
                 }}>🏳 Resign</button>
@@ -699,111 +753,83 @@ export default function ArcadeMode() {
                 content (save tiers + leaderboard) never pushes the page to scroll. */}
             {phase === "gameover" && (
               <div style={{ pointerEvents: "auto", flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", padding: 12, paddingBottom: "calc(12px + env(safe-area-inset-bottom))" }}>
-                <div className="magic-chess-panel" style={{ borderRadius: 12, padding: 20, maxWidth: 460, width: "100%", textAlign: "center", flexShrink: 0 }}>
-                  <div className="magic-chess-title" style={{ fontSize: 32, fontWeight: 700 }}>
-                    {won ? "✨ CHECKMATE ✨" : won === false ? "⚫ DEFEATED ⚫" : "🤝 STALEMATE"}
-                  </div>
-                  <div style={{ fontSize: 13, color: "#b388ff", marginTop: 6 }}>vs {bot?.icon} {bot?.label} (~{bot?.elo} ELO) · {mc} moves</div>
-                  <div style={{ fontSize: 28, fontWeight: 800, color: "#14F195", fontFamily: "monospace", marginTop: 10 }}>
-                    {finalScore.toLocaleString()}
-                  </div>
-                  <div style={{ fontSize: 10, color: "#666" }}>SCORE</div>
-                  {won === true && (
-                    <div style={{ fontSize: 11, color: "#ffd740", marginTop: 8, fontWeight: 600 }}>
-                      🔥 Credits earned — come back tomorrow to keep your streak
-                    </div>
-                  )}
-
-                  {/* WEB2-FIRST save — primary path. Auto-save already fired on game-over. */}
-                  {me ? (
-                    <div style={{ marginTop: 16 }}>
-                      <div style={{ fontSize: 15, color: "#14F195", fontWeight: 900 }}>✓ Saved!</div>
-                      <div style={{ fontSize: 12, color: "#b388ff", marginTop: 4, lineHeight: 1.5 }}>
-                        🔥 Come back tomorrow to keep your streak{credits != null ? ` · ⚡ ${credits} Credits` : ""}
+                <div className="magic-chess-panel" style={{ borderRadius: 12, padding: 20, maxWidth: 460, width: "100%", textAlign: "center", flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center" }}>
+                  <ShellResultScreen
+                    theme="dark"
+                    headline={won ? "✨ CHECKMATE ✨" : won === false ? "⚫ DEFEATED ⚫" : "🤝 STALEMATE"}
+                    win={won === true}
+                    score={finalScore}
+                    extraStat={<>vs {bot?.icon} {bot?.label} (~{bot?.elo} ELO) · {mc} moves</>}
+                    saveStatus={me ? "saved" : "signed_out"}
+                    best={savedBest}
+                    credits={credits}
+                    onPlayAgain={() => { setExperience(null); setPhase("ready"); reset(); }}
+                    onSignIn={() => { setShowLogin(true); track("login_prompt", { game: "magic-chess", source: "gameover" }); }}
+                    onShare={() => { setShowShare(true); track("share_open", { game: "magic-chess" }); }}
+                    shareLabel="🔗 Challenge"
+                    needsHandle={!!me && !me.handle}
+                    onClaimName={() => setShowClaim(true)}
+                    arcadeHref="/arcade"
+                    onGoPlus={() => { setShowPlus(true); track("plus_opened", { source: "gameover", game: "magic-chess" }); }}
+                    onChainEnabled={purchasesEnabled()}
+                    onChainCta="🔒 Save on-chain forever · $0.05"
+                    onChainSlot={
+                      <div style={{ padding: 12, background: "rgba(153,69,255,0.06)", borderRadius: 8, border: "1px solid rgba(153,69,255,0.2)", textAlign: "left" }}>
+                        <ReferrerBanner connectedWallet={publicKey ?? null} />
+                        {!publicKey ? (
+                          <button
+                            onClick={() => setWalletModalVisible(true)}
+                            style={{ width: "100%", padding: "12px", border: "1px solid rgba(153,69,255,0.5)", borderRadius: 10, background: "rgba(153,69,255,0.12)", color: "#e8e8f0", fontSize: 13, fontWeight: 800, cursor: "pointer" }}
+                          >
+                            Connect wallet to save on-chain
+                          </button>
+                        ) : (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                            {!savedThisRun && (
+                              <PaymentMethodPicker
+                                value={paymentToken}
+                                onChange={setPaymentToken}
+                                basePriceMicroUsd={new BN(SCORE_COMMIT_MICRO_USD)}
+                                compact
+                              />
+                            )}
+                            <button onClick={onSaveOnChain} disabled={busy !== null || savedThisRun} style={tierBtn(savedThisRun)}>
+                              {busy === "save" ? "Saving…" : savedThisRun ? "✓ Score saved (T1)" : `Save Score · $${((50_000 * (10_000 - paymentToken.discountBps) / 10_000) / 1_000_000).toFixed(2)} · ${paymentToken.symbol}`}
+                            </button>
+                            <button onClick={onVerifyRun} disabled={busy !== null || verifiedThisRun || !savedThisRun} style={tierBtn(verifiedThisRun, !savedThisRun)}>
+                              {busy === "verify" ? "Verifying…" : verifiedThisRun ? "✓ Replay saved (T2)" : "Save Verified Replay · $0.15"}
+                            </button>
+                            <button onClick={onMintReceipt} disabled={busy !== null || ownedThisRun || !verifiedThisRun} style={tierBtn(ownedThisRun, !verifiedThisRun)}>
+                              {busy === "receipt" ? "Minting…" : ownedThisRun ? "✓ Receipt minted (T3)" : "Mint Replay Receipt · $0.25"}
+                            </button>
+                            {onchainError && <div style={{ fontSize: 10, color: "#ff6b6b", marginTop: 4, whiteSpace: "pre-line", wordBreak: "break-word" }}>{onchainError}</div>}
+                            {lastSaveSig && <a href={`https://explorer.solana.com/tx/${lastSaveSig}${EXPLORER_SUFFIX}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 9, color: "#14F195" }}>T1 tx ↗</a>}
+                            {lastVerifySig && <a href={`https://explorer.solana.com/tx/${lastVerifySig}${EXPLORER_SUFFIX}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 9, color: "#14F195" }}>T2 tx ↗</a>}
+                            {lastReceiptSig && <a href={`https://explorer.solana.com/tx/${lastReceiptSig}${EXPLORER_SUFFIX}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 9, color: "#14F195" }}>T3 tx ↗</a>}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ) : (
-                    <div style={{ marginTop: 16 }}>
-                      <button
-                        onClick={() => { setShowLogin(true); track("login_prompt", { game: "magic-chess", source: "gameover" }); }}
-                        className="magic-chess-btn"
-                        style={{ width: "100%", padding: "14px", borderRadius: 10, fontSize: 15, fontWeight: 900, cursor: "pointer" }}
-                      >
-                        💾 Save my score
-                      </button>
-                      <div style={{ fontSize: 11, color: "#8a8aa0", textAlign: "center", marginTop: 8, lineHeight: 1.4 }}>
-                        Free · just your email · keep your spot 🏆
-                      </div>
-                    </div>
-                  )}
+                    }
+                  />
 
-                  <div style={{ marginTop: 12 }}>
+                  <div style={{ marginTop: 12, width: "100%", maxWidth: 400 }}>
                     <ContinueWithCredits item="retry" game="chess" onSuccess={() => { setExperience(null); setPhase("ready"); reset(); }} />
                   </div>
 
-                  <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                    <button className="magic-chess-btn" onClick={() => { setExperience(null); setPhase("ready"); reset(); }} style={{ flex: 1, padding: "10px", borderRadius: 8, fontSize: 13, cursor: "pointer" }}>
-                      ✦ Play Again ✦
-                    </button>
-                  </div>
-
-                  {/* Gamerplex Plus fake-door — subtle WTP money-test. */}
-                  <button
-                    onClick={() => { setShowPlus(true); track("plus_opened", { source: "gameover", game: "magic-chess" }); }}
-                    style={{ marginTop: 12, background: "none", border: "none", cursor: "pointer", fontSize: 12.5, fontWeight: 800, color: "#b388ff" }}
-                  >
-                    ✦ Go Plus — more play, no ads
-                  </button>
+                  <ShareSheet
+                    open={showShare}
+                    onClose={() => setShowShare(false)}
+                    text={`♟️ Magic Chess — ${finalScore.toLocaleString()} pts vs ${bot?.label ?? "AI"}. Can you beat it?`}
+                    url={buildShareUrl("https://gamerplex.com/play/magic-chess", me?.id)}
+                    onShared={(m) => track("share_result", { game: "magic-chess", method: m })}
+                  />
                   <GoPlusModal open={showPlus} onClose={() => setShowPlus(false)} source="gameover" />
-
-                  {/* OPTIONAL on-chain "✓ Verified" save — hidden by the kill-switch (NEXT_PUBLIC_GAME_PURCHASES_ENABLED=false). Wallet only ever appears here. */}
-                  {purchasesEnabled() && (
-                  <details style={{ marginTop: 14, textAlign: "left" }}>
-                    <summary style={{ cursor: "pointer", fontSize: 12, color: "#8a8aa0", fontWeight: 700, textAlign: "center", listStyle: "none" }}>
-                      🔒 Save on-chain forever — ✓ Verified ($0.05) ▾
-                    </summary>
-                    <div style={{ marginTop: 12, padding: 12, background: "rgba(153,69,255,0.06)", borderRadius: 8, border: "1px solid rgba(153,69,255,0.2)" }}>
-                      <ReferrerBanner connectedWallet={publicKey ?? null} />
-                      {!publicKey ? (
-                        <button
-                          onClick={() => setWalletModalVisible(true)}
-                          style={{ width: "100%", padding: "12px", border: "1px solid rgba(153,69,255,0.5)", borderRadius: 10, background: "rgba(153,69,255,0.12)", color: "#e8e8f0", fontSize: 13, fontWeight: 800, cursor: "pointer" }}
-                        >
-                          Connect wallet to save on-chain
-                        </button>
-                      ) : (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                          {!savedThisRun && (
-                            <PaymentMethodPicker
-                              value={paymentToken}
-                              onChange={setPaymentToken}
-                              basePriceMicroUsd={new BN(SCORE_COMMIT_MICRO_USD)}
-                              compact
-                            />
-                          )}
-                          <button onClick={onSaveOnChain} disabled={busy !== null || savedThisRun} style={tierBtn(savedThisRun)}>
-                            {busy === "save" ? "Saving…" : savedThisRun ? "✓ Score saved (T1)" : `Save Score · $${((50_000 * (10_000 - paymentToken.discountBps) / 10_000) / 1_000_000).toFixed(2)} · ${paymentToken.symbol}`}
-                          </button>
-                          <button onClick={onVerifyRun} disabled={busy !== null || verifiedThisRun || !savedThisRun} style={tierBtn(verifiedThisRun, !savedThisRun)}>
-                            {busy === "verify" ? "Verifying…" : verifiedThisRun ? "✓ Replay saved (T2)" : "Save Verified Replay · $0.15"}
-                          </button>
-                          <button onClick={onMintReceipt} disabled={busy !== null || ownedThisRun || !verifiedThisRun} style={tierBtn(ownedThisRun, !verifiedThisRun)}>
-                            {busy === "receipt" ? "Minting…" : ownedThisRun ? "✓ Receipt minted (T3)" : "Mint Replay Receipt · $0.25"}
-                          </button>
-                          {onchainError && <div style={{ fontSize: 10, color: "#ff6b6b", marginTop: 4 }}>{onchainError}</div>}
-                          {lastSaveSig && <a href={`https://explorer.solana.com/tx/${lastSaveSig}${EXPLORER_SUFFIX}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 9, color: "#14F195" }}>T1 tx ↗</a>}
-                          {lastVerifySig && <a href={`https://explorer.solana.com/tx/${lastVerifySig}${EXPLORER_SUFFIX}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 9, color: "#14F195" }}>T2 tx ↗</a>}
-                          {lastReceiptSig && <a href={`https://explorer.solana.com/tx/${lastReceiptSig}${EXPLORER_SUFFIX}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 9, color: "#14F195" }}>T3 tx ↗</a>}
-                        </div>
-                      )}
-                    </div>
-                  </details>
-                  )}
+                  <ClaimHandleModal open={showClaim} onClose={() => setShowClaim(false)} onClaimed={() => { setShowClaim(false); void refreshIdentity(); }} />
 
                   {/* Web2 leaderboard — free, always shown (Arcade Shell). Scores
                       that were saved on-chain carry the ✓ Verified tx column. */}
-                  <div style={{ marginTop: 14 }}>
-                    <ShellLeaderboard gameId="magic-chess" />
+                  <div style={{ marginTop: 14, width: "100%" }}>
+                    <ShellLeaderboard gameId="magic-chess" highlightUserId={me?.id} selfScore={finalScore} selfHandle={me?.handle} />
                   </div>
 
                   <div style={{ marginTop: 16 }}>

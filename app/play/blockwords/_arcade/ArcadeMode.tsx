@@ -11,6 +11,7 @@ import {
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import ModeToggle from "../../../../components/games/ModeToggle";
 import ShellLeaderboard from "../../../../components/arcade/ShellLeaderboard";
+import BackToGames from "../../../../components/arcade/BackToGames";
 import {
   makeProgram,
   buildOpenProfileIx,
@@ -44,6 +45,10 @@ import { getIdentity, getCredits, type IdentityUser } from "../../../../lib/iden
 import EmailLoginModal from "../../../../components/arcade/EmailLoginModal";
 import ShareSheet from "../../../../components/arcade/ShareSheet";
 import GoPlusModal from "../../../../components/arcade/GoPlusModal";
+import ShellResultScreen from "../../../../components/arcade/ShellResultScreen";
+import ClaimHandleModal from "../../../../components/arcade/ClaimHandleModal";
+import { buildShareUrl, getStoredReferralCode } from "../../../../lib/arcade/referral";
+import { claimReferral } from "../../../../lib/identity/client";
 import CommunityLinks from "../../../../components/CommunityLinks";
 import { sfxRung, sfxInvalid, sfxMilestone, sfxGameOver, haptic, isMuted, setMuted, prefersReducedMotion } from "../../../../lib/arcade/juice";
 import { earnCredits } from "../../../../lib/identity/client";
@@ -117,6 +122,9 @@ const STREAK_KEY = "gpx-blockwords-daily-streak";
 const LAST_PLAYED_KEY = "gpx-blockwords-daily-last";
 // A "win" (streak-worthy) run is one where the player built at least this many rungs.
 const WIN_LADDER_STEPS = 3;
+// Floor to attempt an on-chain save: network fee + account rent are paid in SOL
+// regardless of the payment token. ~0.01 SOL covers PDA rent + tx fees.
+const MIN_SAVE_LAMPORTS = 10_000_000;
 
 function loadStreak(): { lastPlayedYmd: string | null; streak: number; playedToday: boolean } {
   if (typeof window === "undefined") return { lastPlayedYmd: null, streak: 0, playedToday: false };
@@ -225,6 +233,8 @@ export default function ArcadeMode() {
   const [me, setMe] = useState<IdentityUser | null>(null);
   const meRef = useRef<IdentityUser | null>(null);
   const [credits, setCredits] = useState<number | null>(null);
+  const [savedBest, setSavedBest] = useState<number | null>(null);  // server-returned personal best
+  const [showClaim, setShowClaim] = useState(false);                // free username claim modal
   const [showLogin, setShowLogin] = useState(false);
   const [showPlus, setShowPlus] = useState(false);
   const [muted, setMutedState] = useState(true);
@@ -272,10 +282,11 @@ export default function ArcadeMode() {
       if (u && typeof window !== "undefined") {
         const pend = window.localStorage.getItem("bw_pending_score");
         if (pend) {
+          // Only clear the stash on a CONFIRMED save — a failed replay must keep it.
           try {
-            await fetch("/api/scores/submit", { method: "POST", headers: { "content-type": "application/json" }, body: pend });
-          } catch {}
-          window.localStorage.removeItem("bw_pending_score");
+            const res = await fetch("/api/scores/submit", { method: "POST", headers: { "content-type": "application/json" }, body: pend });
+            if (res.ok) window.localStorage.removeItem("bw_pending_score");
+          } catch { /* keep stash for the next attempt */ }
         }
       }
     })();
@@ -329,6 +340,7 @@ export default function ArcadeMode() {
     r.endedAt = Date.now();
     const steps = stepsOf(r);
     const score = computeScore(r.ladder, secondsUsed(r));
+    track("game_over", { game: "blockwords", score, steps: steps.length, signed_in: !!meRef.current });
     sfxGameOver(steps.length >= WIN_LADDER_STEPS);
     haptic("gameover");
     if (steps.length >= WIN_LADDER_STEPS) {
@@ -336,15 +348,25 @@ export default function ArcadeMode() {
       void earnCredits("game_win", `blockwords:win:${r.startedAt}`);
     }
     // Arcade Shell: free web2 leaderboard save — no wallet, just the email session.
+    // Capture the returned personal best so the results screen can show "N to beat it".
     const payload = JSON.stringify({ gameId: "blockwords", score, refId: `blockwords:${r.startedAt}`, durationSec: secondsUsed(r) });
+    // Stash up-front so the run is NEVER lost (signed-out OR a signed-in save that
+    // fails on a flaky network); clear only on a CONFIRMED 2xx save.
+    try { if (typeof window !== "undefined") window.localStorage.setItem("bw_pending_score", payload); } catch {}
     void fetch("/api/scores/submit", {
       method: "POST", headers: { "content-type": "application/json" },
       body: payload,
-    }).catch(() => {});
-    // If signed out, stash it so it saves the moment they tap their email sign-in link.
-    if (!meRef.current && typeof window !== "undefined") {
-      window.localStorage.setItem("bw_pending_score", payload);
-    }
+    }).then((res) => (res.ok ? res.json() : null))
+      .then((b) => {
+        if (!b) return; // 401 / non-2xx — leave the stash for retry
+        try { if (typeof window !== "undefined") window.localStorage.removeItem("bw_pending_score"); } catch {}
+        if (typeof b.best === "number") setSavedBest(b.best);
+        // A score now exists (a completion step) — re-attempt any pending referral.
+        // The route only pays out once BOTH sides are fully onboarded (#3 proof-of-life).
+        const rc = getStoredReferralCode();
+        if (rc && meRef.current) void claimReferral(rc.value);
+      })
+      .catch(() => { /* network error — stash already set, retry on next visit */ });
     if (r.mode === "daily" && steps.length >= WIN_LADDER_STEPS) {
       const { streak } = recordDailyWin();
       setStreakInfo({ lastPlayedYmd: todayYmd(), streak, playedToday: true });
@@ -485,6 +507,15 @@ export default function ArcadeMode() {
       setShowEconomyGate(true);
       return;
     }
+    // Pre-flight SOL check — fees + account rent are paid in SOL no matter which
+    // token you pay the fee in, so a dry wallet fails cryptically. Warn clearly.
+    try {
+      const bal = await connection.getBalance(publicKey);
+      if (bal < MIN_SAVE_LAMPORTS) {
+        setOnchainError(`⛽ Not enough SOL for the network fee (~0.01 SOL needed). Top up this wallet and try again:\n${publicKey.toBase58()}`);
+        return;
+      }
+    } catch { /* balance read failed — let the tx surface the real error below */ }
     setBusy("save");
     setOnchainError(null);
     const score = computeScore(r.ladder, secondsUsed(r));
@@ -548,8 +579,13 @@ export default function ArcadeMode() {
       }).catch(() => {});
     } catch (e: any) {
       console.error("save on-chain failed:", e);
-      setOnchainError(e?.message || "Save failed");
-      track("score_save_failed", { game: "blockwords", error: e?.message || String(e) });
+      const msg = String(e?.message ?? e);
+      if (/insufficient|debit an account|prior credit|not enough|0x1\b/i.test(msg) && publicKey) {
+        setOnchainError(`⛽ Not enough SOL to complete the save. Top up this wallet and try again:\n${publicKey.toBase58()}`);
+      } else {
+        setOnchainError(e?.message || "Save failed");
+      }
+      track("score_save_failed", { game: "blockwords", error: msg });
     } finally {
       setBusy(null);
     }
@@ -726,7 +762,7 @@ export default function ArcadeMode() {
       {/* 2026 minimalist top nav — matches home page */}
       <nav className="top-nav" style={{ padding: "14px 24px", flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <a href="/" className="nav-logo" style={{ textDecoration: "none" }}>GAMERPLEX</a>
+          <BackToGames />
         </div>
         {/* Identity chip — ALWAYS visible (incl. mobile). Play-first: signed-out shows a subtle Sign in; the real conversion is the game-over save. */}
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -812,84 +848,27 @@ export default function ArcadeMode() {
 
             {r && r.status === "ended" && (
               <div style={{ position: "absolute", inset: 0, background: stepCount >= WIN_LADDER_STEPS ? "linear-gradient(165deg, #6a1fb0 0%, #b3149c 55%, #ff5e62 100%)" : "linear-gradient(165deg, #4a2ea0 0%, #7b3ff2 60%, #b13bd8 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", gap: 4, padding: "26px 20px calc(24px + env(safe-area-inset-bottom))", overflowY: "auto" }}>
-                {stepCount >= WIN_LADDER_STEPS && !prefersReducedMotion() && (
-                  <Confetti />
-                )}
-                <div style={{ fontSize: 15, fontWeight: 900, color: "#fff", letterSpacing: 0.5, zIndex: 1 }}>
-                  {stepCount >= WIN_LADDER_STEPS ? "🎉 Nice climb!" : "⏱️ Time's up!"}
-                </div>
-                {/* SCORE hero — huge bright white on the celebratory gradient */}
-                <div style={{
-                  fontSize: "clamp(68px, 17vw, 116px)",
-                  fontWeight: 900,
-                  fontStyle: "italic",
-                  lineHeight: 1,
-                  color: "#fff",
-                  textShadow: "0 6px 34px rgba(0,0,0,0.28)",
-                  margin: "2px 0",
-                  zIndex: 1,
-                }}>{displayScore.toLocaleString()}</div>
-                <div style={{ fontSize: 14, color: "rgba(255,255,255,0.92)", fontWeight: 800, letterSpacing: 0.5, zIndex: 1, marginBottom: 14 }}>
-                  🪜 {stepCount} {stepCount === 1 ? "rung" : "rungs"} · {secondsUsed(r)}s
-                </div>
-
-                {/* WEB2-FIRST save — primary path. Bright white button pops on the gradient. */}
-                {me ? (
-                  <div style={{ width: "100%", maxWidth: 380, textAlign: "center", zIndex: 1, marginBottom: 4 }}>
-                    <div style={{ fontSize: 16, color: "#fff", fontWeight: 900 }}>✓ Saved!</div>
-                    <div style={{ fontSize: 13, color: "rgba(255,255,255,0.85)", marginTop: 4, lineHeight: 1.5 }}>
-                      🔥 Come back tomorrow to keep your streak{credits != null ? ` · ⚡ ${credits} Credits` : ""}
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{ width: "100%", maxWidth: 340, zIndex: 1 }}>
-                    <button
-                      onClick={() => { setShowLogin(true); track("login_prompt", { game: "blockwords", source: "gameover" }); }}
-                      style={{ width: "100%", height: 56, border: "none", borderRadius: 14, background: "#fff", color: "#9c27b0", fontSize: 16, fontWeight: 900, cursor: "pointer", boxShadow: "0 8px 24px rgba(0,0,0,0.2)" }}
-                    >
-                      💾 Save my score
-                    </button>
-                    <div style={{ fontSize: 12, color: "rgba(255,255,255,0.8)", textAlign: "center", marginTop: 8, lineHeight: 1.4 }}>
-                      Free · just your email · keep your spot 🏆
-                    </div>
-                  </div>
-                )}
-
-                <button onClick={() => { setShowShare(true); track("share_open", { game: "blockwords" }); }} style={{ marginTop: 12, width: "100%", maxWidth: 340, height: 50, border: "none", borderRadius: 14, background: "rgba(255,255,255,0.16)", color: "#fff", fontSize: 15, fontWeight: 900, cursor: "pointer", zIndex: 1, backdropFilter: "blur(2px)" }}>
-                  🔗 Challenge a friend
-                </button>
-                <ShareSheet
-                  open={showShare}
-                  onClose={() => setShowShare(false)}
-                  text={buildShareText(r)}
-                  url="https://gamerplex.com/play/blockwords"
-                  onShared={(m) => track("share_result", { game: "blockwords", method: m })}
-                />
-
-                {(() => { const brightBtn: React.CSSProperties = { height: 46, padding: "0 22px", borderRadius: 12, border: "1.5px solid rgba(255,255,255,0.55)", background: "rgba(255,255,255,0.10)", color: "#fff", fontSize: 14, fontWeight: 800, cursor: "pointer" }; return (
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center", marginTop: 12, zIndex: 1 }}>
-                  <button onClick={() => startNewRun("random")} style={brightBtn}>↻ Play again</button>
-                  <a href="/arcade" style={{ ...brightBtn, textDecoration: "none", display: "inline-flex", alignItems: "center" }}>← Arcade</a>
-                </div>
-                ); })()}
-
-                {/* Gamerplex Plus fake-door — subtle WTP money-test. */}
-                <button
-                  onClick={() => { setShowPlus(true); track("plus_opened", { source: "gameover", game: "blockwords" }); }}
-                  style={{ marginTop: 12, background: "none", border: "none", cursor: "pointer", fontSize: 12.5, fontWeight: 800, color: "rgba(255,255,255,0.82)", zIndex: 1 }}
-                >
-                  ✦ Go Plus — more play, no ads
-                </button>
-                <GoPlusModal open={showPlus} onClose={() => setShowPlus(false)} source="gameover" />
-
-                {/* OPTIONAL on-chain "✓ Verified" save — hidden by the kill-switch (NEXT_PUBLIC_GAME_PURCHASES_ENABLED=false). Wallet only ever appears here. */}
-                {purchasesEnabled() && (
-                <details style={{ width: "100%", maxWidth: 420, marginTop: 16, zIndex: 1 }}>
-                  <summary style={{ cursor: "pointer", fontSize: 12, color: "rgba(255,255,255,0.75)", fontWeight: 700, textAlign: "center", listStyle: "none" }}>
-                    🔒 Save on-chain forever — ✓ Verified ($0.05) ▾
-                  </summary>
-                  <div style={{ marginTop: 12 }}>
-                    {connected ? (
+                <ShellResultScreen
+                  theme="gradient"
+                  headline={stepCount >= WIN_LADDER_STEPS ? "🎉 Nice climb!" : "⏱️ Time's up!"}
+                  win={stepCount >= WIN_LADDER_STEPS}
+                  score={displayScore}
+                  extraStat={<>🪜 {stepCount} {stepCount === 1 ? "rung" : "rungs"} · {secondsUsed(r)}s</>}
+                  saveStatus={me ? "saved" : "signed_out"}
+                  best={savedBest}
+                  credits={credits}
+                  onPlayAgain={() => startNewRun("random")}
+                  onSignIn={() => { setShowLogin(true); track("login_prompt", { game: "blockwords", source: "gameover" }); }}
+                  onShare={() => { setShowShare(true); track("share_open", { game: "blockwords" }); }}
+                  shareLabel="🔗 Challenge"
+                  needsHandle={!!me && !me.handle}
+                  onClaimName={() => setShowClaim(true)}
+                  arcadeHref="/arcade"
+                  onGoPlus={() => { setShowPlus(true); track("plus_opened", { source: "gameover", game: "blockwords" }); }}
+                  onChainEnabled={purchasesEnabled()}
+                  onChainCta="🔒 Save on-chain forever · $0.05"
+                  onChainSlot={
+                    connected ? (
                       <>
                         {!savedThisRun && (
                           <div style={{ width: "100%", marginBottom: 8 }}>
@@ -922,18 +901,29 @@ export default function ArcadeMode() {
                       >
                         Connect wallet to save on-chain
                       </button>
-                    )}
-                  </div>
-                </details>
-                )}
+                    )
+                  }
+                >
+                  {(stepCount >= WIN_LADDER_STEPS || (savedBest != null && finalScore >= savedBest)) && !prefersReducedMotion() && <Confetti />}
+                </ShellResultScreen>
+
+                <ShareSheet
+                  open={showShare}
+                  onClose={() => setShowShare(false)}
+                  text={buildShareText(r)}
+                  url={buildShareUrl("https://gamerplex.com/play/blockwords", me?.id)}
+                  onShared={(m) => track("share_result", { game: "blockwords", method: m })}
+                />
+                <GoPlusModal open={showPlus} onClose={() => setShowPlus(false)} source="gameover" />
+                <ClaimHandleModal open={showClaim} onClose={() => setShowClaim(false)} onClaimed={() => { setShowClaim(false); void refreshIdentity(); }} />
 
                 {onchainError && (
-                  <div style={{ fontSize: 11, color: "#ff5252", maxWidth: 420, textAlign: "center", marginTop: 4, zIndex: 1 }}>
+                  <div style={{ fontSize: 12, color: "#ff8a8a", maxWidth: 420, textAlign: "center", marginTop: 8, zIndex: 1, whiteSpace: "pre-line", wordBreak: "break-word", lineHeight: 1.5 }}>
                     ⚠ {onchainError}
                   </div>
                 )}
                 {(lastSaveSig || lastVerifySig || lastReceiptSig) && (
-                  <div style={{ fontSize: 10, color: "#8a8aa0", marginTop: 4, display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center", zIndex: 1 }}>
+                  <div style={{ fontSize: 10, color: "#8a8aa0", marginTop: 6, display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center", zIndex: 1 }}>
                     {lastSaveSig && (
                       <a href={`https://explorer.solana.com/tx/${lastSaveSig}${EXPLORER_SUFFIX}`} target="_blank" rel="noopener noreferrer" style={{ color: "#14F195", textDecoration: "underline" }}>
                         save tx ↗
@@ -952,9 +942,11 @@ export default function ArcadeMode() {
                   </div>
                 )}
 
-                {/* Leaderboard lives INSIDE the game-over now (the below-page one is hidden in-run). */}
+                {/* Leaderboard lives INSIDE the game-over now (the below-page one is hidden in-run).
+                    Pass identity + this run's score so the player is placed/highlighted instantly,
+                    even before the async save lands (kills the read-after-write race). */}
                 <div style={{ width: "100%", maxWidth: 460, marginTop: 20, zIndex: 1 }}>
-                  <ShellLeaderboard gameId="blockwords" />
+                  <ShellLeaderboard gameId="blockwords" highlightUserId={me?.id} selfScore={finalScore} selfHandle={me?.handle} />
                 </div>
 
                 <div style={{ marginTop: 18, zIndex: 1 }}>
@@ -1388,7 +1380,7 @@ function Keyboard({
   onSubmit: () => void;
   disabled: boolean;
 }) {
-  const renderKey = (label: string, onClick: () => void, opts?: { wide?: boolean; hot?: boolean }) => {
+  const renderKey = (label: string, onClick: () => void, opts?: { wide?: boolean; hot?: boolean; icon?: boolean }) => {
     const isHot = !!opts?.hot;
     const bg = isHot ? "rgba(153,69,255,0.22)" : "#1a1a28";
     const color = isHot ? "#e0ccff" : "#e8e8f0";
@@ -1408,7 +1400,7 @@ function Keyboard({
           color,
           border,
           borderRadius: 8,
-          fontSize: opts?.wide ? "clamp(9px, 2.4vw, 11px)" : "clamp(13px, 4.2vw, 18px)",
+          fontSize: opts?.icon ? "clamp(18px, 5.5vw, 24px)" : opts?.wide ? "clamp(9px, 2.4vw, 11px)" : "clamp(13px, 4.2vw, 18px)",
           fontWeight: 700,
           fontFamily: "'Space Grotesk', sans-serif",
           letterSpacing: opts?.wide ? 1 : 0,
@@ -1437,7 +1429,7 @@ function Keyboard({
         >
           {idx === 2 && renderKey("Enter", onSubmit, { wide: true })}
           {row.split("").map((ch) => renderKey(ch, () => onLetter(ch), { hot: hot.has(ch) }))}
-          {idx === 2 && renderKey("⌫", onBackspace, { wide: true })}
+          {idx === 2 && renderKey("⌫", onBackspace, { wide: true, icon: true })}
         </div>
       ))}
     </div>

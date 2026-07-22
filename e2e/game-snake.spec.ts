@@ -59,12 +59,11 @@ test('cyber snake: start → crash into wall → game-over + leaderboard save sc
     await expect(crashEyebrow).toBeVisible({ timeout: 1_500 });
   }).toPass({ timeout: 15_000 });
 
-  // 5) SAVE-SCORE SCREEN: Cyber Snake's game-over is a full-fold crash overlay that
-  // owns its own save-score UI (the shared ShellLeaderboard sits on the pre-game
-  // page, not under the in-run overlay). Assert the overlay's "Your score" panel and
-  // its "SAVE SCORE" affordance — that IS the save-score screen for this game.
-  await expect(page.getByText(/Your score/i).first()).toBeVisible({ timeout: 10_000 });
-  await expect(page.getByRole('button', { name: /SAVE SCORE/i })).toBeVisible({ timeout: 10_000 });
+  // 5) SAVE-SCORE SCREEN: the crash overlay renders the shared ShellResultScreen.
+  // Signed-out (this run never logs in), the save-score affordance is the "Save my
+  // score" email CTA; "Play again" proves the full result screen rendered.
+  await expect(page.getByRole('button', { name: /Save my score/i })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole('button', { name: /Play again/i })).toBeVisible({ timeout: 10_000 });
 
   expect(errors, `snake page threw: ${errors.join(' | ')}`).toHaveLength(0);
 });

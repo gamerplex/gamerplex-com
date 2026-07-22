@@ -93,6 +93,110 @@ export async function emailSignup(email: string): Promise<EmailSignupResult> {
   }
 }
 
+// True when the page runs inside the Gamerplex native (Expo) WebView, which sets
+// this flag before the page loads. Used to show the email-OTP flow there (magic
+// links don't return to the app), while normal browsers keep the magic link.
+export function isNativeApp(): boolean {
+  return typeof window !== 'undefined' && (window as { __GAMERPLEX_NATIVE__?: boolean }).__GAMERPLEX_NATIVE__ === true;
+}
+
+// Email OTP — the native-app sign-in. Request a 6-digit code, then verify it.
+// verify is credentialed so the service sets the shared `.gamerplex.com` session
+// cookie directly into this (WebView) origin — no cookie copying.
+export async function requestEmailOtp(email: string): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const r = await fetch(`${IDENTITY_URL}/api/auth/email/otp`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: email.trim().toLowerCase() }),
+    });
+    if (!r.ok) return { ok: false, error: r.status === 429 ? 'rate_limited' : `otp_${r.status}` };
+    return { ok: true };
+  } catch {
+    return { ok: false, error: 'network' };
+  }
+}
+
+export async function verifyEmailOtp(email: string, code: string): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const r = await fetch(`${IDENTITY_URL}/api/auth/email/otp/verify`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: email.trim().toLowerCase(), code: code.trim() }),
+    });
+    if (!r.ok) return { ok: false, error: r.status === 429 ? 'rate_limited' : r.status === 401 ? 'invalid_code' : `otp_${r.status}` };
+    return { ok: true };
+  } catch {
+    return { ok: false, error: 'network' };
+  }
+}
+
+export interface SetHandleResult {
+  ok: boolean;
+  error?: string;         // handle_taken | verify_required | insufficient_credits | validation string | ...
+  requiresCredits?: boolean; // rename is in-cooldown — resubmit with payWithCredits to confirm
+  cost?: number;             // Credits the rename will cost
+  cooldownEndsAt?: number;   // epoch ms when the free rename unlocks
+}
+
+// Set/rename the FREE web2 handle. Credentialed cross-origin, mirrors the
+// on-chain set_handle validation. A rename within the 24h cooldown returns
+// { requiresCredits, cost, cooldownEndsAt } (no charge) — call again with
+// payWithCredits:true to confirm the Credits spend.
+export async function setHandle(handle: string, payWithCredits = false): Promise<SetHandleResult> {
+  try {
+    const r = await fetch(`${IDENTITY_URL}/api/auth/set-handle`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ handle: handle.trim().toLowerCase(), payWithCredits }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      return { ok: false, error: j.error || `handle_${r.status}`, requiresCredits: j.requiresCredits, cost: j.cost, cooldownEndsAt: j.cooldownEndsAt };
+    }
+    track('handle_set', { paid: payWithCredits });
+    return { ok: true };
+  } catch {
+    return { ok: false, error: 'network' };
+  }
+}
+
+// Step 1 of "Lock on-chain": the server sets the promotion lock + returns the
+// handle to claim on-chain. The caller then builds/signs the arcade set_handle
+// ix and calls confirmPromoteHandle with the txSig.
+export async function promoteHandle(): Promise<{ ok: boolean; handle?: string; wallet?: string; alreadyOnChain?: boolean; error?: string }> {
+  try {
+    const r = await fetch(`${IDENTITY_URL}/api/auth/promote-handle`, { method: 'POST', credentials: 'include' });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) return { ok: false, error: j.error || `promote_${r.status}` };
+    return { ok: true, handle: j.handle, wallet: j.wallet, alreadyOnChain: j.alreadyOnChain };
+  } catch {
+    return { ok: false, error: 'network' };
+  }
+}
+
+// Step 2 of "Lock on-chain": confirm the submitted set_handle tx so the server
+// flips handleOnChain (idempotent/replay-safe).
+export async function confirmPromoteHandle(txSig: string): Promise<{ ok: boolean; onChain?: boolean; error?: string }> {
+  try {
+    const r = await fetch(`${IDENTITY_URL}/api/auth/promote-handle/confirm`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ txSig }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) return { ok: false, error: j.error || `confirm_${r.status}` };
+    track('handle_promoted', {});
+    return { ok: true, onChain: j.onChain };
+  } catch {
+    return { ok: false, error: 'network' };
+  }
+}
+
 export interface CreditsBalance {
   total: number;
   lifetimeEarned: number;
@@ -109,6 +213,25 @@ export async function getCredits(): Promise<CreditsBalance | null> {
     if (!r.ok) return null;
     const { credits } = await r.json();
     return credits ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export type DailyStreak =
+  | { claimed: true; amount: number; streak: number }
+  | { claimed: false; reason: 'already_claimed_today' | 'capped'; streak: number };
+
+// Claim today's daily-streak Credits reward. Idempotent per UTC day (server-side),
+// so it's safe to call on every load. Returns null when anonymous / failed.
+export async function claimDailyStreak(): Promise<DailyStreak | null> {
+  try {
+    const r = await fetch(`${IDENTITY_URL}/api/auth/claim-daily`, {
+      method: 'POST',
+      credentials: 'include',
+    });
+    if (!r.ok) return null;
+    return (await r.json()) as DailyStreak;
   } catch {
     return null;
   }
@@ -180,6 +303,19 @@ export async function earnCredits(
   }
 }
 
+// Server-authoritative streak. Call on daily activity → increments (or silently
+// consumes a freeze on a 1-day gap; resets on a bigger gap). Returns the truth to show.
+export type StreakPing = { streak: number; best: number; freezes: number; milestone: number | null; froze: boolean };
+export async function pingStreak(): Promise<StreakPing | null> {
+  try {
+    const r = await fetch('/api/streak/ping', { method: 'POST', credentials: 'include' });
+    if (!r.ok) return null;
+    return (await r.json()) as StreakPing;
+  } catch {
+    return null;
+  }
+}
+
 // Spend Credits (web2) on an above-the-money-line item ("continue" | "retry"). SAME-ORIGIN to
 // our own route (which holds the key + the fixed catalog, so a client can't spend an arbitrary
 // amount). Returns the new app balance, or { error } — "insufficient" when the balance is too low.
@@ -223,11 +359,30 @@ export async function claimReferral(referrer: string): Promise<boolean> {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ referrer }),
     });
-    if (!r.ok) return false;
+    if (!r.ok) {
+      track('referral_result', { outcome: 'error', status: r.status });
+      return false;
+    }
     const j = await r.json().catch(() => ({}));
-    if (j?.referrerFound) track('referral_claimed', {});
+    // Emit the outcome for EVERY attempt so referral drop-off is visible — the
+    // completion gate silently blocks most referrals (both sides need a full
+    // profile), which is exactly what we couldn't see before.
+    const outcome = j?.selfReferral
+      ? 'self_referral'
+      : j?.referrerFound === false
+        ? 'referrer_not_found'
+        : j?.referrerIncomplete
+          ? 'blocked_referrer_incomplete'
+          : j?.pending
+            ? 'blocked_referred_incomplete'
+            : j?.referrerFound
+              ? 'granted'
+              : 'unknown';
+    track('referral_result', { outcome });
+    if (outcome === 'granted') track('referral_claimed', {});
     return true;
   } catch {
+    track('referral_result', { outcome: 'network_error' });
     return false;
   }
 }

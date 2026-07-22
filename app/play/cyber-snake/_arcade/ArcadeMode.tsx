@@ -42,14 +42,18 @@ import {
 import { buildSaveScorePaymentIxs } from "../../../../lib/arcade/save-score-payment";
 import { PAYMENT_TOKENS, type PaymentTokenDef } from "../../../../lib/arcade/tokens";
 import PaymentMethodPicker from "../../../../components/arcade/PaymentMethodPicker";
+import BackToGames from "../../../../components/arcade/BackToGames";
 import { purchasesEnabled } from "../../../../lib/arcade/killswitch";
-import { getStoredReferrer } from "../../../../lib/arcade/referral";
+import { getStoredReferrer, buildShareUrl, getStoredReferralCode } from "../../../../lib/arcade/referral";
 import { submitReplay } from "@gamerplex/sdk/arcade";
 import { track, identifyWallet } from "../../../../lib/analytics";
 import { EconomyConsentModal, hasEconomyConsent } from "../../../../lib/arcade/economy-gate";
-import { earnCredits, getIdentity, getCredits, type IdentityUser } from "../../../../lib/identity/client";
+import { earnCredits, getIdentity, getCredits, claimReferral, type IdentityUser } from "../../../../lib/identity/client";
 import EmailLoginModal from "../../../../components/arcade/EmailLoginModal";
 import GoPlusModal from "../../../../components/arcade/GoPlusModal";
+import ShareSheet from "../../../../components/arcade/ShareSheet";
+import ShellResultScreen from "../../../../components/arcade/ShellResultScreen";
+import ClaimHandleModal from "../../../../components/arcade/ClaimHandleModal";
 import CommunityLinks from "../../../../components/CommunityLinks";
 import { prefersReducedMotion } from "../../../../lib/arcade/juice";
 import ContinueWithCredits from "../../../../components/arcade/ContinueWithCredits";
@@ -72,6 +76,9 @@ const FOOD_WARNING_TICKS = 140;
 // Move-log cap so GPX5R memo always fits in MAX_MOVE_LOG_BYTES=400.
 const MAX_MOVE_CHANGES = 130;
 const MOVE_CHANGE_WARN = 110;
+// Floor to attempt an on-chain save: network fee + account rent are paid in SOL
+// regardless of the payment token. ~0.01 SOL covers PDA rent + tx fees.
+const MIN_SAVE_LAMPORTS = 10_000_000;
 
 function makeRng(seedBytes: Uint8Array): () => number {
   const ZERO = BigInt(0);
@@ -302,6 +309,13 @@ type SnakeCamera = "top" | "tps-p1" | "fpv-p1" | "2d-top";
 
 export default function CyberSnakeSolo() {
   const [view, setView] = useState<SnakeCamera>("top");
+  // Mobile can't switch cameras (toggles are desktop-only) and the free-orbit
+  // "top" view occludes food + its drag-to-rotate fights snake steering. Default
+  // touch devices to the head-following chase cam (tester feedback). Flip to
+  // "2d-top" here if a flat board reads better on phones.
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches) setView("tps-p1");
+  }, []);
   const [tick, setTick] = useState(0);
   const sfx = useMemo(() => getSfx(), []);
   const [muted, setMuted] = useState<boolean>(false);
@@ -392,6 +406,9 @@ export default function CyberSnakeSolo() {
   const [me, setMe] = useState<IdentityUser | null>(null);
   const meRef = useRef<IdentityUser | null>(null);
   const [credits, setCredits] = useState<number | null>(null);
+  const [savedBest, setSavedBest] = useState<number | null>(null);  // server-returned personal best
+  const [showClaim, setShowClaim] = useState(false);                // free username claim modal
+  const [showShare, setShowShare] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [showPlus, setShowPlus] = useState(false);
   const refreshIdentity = useCallback(async () => {
@@ -413,10 +430,11 @@ export default function CyberSnakeSolo() {
       if (u && typeof window !== "undefined") {
         const pend = window.localStorage.getItem("snake_pending_score");
         if (pend) {
+          // Only clear the stash on a CONFIRMED save — a failed replay must keep it.
           try {
-            await fetch("/api/scores/submit", { method: "POST", headers: { "content-type": "application/json" }, body: pend });
-          } catch {}
-          window.localStorage.removeItem("snake_pending_score");
+            const res = await fetch("/api/scores/submit", { method: "POST", headers: { "content-type": "application/json" }, body: pend });
+            if (res.ok) window.localStorage.removeItem("snake_pending_score");
+          } catch { /* keep stash for the next attempt */ }
         }
       }
     })();
@@ -508,6 +526,15 @@ export default function CyberSnakeSolo() {
       setShowEconomyGate(true);
       return;
     }
+    // Pre-flight SOL check — fees + account rent are paid in SOL no matter which
+    // token you pay the fee in, so a dry wallet fails cryptically. Warn clearly.
+    try {
+      const bal = await connection.getBalance(publicKey);
+      if (bal < MIN_SAVE_LAMPORTS) {
+        setOnchainError(`⛽ Not enough SOL for the network fee (~0.01 SOL needed). Top up this wallet and try again:\n${publicKey.toBase58()}`);
+        return;
+      }
+    } catch { /* balance read failed — let the tx surface the real error below */ }
     setBusy("save");
     setOnchainError(null);
     track("score_save_attempted", { game: "cyber-snake", score: g.score, continues: g.continuesUsed, token: paymentToken.symbol });
@@ -844,6 +871,9 @@ export default function CyberSnakeSolo() {
     if (!g) return;
     if (g.status === "crashed" && !savedRef.current) {
       const duration = Math.floor((Date.now() - g.startedAt) / 1000);
+      // Fire for EVERY death (incl. score 0) so we can see all plays in analytics,
+      // not just the ones that produced a saved row.
+      track("game_over", { game: "cyber-snake", score: g.score, continues: g.continuesUsed, signed_in: !!meRef.current });
       if (g.score > 0) {
         const entry: LocalScore = {
           score: g.score,
@@ -858,14 +888,22 @@ export default function CyberSnakeSolo() {
         void earnCredits("game_win", `snake:win:${g.startedAt}`);
         // Arcade Shell: free web2 leaderboard save — no wallet, just the email session.
         const payload = JSON.stringify({ gameId: "cyber-snake", score: g.score, refId: `snake:${g.startedAt}`, durationSec: duration });
+        // Stash up-front so the run is NEVER lost (signed-out OR a signed-in save
+        // that fails on a flaky network); clear only on a CONFIRMED 2xx save.
+        try { if (typeof window !== "undefined") window.localStorage.setItem("snake_pending_score", payload); } catch {}
         void fetch("/api/scores/submit", {
           method: "POST", headers: { "content-type": "application/json" },
           body: payload,
-        }).catch(() => {});
-        // If signed out, stash it so it saves the moment they tap their email sign-in link.
-        if (!meRef.current && typeof window !== "undefined") {
-          window.localStorage.setItem("snake_pending_score", payload);
-        }
+        }).then((res) => (res.ok ? res.json() : null))
+          .then((b) => {
+            if (!b) return; // 401 / non-2xx — leave the stash for retry
+            try { if (typeof window !== "undefined") window.localStorage.removeItem("snake_pending_score"); } catch {}
+            if (typeof b.best === "number") setSavedBest(b.best);
+            // A score now exists — re-attempt any pending referral (paid out only once both sides onboarded).
+            const rc = getStoredReferralCode();
+            if (rc && meRef.current) void claimReferral(rc.value);
+          })
+          .catch(() => { /* network error — stash already set, retry on next visit */ });
       }
       savedRef.current = true;
     }
@@ -883,12 +921,12 @@ export default function CyberSnakeSolo() {
       {/* 2026 minimalist top nav — matches home page */}
       <nav className="top-nav" style={{ padding: "14px 24px", flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <a href="/" className="nav-logo" style={{ textDecoration: "none" }}>GAMERPLEX</a>
+          <BackToGames />
           <span className="devnet-badge">Devnet</span>
         </div>
         <div className="nav-links">
           <a href="/#featured">Play</a>
-          <a href="/docs">Build</a>
+          <a href="/docs">Docs</a>
           <a href="/leaderboard">Leaderboard</a>
           <a href="/profile">Profile</a>
           <a href="https://x.com/gamerplex_com" target="_blank" rel="noopener noreferrer" aria-label="Follow @gamerplex_com on X" title="@gamerplex_com" style={{ display: "inline-flex", alignItems: "center", color: "#e8e8f0" }}>
@@ -1197,98 +1235,35 @@ export default function CyberSnakeSolo() {
 
             {g && g.status === "crashed" && (
               <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at center, rgba(13,0,26,0.7), rgba(5,5,20,0.96))", backdropFilter: "blur(6px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", gap: 8, padding: "20px 20px calc(20px + env(safe-area-inset-bottom))", overflowY: "auto" }}>
-                {/* 2026: status eyebrow (tiny), score (hero), then action */}
-                {g.ticksSinceLastFood >= FOOD_STARVATION_TICKS ? (
-                  <div style={{ fontSize: 11, fontWeight: 800, color: "#ff9a40", letterSpacing: 3, textTransform: "uppercase" }}>● Starved</div>
-                ) : (
-                  <div style={{ fontSize: 11, fontWeight: 800, color: "#ff5230", letterSpacing: 3, textTransform: "uppercase" }}>● Game Over</div>
-                )}
-                {/* SCORE is the hero — huge gradient italic */}
-                <div style={{
-                  fontSize: "clamp(56px, 11vw, 96px)",
-                  fontWeight: 900,
-                  fontStyle: "italic",
-                  lineHeight: 1,
-                  background: "linear-gradient(135deg, #14F195, #00f2ff)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  textShadow: "0 0 40px rgba(20,241,149,0.35)",
-                  margin: "4px 0 2px",
-                }}>{g.score.toLocaleString()}</div>
-                <div style={{ fontSize: 11, color: "#8a8aa0", letterSpacing: 1.5, textTransform: "uppercase", fontWeight: 700, marginBottom: 8 }}>
-                  Your score
-                  {g.ticksSinceLastFood >= FOOD_STARVATION_TICKS && <span style={{ marginLeft: 8, color: "#ff9a40" }}>· hunger killed you</span>}
-                </div>
-
+                {/* Pre-result actions: referral banner + Credits-paid continue (must precede the CTAs). */}
                 <div style={{ width: "100%", maxWidth: 420, marginBottom: 4 }}>
                   <ReferrerBanner connectedWallet={publicKey ?? null} />
                 </div>
-
                 <div style={{ width: "100%", maxWidth: 420, marginBottom: 8 }}>
                   <ContinueWithCredits item="continue" game="snake" onSuccess={continueRun} />
                 </div>
 
-                {/* WEB2-FIRST save — primary path. No wallet: just the email session. */}
-                {me ? (
-                  <div style={{ width: "100%", maxWidth: 380, textAlign: "center", marginBottom: 4 }}>
-                    <div style={{ fontSize: 16, color: "#14F195", fontWeight: 900 }}>✓ Score saved!</div>
-                    <div style={{ fontSize: 13, color: "#a8a8c0", marginTop: 4, lineHeight: 1.5 }}>
-                      Come back to climb the board{credits != null ? ` · ⚡ ${credits} Credits` : ""}
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{ width: "100%", maxWidth: 360 }}>
-                    <button
-                      onClick={() => { setShowLogin(true); track("login_prompt", { game: "cyber-snake", source: "gameover" }); }}
-                      className="snake-end-save"
-                      style={{
-                        background: "linear-gradient(90deg, #9945FF, #14F195)",
-                        color: "#000",
-                        padding: "16px 28px",
-                        border: "none",
-                        borderRadius: 10,
-                        fontSize: 16,
-                        fontWeight: 900,
-                        letterSpacing: 0.5,
-                        cursor: "pointer",
-                        fontFamily: "inherit",
-                        boxShadow: "0 0 32px rgba(20,241,149,0.55), 0 0 64px rgba(153,69,255,0.35)",
-                        width: "100%",
-                      }}
-                    >
-                      💾 Save my score
-                    </button>
-                    <div style={{ fontSize: 12, color: "#8a8aa0", textAlign: "center", marginTop: 8, lineHeight: 1.4 }}>
-                      Free · just your email · keep your spot 🏆
-                    </div>
-                  </div>
-                )}
-
-                <div className="snake-end-secondary" style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center", marginTop: 12 }}>
-                  <button onClick={startNewGame} style={{ ...btnSecondary, minHeight: 40 }}>↻ Try Again</button>
-                  <a href="/arcade" style={{ ...btnSecondary, textDecoration: "none", display: "inline-flex", alignItems: "center", minHeight: 40 }}>
-                    ← Back
-                  </a>
-                </div>
-
-                {/* Gamerplex Plus fake-door — subtle WTP money-test. */}
-                <button
-                  onClick={() => { setShowPlus(true); track("plus_opened", { source: "gameover", game: "cyber-snake" }); }}
-                  style={{ marginTop: 12, background: "none", border: "none", cursor: "pointer", fontSize: 12.5, fontWeight: 800, color: "#c8bfe6" }}
-                >
-                  ✦ Go Plus — more play, no ads
-                </button>
-                <GoPlusModal open={showPlus} onClose={() => setShowPlus(false)} source="gameover" />
-
-                {/* OPTIONAL on-chain "✓ Verified" save — advanced/secondary. Wallet only ever appears here.
-                    Hidden instantly by the kill-switch (NEXT_PUBLIC_GAME_PURCHASES_ENABLED=false). */}
-                {purchasesEnabled() && (
-                <details style={{ width: "100%", maxWidth: 420, marginTop: 16 }}>
-                  <summary style={{ cursor: "pointer", fontSize: 12, color: "#8a8aa0", fontWeight: 700, textAlign: "center", listStyle: "none" }}>
-                    🔒 Save on-chain forever — ✓ Verified ($0.05) ▾
-                  </summary>
-                  <div style={{ marginTop: 12 }}>
-                    {connected ? (
+                <ShellResultScreen
+                  theme="dark"
+                  headline={g.ticksSinceLastFood >= FOOD_STARVATION_TICKS ? "🍎 Starved!" : "💥 Game over"}
+                  win={false}
+                  score={g.score}
+                  extraStat={<>🐍 len {g.len} · {Math.floor((Date.now() - g.startedAt) / 1000)}s{g.ticksSinceLastFood >= FOOD_STARVATION_TICKS ? " · hunger killed you" : ""}</>}
+                  saveStatus={me ? "saved" : "signed_out"}
+                  best={savedBest}
+                  credits={credits}
+                  onPlayAgain={startNewGame}
+                  onSignIn={() => { setShowLogin(true); track("login_prompt", { game: "cyber-snake", source: "gameover" }); }}
+                  onShare={() => { setShowShare(true); track("share_open", { game: "cyber-snake" }); }}
+                  shareLabel="🔗 Challenge"
+                  needsHandle={!!me && !me.handle}
+                  onClaimName={() => setShowClaim(true)}
+                  arcadeHref="/arcade"
+                  onGoPlus={() => { setShowPlus(true); track("plus_opened", { source: "gameover", game: "cyber-snake" }); }}
+                  onChainEnabled={purchasesEnabled()}
+                  onChainCta="🔒 Save on-chain forever · $0.05"
+                  onChainSlot={
+                    connected ? (
                       <>
                         {!savedThisRun && (
                           <div style={{ width: "100%", marginBottom: 8 }}>
@@ -1321,13 +1296,22 @@ export default function CyberSnakeSolo() {
                       >
                         Connect wallet to save on-chain
                       </button>
-                    )}
-                  </div>
-                </details>
-                )}
+                    )
+                  }
+                />
+
+                <ShareSheet
+                  open={showShare}
+                  onClose={() => setShowShare(false)}
+                  text={`🐍 Just scored ${g.score} on Cyber Snake. Beat me?`}
+                  url={buildShareUrl("https://gamerplex.com/play/cyber-snake", me?.id)}
+                  onShared={(m) => track("share_result", { game: "cyber-snake", method: m })}
+                />
+                <GoPlusModal open={showPlus} onClose={() => setShowPlus(false)} source="gameover" />
+                <ClaimHandleModal open={showClaim} onClose={() => setShowClaim(false)} onClaimed={() => { setShowClaim(false); void refreshIdentity(); }} />
 
                 {onchainError && (
-                  <div style={{ fontSize: 11, color: "#ff5252", maxWidth: 420, textAlign: "center", marginTop: 4 }}>
+                  <div style={{ fontSize: 11, color: "#ff5252", maxWidth: 420, textAlign: "center", marginTop: 4, whiteSpace: "pre-line", wordBreak: "break-word" }}>
                     ⚠ {onchainError}
                   </div>
                 )}
@@ -1357,9 +1341,10 @@ export default function CyberSnakeSolo() {
                   />
                 )}
 
-                {/* Leaderboard lives INSIDE the game-over (Blockwords pattern; below-page one hidden in-run). */}
+                {/* Leaderboard lives INSIDE the game-over (Blockwords pattern; below-page one hidden in-run).
+                    Pass identity + this run's score so the player is placed/highlighted instantly. */}
                 <div style={{ width: "100%", maxWidth: 460, marginTop: 20 }}>
-                  <ShellLeaderboard gameId="cyber-snake" />
+                  <ShellLeaderboard gameId="cyber-snake" highlightUserId={me?.id} selfScore={g.score} selfHandle={me?.handle} />
                 </div>
 
                 <div style={{ marginTop: 18 }}>
@@ -1853,17 +1838,6 @@ const btnGhostDisabled: React.CSSProperties = {
   border: "1px solid #252540",
   cursor: "not-allowed",
   opacity: 0.7,
-  fontFamily: "'Space Grotesk', sans-serif",
-};
-const btnSecondary: React.CSSProperties = {
-  background: "#14141f",
-  color: "#e8e8f0",
-  padding: "11px 20px",
-  borderRadius: 10,
-  fontSize: 13,
-  fontWeight: 700,
-  border: "1px solid #4fc3f740",
-  cursor: "pointer",
   fontFamily: "'Space Grotesk', sans-serif",
 };
 const btnSecondarySmall: React.CSSProperties = {

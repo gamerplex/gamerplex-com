@@ -1,13 +1,17 @@
 import { PublicKey } from "@solana/web3.js";
 
 const REFERRAL_SS_KEY = "gamerplex:referrer:v2";
-const REFERRAL_TTL_MS = 30 * 60 * 1000;
+// 7 days: the payout is gated on the referred friend finishing onboarding
+// (verify email + name + save a score), which can span several sessions — the
+// captured code must survive that. localStorage (not session) for the same reason.
+const REFERRAL_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const RESOLVER_BASE =
   process.env.NEXT_PUBLIC_RESOLVER_URL || "https://resolver.gamerplex.com";
 
 interface StoredReferral {
-  pubkey: string;
-  source: "url-hint" | "url-hint-verified-onchain";
+  pubkey: string;                 // wallet referral (web3); "" when handle-based
+  handle?: string;                // handle referral (web2, the primary rail)
+  source: "url-hint" | "url-hint-verified-onchain" | "url-handle";
   storedAt: number;
 }
 
@@ -52,7 +56,21 @@ export async function pickReferrerFromUrl(
     if (!raw) return;
 
     const hint = safePubkey(raw);
-    if (!hint) { log("rejected:invalid-pubkey", raw); return; }
+    if (!hint) {
+      // Not a pubkey → a web2 referral CODE: a handle (pretty) or a userId UUID
+      // (works for every user before they claim a name). Stored in `handle`.
+      const code = raw.trim().toLowerCase();
+      const isHandle = /^[a-z0-9_]{3,20}$/.test(code);
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(code);
+      if (isHandle || isUuid) {
+        const payload: StoredReferral = { pubkey: "", handle: code, source: "url-handle", storedAt: Date.now() };
+        window.localStorage.setItem(REFERRAL_SS_KEY, JSON.stringify(payload));
+        log("accepted:url-code", code);
+      } else {
+        log("rejected:invalid-code", raw);
+      }
+      return;
+    }
 
     if (connectedWallet && hint.equals(connectedWallet)) {
       log("rejected:self-referral", hint.toBase58());
@@ -82,7 +100,7 @@ export async function pickReferrerFromUrl(
       source,
       storedAt: Date.now(),
     };
-    window.sessionStorage.setItem(REFERRAL_SS_KEY, JSON.stringify(payload));
+    window.localStorage.setItem(REFERRAL_SS_KEY, JSON.stringify(payload));
     log(`accepted:${source}`, canonical.toBase58());
   } catch (e: any) {
     log("rejected:exception", e?.message ?? String(e));
@@ -92,12 +110,12 @@ export async function pickReferrerFromUrl(
 export function getStoredReferrer(connectedWallet?: PublicKey | null): PublicKey {
   if (typeof window === "undefined") return PublicKey.default;
   try {
-    const raw = window.sessionStorage.getItem(REFERRAL_SS_KEY);
+    const raw = window.localStorage.getItem(REFERRAL_SS_KEY);
     if (!raw) return PublicKey.default;
     const parsed = JSON.parse(raw) as StoredReferral;
     if (!parsed?.pubkey || typeof parsed.storedAt !== "number") return PublicKey.default;
     if (Date.now() - parsed.storedAt > REFERRAL_TTL_MS) {
-      window.sessionStorage.removeItem(REFERRAL_SS_KEY);
+      window.localStorage.removeItem(REFERRAL_SS_KEY);
       return PublicKey.default;
     }
     const pk = safePubkey(parsed.pubkey);
@@ -117,7 +135,7 @@ export function getStoredReferrerInfo(
 ): { pubkey: PublicKey; source: StoredReferral["source"] } | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = window.sessionStorage.getItem(REFERRAL_SS_KEY);
+    const raw = window.localStorage.getItem(REFERRAL_SS_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as StoredReferral;
     if (!parsed?.pubkey || typeof parsed.storedAt !== "number") return null;
@@ -131,7 +149,36 @@ export function getStoredReferrerInfo(
   }
 }
 
+// The stored referral code for the Credits claim — handle (web2) or wallet (web3).
+// This is what ReferralClaimer sends to /api/credits/referral (which accepts both).
+export function getStoredReferralCode(): { kind: "handle" | "wallet"; value: string } | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(REFERRAL_SS_KEY);
+    if (!raw) return null;
+    const p = JSON.parse(raw) as StoredReferral;
+    if (typeof p?.storedAt !== "number" || Date.now() - p.storedAt > REFERRAL_TTL_MS) return null;
+    if (p.handle) return { kind: "handle", value: p.handle };
+    if (p.pubkey) return { kind: "wallet", value: p.pubkey };
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export function clearReferrer(): void {
   if (typeof window === "undefined") return;
-  try { window.sessionStorage.removeItem(REFERRAL_SS_KEY); } catch {}
+  try { window.localStorage.removeItem(REFERRAL_SS_KEY); } catch {}
+}
+
+// Append the sharer's STABLE userId as ?ref=<userId> so every challenge/share
+// link carries durable referral attribution. We deliberately do NOT use the
+// handle: handles are mutable (a user can rename, freeing the old name for
+// someone else to claim) so a handle-based link would break or mis-attribute.
+// The userId is immutable; the capture side (pickReferrerFromUrl) already accepts
+// a UUID, and the grant route resolves it directly.
+export function buildShareUrl(base: string, referrerId?: string | null): string {
+  if (!referrerId) return base;
+  const sep = base.includes("?") ? "&" : "?";
+  return `${base}${sep}ref=${encodeURIComponent(referrerId)}`;
 }

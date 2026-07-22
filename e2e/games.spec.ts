@@ -3,13 +3,12 @@ import { GAME_ROUTES } from './routes';
 
 // availability.spec already proves every game route renders content without
 // crashing. This layer proves each one exposes a PLAY affordance — a canvas, the
-// game board/grid, a start/find-match control, a wallet connect (wallet-gated
-// games), or a link to the game's own origin (Flipball). No affordance, or a
-// crash, fails the test.
+// game board/grid, a start/find-match control, or a wallet connect (wallet-gated
+// games). No affordance, or a crash, fails the test.
 
 const PLAY_AFFORDANCE = [
   'canvas',
-  'iframe', // Flipball's play surface is a cross-origin game iframe (flipball.gamerplex.com)
+  'iframe', // some games/placeholders embed their surface in an iframe
   '[class*="board"]',
   '[role="tablist"]', // Blockwords arcade mode-picker
   '[data-testid*="game"]',

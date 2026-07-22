@@ -1607,3 +1607,33 @@ html, body {
     z-index: 5;
   }
 }
+
+/* Docs: on mobile, hide the section sidebar (it otherwise stacks full-width above
+   the content) and tighten the reading padding. Page nav lives in the top bar. */
+@media (max-width: 768px) {
+  .docs-sidebar { display: none !important; }
+  .docs-main { padding: 24px 18px 64px !important; }
+}
+
+/* ── Native-app (Gamerplex Expo shell) chrome adaptation ──────────────────
+   In the app, the native tab bar is the nav and the Ranks/Profile tabs own
+   their content — so strip the marketing chrome the home would otherwise show
+   inside a WebView. Desktop/browser web is unaffected (class only set in-app). */
+html.gx-native .site-nav-desktop,
+html.gx-native .site-nav-hamburger,
+html.gx-native .gl-hero-grid,
+html.gx-native #leaderboard,
+html.gx-native #leaderboard + .gl-lb,
+html.gx-native .gl-game,
+html.gx-native .gl-foot,
+html.gx-native .gx-web-only {
+  display: none !important;
+}
+/* the native tab bar supplies bottom nav; never let a web bottom-nav double up */
+html.gx-native .bottom-nav-m { display: none !important; }
+
+/* Store-policy gate: on App Store / Play builds (__GAMERPLEX_STORE__ ios|play)
+   the doc gets .gx-no-transfer. Hide asset-transfer surfaces (external crypto
+   buy links, wallet send) — see ENGINEERING/STORE_COMPLIANCE.md. dApp/web builds
+   are unaffected. */
+html.gx-no-transfer .gx-transfer { display: none !important; }

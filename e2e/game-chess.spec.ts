@@ -73,3 +73,58 @@ test('magic chess: start → play a move → resign → game-over + leaderboard 
 
   expect(errors, `chess page threw: ${errors.join(' | ')}`).toHaveLength(0);
 });
+
+// REGRESSION GUARD for the "timer ends/restarts the game abruptly" bug.
+// The move-timer useEffect used to depend on `wTurn` (recreating the interval
+// every half-move) and read `wTurn` from a stale closure, so an edge-aligned
+// tick during the "bot thinking" window could end the game for the WRONG side —
+// which surfaced to players as an abrupt end/restart. This proves an idle
+// player turn times out exactly ONCE, as a LOSS for the player (White), and the
+// game stays ended (does not bounce back to a fresh board).
+test('magic chess: idle player turn times out once as a loss — no abrupt end/restart', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'mobile', 'timer behaviour verified on desktop viewport');
+
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+
+  await page.goto('/play/magic-chess');
+
+  await expect(page.getByTestId('start-page-picker')).toBeVisible({ timeout: 15_000 });
+  await page.locator('[data-mode="casual"]').click();
+
+  await expect(page.getByRole('heading', { name: /MAGIC CHESS/i })).toBeVisible({ timeout: 15_000 });
+  // Bullet = 3s/turn — the shortest preset, so the idle timeout lands fast + deterministically.
+  await page.locator('button', { hasText: 'Bullet' }).first().click();
+  await page.locator('button', { hasText: /ELO 600/ }).first().click();
+
+  const startBtn = page.locator('button', { hasText: 'START' });
+  await expect(startBtn).toBeVisible();
+  await startBtn.click({ force: true });
+
+  await expect(page.getByText(/Move \d+/i)).toBeVisible({ timeout: 15_000 });
+
+  // Guard: must NOT end the instant it starts, and must STAY in-play for the first
+  // second (no abrupt mid-turn end before the 3s timer). Resign renders only while
+  // phase === "playing".
+  await expect(page.locator('button', { hasText: 'Resign' })).toBeVisible();
+  await expect(page.getByText(/CHECKMATE|DEFEATED|STALEMATE/i)).toHaveCount(0);
+  await page.waitForTimeout(1000);
+  await expect(page.locator('button', { hasText: 'Resign' })).toBeVisible();
+  await expect(page.getByText(/DEFEATED/i)).toHaveCount(0);
+
+  // Do NOT move — the idle player (White) turn must time out → player LOSES (DEFEATED).
+  await expect(page.getByText(/DEFEATED/i)).toBeVisible({ timeout: 8_000 });
+
+  // Correct-side guard: an idle player-turn timeout is a LOSS, never a victory.
+  // The stale-closure bug could flip `won` and end as a false CHECKMATE.
+  await expect(page.getByText(/CHECKMATE/i)).toHaveCount(0);
+
+  // Single clean end: it stays game-over (Resign gone) and does NOT restart back
+  // into a fresh game over the next 2 seconds.
+  await expect(page.locator('button', { hasText: 'Resign' })).toHaveCount(0);
+  await page.waitForTimeout(2000);
+  await expect(page.getByText(/DEFEATED/i)).toBeVisible();
+  await expect(page.locator('button', { hasText: 'Resign' })).toHaveCount(0);
+
+  expect(errors, `chess page threw: ${errors.join(' | ')}`).toHaveLength(0);
+});

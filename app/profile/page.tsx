@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { ProfileView } from "./_components/ProfileView";
+import GlassShell from "../../components/GlassShell";
 
 export default function ProfilePage() {
   const { publicKey } = useWallet();
@@ -13,25 +13,12 @@ export default function ProfilePage() {
   useEffect(() => setMounted(true), []);
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
-      {/* 2026 minimalist top nav — matches home */}
-      <nav className="top-nav">
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <Link href="/" className="nav-logo" style={{ textDecoration: "none" }}>GAMERPLEX</Link>
-          <span className="devnet-badge">Devnet</span>
-        </div>
-        <div className="nav-links">
-          <Link href="/#featured">Play</Link>
-          <Link href="/docs">Build</Link>
-          <Link href="/leaderboard">Leaderboard</Link>
-          <Link href="/profile">Profile</Link>
-        </div>
-      </nav>
+    <GlassShell activeLabel="Profile">
       {mounted ? (
         <ProfileView walletPubkey={publicKey ?? null} isOwnProfile={true} />
       ) : (
-        <div style={{ padding: 24, textAlign: "center", color: "#666" }}>Loading…</div>
+        <div style={{ padding: 24, textAlign: "center", color: "rgba(255,255,255,0.5)" }}>Loading…</div>
       )}
-    </div>
+    </GlassShell>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { SiteNav } from "../../components/SiteNav";
 
 const RESOLVER =
@@ -153,6 +154,7 @@ function writeCache(c: CachedActivity) {
 }
 
 export default function ActivityPage() {
+  if (process.env.NODE_ENV === "production") notFound();
   const [liveGames, setLiveGames] = useState<LiveGame[]>([]);
   const [onchain, setOnchain] = useState<OnchainActivity[]>([]);
   const [onchainTotals, setOnchainTotals] = useState<OnchainTotals | null>(
@@ -283,7 +285,7 @@ export default function ActivityPage() {
         <SiteNav
           links={[
             { href: "/#featured", label: "Play" },
-            { href: "/docs", label: "Build" },
+            { href: "/docs", label: "Docs" },
             { href: "/leaderboard", label: "Leaderboard" },
             { href: "/profile", label: "Profile" },
           ]}

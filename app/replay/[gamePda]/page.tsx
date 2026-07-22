@@ -7,6 +7,9 @@ import { Connection, PublicKey } from "@solana/web3.js";
 
 const Chess3DBoard = dynamic(() => import("../../play/magic-chess/_shared/Chess3DBoard"), { ssr: false });
 
+const NET = process.env.NEXT_PUBLIC_SOLANA_NETWORK || "mainnet";
+const CLUSTER = NET === "mainnet" ? "" : `?cluster=${NET}`;
+
 // Piece encoding (matches Rust program)
 const W_PAWN = 2;  const B_PAWN = 3;
 const W_ROOK = 4;  const B_ROOK = 5;
@@ -250,7 +253,7 @@ export default function ReplayPage() {
         </div>
         <div className="nav-links">
           <a href="/#featured">Play</a>
-          <a href="/docs">Build</a>
+          <a href="/docs">Docs</a>
           <a href="/leaderboard">Leaderboard</a>
           <a href="/profile">Profile</a>
         </div>
@@ -266,7 +269,7 @@ export default function ReplayPage() {
         </h1>
         <div style={{ fontSize: 11, color: "#555", fontFamily: "monospace", marginBottom: 20 }}>
           PDA: <a
-            href={`https://explorer.solana.com/address/${gamePda}?cluster=devnet`}
+            href={`https://explorer.solana.com/address/${gamePda}${CLUSTER}`}
             target="_blank"
             rel="noopener noreferrer"
             style={{ color: "#9945ff" }}
@@ -371,7 +374,12 @@ export default function ReplayPage() {
           </span>
           {currentMove > 0 && moveSigs[currentMove - 1] && (
             <a
-              href={`https://explorer.solana.com/tx/${moveSigs[currentMove - 1]}?cluster=custom&customUrl=https%3A%2F%2Fdevnet.magicblock.app`}
+              // TODO: mainnet ER explorer base
+              href={
+                NET === "mainnet"
+                  ? `https://explorer.solana.com/tx/${moveSigs[currentMove - 1]}`
+                  : `https://explorer.solana.com/tx/${moveSigs[currentMove - 1]}?cluster=custom&customUrl=https%3A%2F%2Fdevnet.magicblock.app`
+              }
               target="_blank"
               rel="noopener"
               style={{ color: "#9945FF" }}

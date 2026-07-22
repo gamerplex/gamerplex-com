@@ -31,6 +31,18 @@
       "accent": "electric cosmic blue and white-hot cyan"
     },
     {
+      "id": "vrfc",
+      "out": "vrfc/banner.png",
+      "subject": "two glossy luminous boxing gloves clashing in mid-air at the center of a neon boxing ring, a burst of light and sparks at the point of impact, glowing ring ropes receding into the dark, crescent light-trails arcing behind each glove",
+      "accent": "hot pink-red and mint green"
+    },
+    {
+      "id": "netherlevel",
+      "out": "netherlevel/banner.png",
+      "subject": "a foreboding first-person view down a sleek dark neon corridor receding into an abyss, glowing red-orange fire pits and molten cracks splitting the floor, sharp metal trap spikes jutting from the walls, a single luminous exit gate blazing at the far end, ominous descent",
+      "accent": "hot orange-red fire and violet neon"
+    },
+    {
       "id": "sledgit-pika",
       "out": "sledgit/pika-set-quiz.png",
       "subject": "three glossy holographic collectible trading cards fanned out like a hand, clearly card-shaped with rounded corners and blank generic faces, crackling with electric-spark energy, no characters, no text",

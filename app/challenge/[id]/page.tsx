@@ -2,6 +2,8 @@ import { Metadata } from "next";
 import Link from "next/link";
 
 const RESOLVER_URL = process.env.NEXT_PUBLIC_RESOLVER_URL || "https://resolver.gamerplex.com";
+const NET = process.env.NEXT_PUBLIC_SOLANA_NETWORK || "mainnet";
+const CLUSTER = NET === "mainnet" ? "" : `?cluster=${NET}`;
 const SITE =
   process.env.NEXT_PUBLIC_SITE_URL ||
   (process.env.VERCEL_ENV === "production"
@@ -25,7 +27,7 @@ interface ScoreMemo {
 }
 
 const GAME_META: Record<string, { emoji: string; label: string; route: string; accent: string }> = {
-  flipball: { emoji: "🎯", label: "Flipball", route: "https://flipball.gamerplex.com", accent: "#00ffd1" },
+  flipball: { emoji: "🎯", label: "Flipball", route: "/play/flipball", accent: "#00ffd1" },
   "cyber-snake": { emoji: "🐍", label: "Cyber Snake", route: "/play/cyber-snake", accent: "#4fc3f7" },
   "chess-puzzles": { emoji: "♟", label: "Magic Chess Puzzles", route: "/play/magic-chess", accent: "#c99aff" },
   blockwords: { emoji: "🔮", label: "Blockwords", route: "/play/blockwords", accent: "#ffd24a" },
@@ -163,7 +165,7 @@ export default async function ChallengePage({
             {ageDays === 0 ? "today" : ageDays === 1 ? "yesterday" : `${ageDays} days ago`}
             {" · "}
             <a
-              href={`https://explorer.solana.com/tx/${score.tx}?cluster=devnet`}
+              href={`https://explorer.solana.com/tx/${score.tx}${CLUSTER}`}
               target="_blank"
               rel="noopener noreferrer"
               style={{ color: "#9945ff", textDecoration: "none" }}

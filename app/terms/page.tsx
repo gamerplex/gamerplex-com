@@ -252,13 +252,24 @@ function TermsBody() {
       <section>
         <h2 className="text-xl font-semibold mb-2">3. Eligibility</h2>
         <p>
-          You must be at least 18 years of age to use the Service. You must not
-          use the Service if you are a resident of: Arizona, Arkansas,
-          Connecticut, Delaware, Louisiana, Montana, South Carolina, South
-          Dakota, Tennessee, the US Virgin Islands, or any country subject to
-          comprehensive US, EU, UK, AU, or UN sanctions (including but not
-          limited to Cuba, Iran, North Korea, Syria, Crimea, Donetsk, and
-          Luhansk).
+          You must be at least 18 years of age to use the Service. Free play and
+          in-app Credits (which are not redeemable for cash or crypto and involve
+          no blockchain transaction) are available to all users.
+        </p>
+        <p>
+          On-chain features that move a token — connecting a wallet, the optional
+          paid on-chain save, and any purchase — are not available to residents
+          of countries subject to comprehensive US, EU, UK, AU, or UN sanctions
+          (including but not limited to Cuba, Iran, North Korea, Syria, Crimea,
+          Donetsk, and Luhansk).
+        </p>
+        <p>
+          Any paid, money-prize skill-contest features (for example entry-fee
+          competitions or tournaments with a prize pool) are additionally not
+          available to residents of: Arizona, Arkansas, Connecticut, Delaware,
+          Louisiana, Montana, South Carolina, South Dakota, Tennessee, the US
+          Virgin Islands, and Singapore. You must not use those features if you
+          are a resident of those jurisdictions.
         </p>
         <p>
           We may block access based on IP geolocation. Circumventing these

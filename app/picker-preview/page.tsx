@@ -3,9 +3,11 @@
 // Dev preview route for the StartPagePicker (used by the Playwright test).
 // Not linked from the app.
 import { useState } from "react";
+import { notFound } from "next/navigation";
 import { StartPagePicker, type GameMode } from "../../components/games/StartPagePicker";
 
 export default function PickerPreviewPage() {
+  if (process.env.NODE_ENV === "production") notFound();
   const [picked, setPicked] = useState<GameMode | null>(null);
   return (
     <div style={{ padding: 32, color: "#e8e8f0", background: "#0a0a14", minHeight: "100vh" }}>

@@ -8,6 +8,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import SocialIcons from "./SocialIcons";
 
 export interface NavLink {
   href: string;
@@ -34,6 +35,7 @@ export function SiteNav({ links, right }: Props) {
         {links.map((l) => (
           <LinkItem key={l.href} link={l} />
         ))}
+        <SocialIcons size={17} gap={13} />
         {right}
       </nav>
 
@@ -63,6 +65,7 @@ export function SiteNav({ links, right }: Props) {
           {links.map((l) => (
             <LinkItem key={l.href} link={l} block />
           ))}
+          <div style={{ padding: "10px 14px" }}><SocialIcons size={20} gap={16} /></div>
           {right && <div className="site-nav-drawer-right">{right}</div>}
         </div>
       )}

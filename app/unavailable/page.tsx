@@ -46,7 +46,7 @@ export default async function UnavailablePage({
         </div>
         <div className="nav-links">
           <Link href="/#featured">Play</Link>
-          <Link href="/docs">Build</Link>
+          <Link href="/docs">Docs</Link>
           <Link href="/leaderboard">Leaderboard</Link>
         </div>
       </nav>

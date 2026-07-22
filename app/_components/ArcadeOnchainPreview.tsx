@@ -14,8 +14,11 @@ import Link from "next/link";
 const RESOLVER =
   process.env.NEXT_PUBLIC_RESOLVER_URL || "https://resolver.gamerplex.com";
 
+const NET = process.env.NEXT_PUBLIC_SOLANA_NETWORK || "mainnet";
+const CLUSTER = NET === "mainnet" ? "" : `?cluster=${NET}`;
+
 const GAMES = [
-  { slug: "flipball",      label: "Flipball",      emoji: "🎯", color: "#00ffd1", route: "https://flipball.gamerplex.com" },
+  { slug: "flipball",      label: "Flipball",      emoji: "🎯", color: "#00ffd1", route: "/play/flipball" },
   { slug: "cyber-snake",   label: "Cyber Snake",   emoji: "🐍", color: "#4fc3f7", route: "/play/cyber-snake?mode=arcade" },
   { slug: "chess-puzzles", label: "Magic Chess",   emoji: "♟",  color: "#c99aff", route: "/play/magic-chess?mode=arcade" },
   { slug: "blockwords",    label: "Blockwords",    emoji: "🔮", color: "#ffd24a", route: "/play/blockwords?mode=arcade" },
@@ -110,7 +113,7 @@ export default function ArcadeOnchainPreview() {
       <div className="arena-header">
         <h2>📡 Live on-chain</h2>
         <span style={{ fontSize: 10, color: "var(--dim)", letterSpacing: 2 }}>
-          ARCADE · GPX5 SCORE MEMOS · DEVNET
+          ARCADE · GPX5 SCORE MEMOS · {NET === "mainnet" ? "MAINNET" : NET.toUpperCase()}
           {loading && (
             <span style={{ marginLeft: 10, color: "#9945FF", letterSpacing: 0, textTransform: "none" }}>
               (syncing…)
@@ -216,7 +219,7 @@ export default function ArcadeOnchainPreview() {
                     </span>
                   </span>
                   <a
-                    href={`https://explorer.solana.com/tx/${e.tx}?cluster=devnet`}
+                    href={`https://explorer.solana.com/tx/${e.tx}${CLUSTER}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     style={{ color: "rgba(255,255,255,0.4)", fontSize: 10, textDecoration: "none", flexShrink: 0 }}

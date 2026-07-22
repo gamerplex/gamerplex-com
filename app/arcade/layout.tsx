@@ -138,9 +138,9 @@ function ArcadeComingSoon() {
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 24, textAlign: "center" }}>
       <div style={{ maxWidth: 440 }}>
         <div style={{ fontSize: 44, marginBottom: 12 }}>🎮</div>
-        <h1 style={{ fontSize: 24, fontWeight: 800, margin: "0 0 10px" }}>The on-chain Arcade is coming to mainnet</h1>
+        <h1 style={{ fontSize: 24, fontWeight: 800, margin: "0 0 10px" }}>This game is free to play right now.</h1>
         <p style={{ color: "#9c8fb8", fontSize: 14, lineHeight: 1.6, margin: "0 0 20px" }}>
-          On-chain scoring launches with mainnet soon. Meanwhile, every game is free to play right now — jump in.
+          Sign in with email to save your score. Meanwhile, every game is free to play right now — jump in.
         </p>
         <a href="/#featured" style={{ display: "inline-block", padding: "12px 22px", borderRadius: 11, fontWeight: 800, textDecoration: "none", color: "#04120c", background: "linear-gradient(135deg,#14F195,#0fd47f)" }}>
           ▶ Play the free games

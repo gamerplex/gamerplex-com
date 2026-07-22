@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { SiteNav } from "../../components/SiteNav";
 
 const RESOLVER =
@@ -47,6 +48,7 @@ function truncWallet(w: string): string {
 const CACHE_KEY = "gp.bots.v1";
 
 export default function BotsDirectoryPage() {
+  if (process.env.NODE_ENV === "production") notFound();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
   const [fromCache, setFromCache] = useState(false);
@@ -126,7 +128,7 @@ export default function BotsDirectoryPage() {
         <SiteNav
           links={[
             { href: "/#featured", label: "Play" },
-            { href: "/docs", label: "Build" },
+            { href: "/docs", label: "Docs" },
             { href: "/leaderboard", label: "Leaderboard" },
             { href: "/profile", label: "Profile" },
           ]}

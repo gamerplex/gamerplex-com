@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
   // spoofs (negatives, non-integers, absurd values, impossible durations, and
   // scores that are implausible for the claimed play duration).
   const gameId = typeof body.gameId === 'string' ? body.gameId : '';
-  const SCORE_CEILING: Record<string, number> = { blockwords: 10_000, 'magic-chess': 100_000, 'cyber-snake': 200_000, flipball: 2_000_000 };
+  const SCORE_CEILING: Record<string, number> = { blockwords: 10_000, 'magic-chess': 100_000, 'cyber-snake': 200_000, flipball: 2_000_000, vrfc: 20_000 };
   const ceiling = SCORE_CEILING[gameId] ?? 1_000_000;
   const score = body.score;
   if (typeof score !== 'number' || !Number.isFinite(score) || !Number.isInteger(score) || score < 0 || score > ceiling) {
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
   // that couldn't have been earned in the claimed time. A tiny grace window
   // absorbs off-by-one rounding on very short runs. Only enforced when a
   // duration is supplied (every first-party client sends one).
-  const MAX_PER_SEC: Record<string, number> = { blockwords: 400, 'magic-chess': 4_000, 'cyber-snake': 8_000, flipball: 80_000 };
+  const MAX_PER_SEC: Record<string, number> = { blockwords: 400, 'magic-chess': 4_000, 'cyber-snake': 8_000, flipball: 80_000, vrfc: 500 };
   const perSec = MAX_PER_SEC[gameId];
   if (perSec !== undefined && typeof dur === 'number') {
     const GRACE_SEC = 3;
