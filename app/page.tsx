@@ -13,6 +13,7 @@ import EmailLoginModal from "../components/arcade/EmailLoginModal";
 import ShellLeaderboard from "../components/arcade/ShellLeaderboard";
 import { StreakCelebration } from "../components/Hype";
 import { LeagueWidget } from "../components/identity/LeagueWidget";
+import { DailyGoalWidget } from "../components/identity/DailyGoalWidget";
 import GameGrid from "./_components/GameGrid";
 import LiveTicker from "./_components/LiveTicker";
 import { GAMES, LB_GAMES } from "./_data/games";
@@ -88,6 +89,7 @@ export default function Home() {
             native (gx-native) app alike; the hero itself is stripped in-app. */}
         <div style={{ display: "flex", justifyContent: "center", margin: "4px 0 18px" }}><StreakCelebration /></div>
 
+        <div style={{ margin: "0 0 12px" }}><DailyGoalWidget /></div>
         <div style={{ margin: "0 0 24px" }}><LeagueWidget /></div>
 
         <h2 id="featured" className="gl-h2">Play free — {GAMES.length} live now</h2>
