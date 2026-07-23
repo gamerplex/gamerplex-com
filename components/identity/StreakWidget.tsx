@@ -64,6 +64,9 @@ export function StreakWidget() {
       void pingStreak().then((s) => {
         if (!s) return;
         setSrv(s);
+        // daily activity signal — the base metric for streak retention (DAU-with-streak,
+        // streak-length distribution). Milestone/freeze are the notable sub-events.
+        track('streak_active', { streak: s.streak, best: s.best, freezes: s.freezes });
         if (s.milestone) track('streak_milestone', { streak: s.milestone });
         if (s.froze) track('streak_frozen', { streak: s.streak });
       });

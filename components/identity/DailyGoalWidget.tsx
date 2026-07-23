@@ -8,6 +8,8 @@
 
 import { useEffect, useState } from 'react';
 
+import { track } from '../../lib/analytics';
+
 type Daily = { goal: number; earned: number; complete: boolean };
 
 export function DailyGoalWidget() {
@@ -16,7 +18,12 @@ export function DailyGoalWidget() {
   useEffect(() => {
     fetch('/api/daily', { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
-      .then((j: Daily | null) => setD(j && typeof j.goal === 'number' ? j : null))
+      .then((j: Daily | null) => {
+        if (!j || typeof j.goal !== 'number') return;
+        setD(j);
+        // measure the daily-goal lever: progress seen + whether it's completed today.
+        track('daily_goal', { earned: j.earned, goal: j.goal, complete: j.complete });
+      })
       .catch(() => setD(null));
   }, []);
 

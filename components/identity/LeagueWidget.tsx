@@ -4,8 +4,9 @@
 // Ranked by CREDITS EARNED this week (comparable across every game). Resets weekly.
 // Top of the board promotes; competition drives the daily return. Credits only (R2).
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
+import { track } from '../../lib/analytics';
 import { useIdentity } from '../../lib/identity/useIdentity';
 
 type Row = { rank: number; userId: string; handle: string | null; xp: number };
@@ -20,6 +21,7 @@ function daysToReset(): number {
 export function LeagueWidget() {
   const { user } = useIdentity();
   const [rows, setRows] = useState<Row[] | null>(null);
+  const tracked = useRef(false);
 
   useEffect(() => {
     fetch('/api/league/standings', { cache: 'no-store' })
@@ -27,6 +29,14 @@ export function LeagueWidget() {
       .then((d: { league?: Row[] }) => setRows(d.league ?? []))
       .catch(() => setRows([]));
   }, []);
+
+  // measure league engagement: that it rendered + the viewer's own rank (once).
+  useEffect(() => {
+    if (tracked.current || !rows || rows.length === 0) return;
+    tracked.current = true;
+    const myRank = user ? rows.find((r) => r.userId === user.id)?.rank ?? null : null;
+    track('league_viewed', { players: rows.length, rank: myRank });
+  }, [rows, user]);
 
   if (!rows || rows.length === 0) return null;
 
