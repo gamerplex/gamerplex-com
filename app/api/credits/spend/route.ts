@@ -40,9 +40,16 @@ function badOrigin(req: NextRequest): boolean {
 
 // Server-authoritative spend catalog (Credits path of the money-line "above" items).
 // Prices are LEAN by design. identity-service holds the authoritative balance + rejects overspend.
-const CATALOG: Record<string, { amount: number; category: string; reason: string }> = {
-  continue: { amount: 420, category: 'consumable', reason: 'continue after game over' },
-  retry: { amount: 100, category: 'perk', reason: 'retry a run' },
+// Server-authoritative Credits prices (must match ShopView cr: values; the client
+// price is never trusted). itemType drives inventory ownership recording.
+const CATALOG: Record<string, { amount: number; category: string; itemType: string; reason: string }> = {
+  continue:  { amount: 400,  category: 'consumable', itemType: 'consumable', reason: 'continue x1' },
+  continue5: { amount: 1800, category: 'consumable', itemType: 'consumable', reason: 'continues x5' },
+  retry:     { amount: 600,  category: 'consumable', itemType: 'consumable', reason: 'instant retry x3' },
+  surge:     { amount: 900,  category: 'consumable', itemType: 'consumable', reason: 'score surge' },
+  neon:      { amount: 2400, category: 'cosmetic',   itemType: 'cosmetic',   reason: 'neon wake' },
+  void:      { amount: 3200, category: 'cosmetic',   itemType: 'cosmetic',   reason: 'void chrome' },
+  pixel:     { amount: 1200, category: 'cosmetic',   itemType: 'cosmetic',   reason: 'pixel trail' },
 };
 
 export async function POST(req: NextRequest) {
@@ -90,5 +97,20 @@ export async function POST(req: NextRequest) {
   if (res.status === 409) return NextResponse.json({ error: 'insufficient' }, { status: 402 });
   if (!res.ok) return NextResponse.json({ error: 'spend_failed' }, { status: 502 });
   const result = await res.json();
-  return NextResponse.json({ ok: true, appBalance: result.appBalance ?? null, deduped: result.deduped ?? false });
+
+  // Credits deducted → record durable ownership (idempotent per user+app+item).
+  await fetch(`${IDENTITY_URL}/api/v1/inventory/grant`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-identity-api-key': apiKey },
+    cache: 'no-store',
+    body: JSON.stringify({
+      userId,
+      app: 'gamerplex',
+      itemId: typeof body.item === 'string' ? body.item : 'unknown',
+      itemType: item.itemType,
+      source: 'credits_purchase',
+    }),
+  }).catch(() => undefined); // ledger is the source of truth; a grant retry is idempotent
+
+  return NextResponse.json({ ok: true, item: body.item, appBalance: result.appBalance ?? null });
 }

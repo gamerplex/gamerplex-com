@@ -52,6 +52,7 @@ export default function ShopView() {
   const [filter, setFilter] = useState<Filter>("all");
   const [sheet, setSheet] = useState<{ item: Item; cur: "cr" | "gm" } | null>(null);
   const [status, setStatus] = useState<"idle" | "confirming" | "done">("idle");
+  const [buyError, setBuyError] = useState<string | null>(null);
 
   useEffect(() => {
     void getCredits().then((c) => setCredits(c?.perApp.find((a) => a.app === "gamerplex")?.balance ?? c?.total ?? 0));
@@ -72,6 +73,7 @@ export default function ShopView() {
     const def = cur ?? (item.gm != null ? "gm" : "cr");
     setSheet({ item, cur: def });
     setStatus("idle");
+    setBuyError(null);
     track("item_sheet_open", { item: item.id, entry: cur ?? "card" });
   }
 
@@ -79,22 +81,34 @@ export default function ShopView() {
     if (!sheet) return;
     const { item, cur } = sheet;
     track("purchase_confirmed", { item: item.id, currency: cur });
+    // $GAME spend isn't wired on web yet (needs an on-chain transfer via the wallet);
+    // the sheet routes $GAME to Flipcash top-up, so never fake-complete a $GAME buy.
+    if (cur === "gm") return;
+    setBuyError(null);
     setStatus("confirming");
-    // Credits spend hits the catalog endpoint (STANDARD_ECONOMY_ROLLOUT); until
-    // that lands it resolves optimistically so the flow is testable end-to-end.
-    try {
-      await fetch("/api/credits/spend", {
-        method: "POST",
-        credentials: "include",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ item: item.id, refId: `${item.id}:${Date.now()}` }),
-      }).catch(() => undefined);
-    } finally {
-      await new Promise((r) => setTimeout(r, 650));
-      setOwned((s) => new Set(s).add(item.id));
-      if (cur === "cr" && item.cr != null) setCredits((c) => (c == null ? c : c - item.cr!));
-      setStatus("done");
+    // Real server-side spend: deduct Credits + record ownership, atomically. Only
+    // mark owned on SUCCESS (was previously optimistic and never verified).
+    const r = await fetch("/api/credits/spend", {
+      method: "POST",
+      credentials: "include",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ item: item.id, refId: `${item.id}:${Date.now()}` }),
+    }).then((res) => res.json()).catch(() => ({ error: "network" }));
+    if (r?.error) {
+      setStatus("idle");
+      setBuyError(
+        r.error === "insufficient" ? "Not enough Credits." :
+        r.error === "not_signed_in" ? "Sign in to buy." :
+        "Couldn’t complete — try again.",
+      );
+      track("purchase_failed", { item: item.id, reason: r.error });
+      return;
     }
+    setOwned((s) => new Set(s).add(item.id));
+    if (typeof r.appBalance === "number") setCredits(r.appBalance);
+    else if (item.cr != null) setCredits((c) => (c == null ? c : c - item.cr!));
+    track("purchase_succeeded", { item: item.id });
+    setStatus("done");
   }
 
   const short = sheet && sheet.cur === "gm" && sheet.item.gm != null && game < sheet.item.gm;
@@ -186,9 +200,12 @@ export default function ShopView() {
                     <a className="cta" href="/#featured">Earn Credits — play a run</a>
                   </>
                 ) : (
-                  <button className="cta" onClick={confirm} disabled={status === "confirming"}>
-                    {status === "confirming" ? "Confirming…" : sheet.cur === "gm" ? `Confirm — ${sheet.item.gm} $GAME` : `Confirm — ${sheet.item.cr?.toLocaleString()} Credits`}
-                  </button>
+                  <>
+                    <button className="cta" onClick={confirm} disabled={status === "confirming"}>
+                      {status === "confirming" ? "Confirming…" : sheet.cur === "gm" ? `Confirm — ${sheet.item.gm} $GAME` : `Confirm — ${sheet.item.cr?.toLocaleString()} Credits`}
+                    </button>
+                    {buyError && <div className="warn" style={{ marginTop: 10 }}>{buyError}</div>}
+                  </>
                 )}
               </>
             )}

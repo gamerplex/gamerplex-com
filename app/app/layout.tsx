@@ -9,7 +9,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <div style={{ minHeight: "100vh", background: "#0d001a", color: "#ece7ff" }}>
       <style>{GLASS_CSS}</style>
       <AccountChip />
-      {children}
+      {/* reserve space for the fixed chip so it never overlaps page content */}
+      <div style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 54px)" }}>{children}</div>
     </div>
   );
 }

@@ -8,7 +8,7 @@ import { useIdentity } from "../../../lib/identity/useIdentity";
 export default function AppRanks() {
   const { user } = useIdentity();
   return (
-    <div style={{ maxWidth: 640, margin: "0 auto", padding: "52px 14px 44px" }}>
+    <div style={{ maxWidth: 640, margin: "0 auto", padding: "8px 14px 44px" }}>
       {/* Global cross-game board — ranks players by Credits earned across EVERY game
           (the only metric comparable across games), so "most active overall" is visible. */}
       <h2 style={{ fontSize: 15, fontWeight: 900, color: "#fff", margin: "0 0 10px", display: "flex", alignItems: "center", gap: 8 }}>
