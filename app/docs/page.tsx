@@ -469,8 +469,12 @@ SF3000  — Superhuman (Stockfish skill 20)`}
                 different address is <strong>not the one Gamerplex accepts</strong>. Always check the mint address above.
               </span>
               <br/>
-              <a href="https://app.flipcash.com/token/7TTBUfDomCKBMemv7FF37Tg3y52cRkAxn8vJnvKD4rsE" target="_blank" rel="noopener noreferrer" style={{display:"inline-block", marginTop:10, color:"#14F195", fontWeight:700, fontSize:13, textDecoration:"none"}}>
+              <a href="https://app.flipcash.com/token/7TTBUfDomCKBMemv7FF37Tg3y52cRkAxn8vJnvKD4rsE" target="_blank" rel="noopener noreferrer" style={{display:"inline-block", marginTop:10, marginRight:18, color:"#14F195", fontWeight:700, fontSize:13, textDecoration:"none"}}>
                 View $GAME on Flipcash →
+              </a>
+              <a href="https://tideline.fun/c/GAME" target="_blank" rel="noopener noreferrer" style={{display:"inline-flex", alignItems:"center", gap:7, marginTop:10, color:"#35e0ff", fontWeight:700, fontSize:13, textDecoration:"none"}}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M3 9c2.2-2.6 4.2-2.6 6 0s3.8 2.6 6 0 4.2-2.6 6 0" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round"/><path d="M3 15c2.2-2.6 4.2-2.6 6 0s3.8 2.6 6 0 4.2-2.6 6 0" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" opacity="0.6"/></svg>
+                Buy $GAME on Tideline →
               </a>
             </P>
             <List items={[
