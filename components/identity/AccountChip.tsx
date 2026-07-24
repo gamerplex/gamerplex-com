@@ -10,7 +10,7 @@
 import { useEffect, useState } from 'react';
 
 import { useIdentity } from '../../lib/identity/useIdentity';
-import { getCredits } from '../../lib/identity/client';
+import { getCredits, getGameBalance } from '../../lib/identity/client';
 
 function isNative(): boolean {
   return typeof window !== 'undefined' && (window as { __GAMERPLEX_NATIVE__?: boolean }).__GAMERPLEX_NATIVE__ === true;
@@ -33,6 +33,7 @@ function initials(user: { handle: string | null; email: string | null }): string
 export function AccountChip() {
   const { user, isSignedIn } = useIdentity();
   const [credits, setCredits] = useState<number | null>(null);
+  const [game, setGame] = useState<number | null>(null);
 
   useEffect(() => {
     if (!isSignedIn) { setCredits(null); return; }
@@ -40,6 +41,11 @@ export function AccountChip() {
       setCredits(c?.perApp.find((a) => a.app === 'gamerplex')?.balance ?? c?.total ?? 0),
     );
   }, [isSignedIn]);
+
+  useEffect(() => {
+    if (!user?.walletAddress) { setGame(null); return; }
+    void getGameBalance(user.walletAddress).then(setGame);
+  }, [user?.walletAddress]);
 
   if (!isSignedIn || !user) {
     return (
@@ -56,9 +62,11 @@ export function AccountChip() {
         <span style={{ fontWeight: 800, fontSize: 12.5, color: '#fff', maxWidth: 90, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {user.handle ? `@${user.handle}` : (user.email?.split('@')[0] ?? 'you')}
         </span>
-        <span style={{ fontSize: 10.5, color: '#14F195', fontWeight: 700, fontFamily: 'ui-monospace,monospace' }}>
-          ⬡ {credits == null ? '—' : credits.toLocaleString()}
-          {user.walletAddress ? <span style={{ color: '#b388ff' }}> · ◆</span> : null}
+        <span style={{ fontSize: 10.5, fontWeight: 700, fontFamily: 'ui-monospace,monospace' }}>
+          <span style={{ color: '#14F195' }}>⬡ {credits == null ? '—' : credits.toLocaleString()}</span>
+          {user.walletAddress ? (
+            <span style={{ color: '#b388ff' }}> · ◆ {game == null ? '—' : game.toLocaleString()}</span>
+          ) : null}
         </span>
       </span>
     </button>

@@ -193,7 +193,9 @@ export function makeProgram(connection: Connection, wallet: AnchorWallet): Progr
     commitment: "confirmed",
     preflightCommitment: "confirmed",
   });
-  return new Program(idlJson as Idl, provider);
+  // programId comes from idl.address; pin it to the active cluster's program.
+  const idl = { ...(idlJson as Idl), address: ARCADE_PROGRAM_ID.toBase58() };
+  return new Program(idl, provider);
 }
 
 // ───── Account fetch helpers ──────────────────────────────────────────

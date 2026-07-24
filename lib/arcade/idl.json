@@ -926,6 +926,26 @@
             "SPL TransferChecked. Address-constrained to the canonical sysvar id."
           ],
           "address": "Sysvar1nstructions1111111111111111111111111"
+        },
+        {
+          "name": "payments_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  97,
+                  121,
+                  109,
+                  101,
+                  110,
+                  116,
+                  115
+                ]
+              }
+            ]
+          }
         }
       ],
       "args": [

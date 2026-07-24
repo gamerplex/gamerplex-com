@@ -8,7 +8,7 @@
 // no own bottom nav, no horizontal scroll).
 
 import { useEffect, useMemo, useState } from "react";
-import { getCredits } from "../../lib/identity/client";
+import { getCredits, getIdentity, getGameBalance } from "../../lib/identity/client";
 import { track } from "../../lib/analytics";
 
 const FLIPCASH_GAME = "https://app.flipcash.com/token/7TTBUfDomCKBMemv7FF37Tg3y52cRkAxn8vJnvKD4rsE";
@@ -47,7 +47,7 @@ type Filter = "all" | "power" | "cosmetic" | "owned";
 
 export default function ShopView() {
   const [credits, setCredits] = useState<number | null>(null);
-  const [game] = useState<number>(0); // $GAME balance — wired to wallet later
+  const [game, setGame] = useState<number>(0); // $GAME balance of the linked wallet
   const [owned, setOwned] = useState<Set<string>>(new Set(["pixel"]));
   const [filter, setFilter] = useState<Filter>("all");
   const [sheet, setSheet] = useState<{ item: Item; cur: "cr" | "gm" } | null>(null);
@@ -55,6 +55,7 @@ export default function ShopView() {
   const [buyError, setBuyError] = useState<string | null>(null);
 
   useEffect(() => {
+    void getIdentity().then((id) => getGameBalance(id?.walletAddress).then(setGame));
     void getCredits().then((c) => setCredits(c?.perApp.find((a) => a.app === "gamerplex")?.balance ?? c?.total ?? 0));
     track("shop_view", {});
   }, []);

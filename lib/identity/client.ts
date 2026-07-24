@@ -400,3 +400,16 @@ export async function getIdentity(): Promise<IdentityUser | null> {
     return null;
   }
 }
+
+// $GAME balance of a wallet (same-origin API; 0 when no ATA / no wallet).
+export async function getGameBalance(wallet: string | null | undefined): Promise<number> {
+  if (!wallet) return 0;
+  try {
+    const r = await fetch(`/api/wallet/game-balance?wallet=${wallet}`);
+    if (!r.ok) return 0;
+    const { balance } = await r.json();
+    return typeof balance === 'number' ? balance : 0;
+  } catch {
+    return 0;
+  }
+}
