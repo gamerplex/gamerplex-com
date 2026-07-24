@@ -69,6 +69,7 @@ const PLACEHOLDER: Cat[] = [
   { category: "Games & Gameplay", status: "operational" },
   { category: "Accounts & Sign-in", status: "operational" },
   { category: "Credits & Leaderboards", status: "operational" },
+  { category: "Payments & $GAME", status: "operational" },
   { category: "Analytics", status: "operational" },
 ];
 

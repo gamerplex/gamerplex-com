@@ -4,21 +4,38 @@
 // treats any HTTP response (incl. 401/403) as "up" — only a 5xx, network error, or
 // timeout is "down". Cached briefly so the page can't be used to hammer upstreams.
 
+import net from 'node:net';
+
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
 type Light = 'operational' | 'degraded' | 'down';
 
-// Generic, user-facing categories → the (hidden) endpoint that proves each works.
-const CHECKS: { category: string; url: string; method?: 'GET' | 'POST' }[] = [
-  { category: 'Games & Gameplay', url: 'https://auth.gamerplex.com/api/v1/league/standings' },
-  { category: 'Accounts & Sign-in', url: 'https://auth.gamerplex.com/api/auth/me' },
-  { category: 'Credits & Leaderboards', url: 'https://auth.gamerplex.com/api/v1/daily' },
-  { category: 'Analytics', url: 'https://ph001.gamerplex.com/capture/', method: 'POST' },
+// Generic, user-facing categories → a (hidden) probe that proves each works. Some are
+// HTTP endpoints; "Payments & $GAME" is a TCP reachability check of the token infra.
+const CHECKS: { category: string; run: () => Promise<Light> }[] = [
+  { category: 'Games & Gameplay', run: () => httpProbe('https://auth.gamerplex.com/api/v1/league/standings') },
+  { category: 'Accounts & Sign-in', run: () => httpProbe('https://auth.gamerplex.com/api/auth/me') },
+  { category: 'Credits & Leaderboards', run: () => httpProbe('https://auth.gamerplex.com/api/v1/daily') },
+  { category: 'Payments & $GAME', run: () => tcpProbe('ocp-v2.api.flipcash-infra.net', 443) },
+  { category: 'Analytics', run: () => httpProbe('https://ph001.gamerplex.com/capture/', 'POST') },
 ];
 
-async function probe(url: string, method: 'GET' | 'POST' = 'GET'): Promise<Light> {
+// TCP reachability (for gRPC / non-HTTP hosts): a completed connection = up.
+function tcpProbe(host: string, port: number, timeoutMs = 4000): Promise<Light> {
+  return new Promise((resolve) => {
+    const sock = new net.Socket();
+    const done = (r: Light) => { sock.destroy(); resolve(r); };
+    sock.setTimeout(timeoutMs);
+    sock.once('connect', () => done('operational'));
+    sock.once('timeout', () => done('down'));
+    sock.once('error', () => done('down'));
+    sock.connect(port, host);
+  });
+}
+
+async function httpProbe(url: string, method: 'GET' | 'POST' = 'GET'): Promise<Light> {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), 4000);
   const started = Date.now();
@@ -43,7 +60,7 @@ async function probe(url: string, method: 'GET' | 'POST' = 'GET'): Promise<Light
 
 export async function GET() {
   const results = await Promise.all(
-    CHECKS.map(async (c) => ({ category: c.category, status: await probe(c.url, c.method) })),
+    CHECKS.map(async (c) => ({ category: c.category, status: await c.run() })),
   );
   const overall: Light = results.some((r) => r.status === 'down')
     ? 'down'
