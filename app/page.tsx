@@ -109,7 +109,10 @@ export default function Home() {
             <div className="gl-game-t">Pay with $GAME and save 20%</div>
             <div className="gl-game-s">$GAME is a community utility token on Solana, issued by Flipcash. Gamerplex simply accepts it as one optional way to pay for on-chain saves — Credits and gameplay are always free.</div>
           </div>
-          <a href="https://app.flipcash.com/token/7TTBUfDomCKBMemv7FF37Tg3y52cRkAxn8vJnvKD4rsE" target="_blank" rel="noopener noreferrer" className="gl-game-btn">View on Flipcash ↗</a>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <a href="https://app.flipcash.com/token/7TTBUfDomCKBMemv7FF37Tg3y52cRkAxn8vJnvKD4rsE" target="_blank" rel="noopener noreferrer" className="gl-game-btn">View on Flipcash ↗</a>
+            <a href="https://tideline.fun/c/GAME" target="_blank" rel="noopener noreferrer" className="gl-game-btn">Buy on Tideline ↗</a>
+          </div>
         </section>
 
         <div style={{ marginTop: 30 }}><CommunityLinks tone="light" /></div>
