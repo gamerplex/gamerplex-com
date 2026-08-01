@@ -44,11 +44,11 @@ export function CommunityView() {
     return () => { off = true; };
   }, []);
 
-  if (loading) return <Wrap><div style={{ textAlign: "center", color: "#8a8aa0", padding: 40 }}>Loading…</div></Wrap>;
+  if (loading) return <Center><div style={{ textAlign: "center", color: "#8a8aa0" }}>Loading…</div></Center>;
 
   if (!identity) {
     return (
-      <Wrap>
+      <Center>
         <div style={{ ...glassPanel, borderRadius: 18, padding: 24, textAlign: "center" }}>
           <div style={{ fontSize: 34, marginBottom: 10 }}>🎉</div>
           <h1 style={{ fontSize: 20, margin: "0 0 8px", color: "#e8e8f0" }}>Invite friends, earn Credits</h1>
@@ -57,7 +57,7 @@ export function CommunityView() {
           </p>
           <a href="/app/profile" style={{ display: "inline-block", padding: "11px 20px", borderRadius: 10, background: "linear-gradient(90deg,#9945FF,#14F195)", color: "#00110a", fontWeight: 800, fontSize: 14, textDecoration: "none" }}>Sign in</a>
         </div>
-      </Wrap>
+      </Center>
     );
   }
 
@@ -122,6 +122,10 @@ export function CommunityView() {
 
 function Wrap({ children }: { children: React.ReactNode }) {
   return <div style={{ maxWidth: 640, margin: "0 auto", padding: "8px 14px 44px", color: "#cfcfe0" }}>{children}</div>;
+}
+// Sparse / signed-out states: fill the fold + center so mobile doesn't show a void.
+function Center({ children }: { children: React.ReactNode }) {
+  return <div style={{ maxWidth: 640, margin: "0 auto", padding: "0 14px", minHeight: "72dvh", display: "flex", flexDirection: "column", justifyContent: "center", color: "#cfcfe0" }}>{children}</div>;
 }
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
