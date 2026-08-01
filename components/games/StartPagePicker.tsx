@@ -42,7 +42,7 @@ export function StartPagePicker({
   return (
     <div
       data-testid="start-page-picker"
-      style={{ display: "flex", flexDirection: "column", gap: 8, maxWidth: 420, margin: "0 auto" }}
+      style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 8, maxWidth: 420, margin: "0 auto", minHeight: "68dvh" }}
     >
       <p style={{ color: "#888", fontSize: 12, marginBottom: 4 }}>How do you want to play?</p>
       {getGameModes(manifest).map((mode) => {
