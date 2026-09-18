@@ -70,10 +70,11 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
       </head>
       <body style={{ backgroundColor: '#0d001a', margin: 0, padding: 0 }}>
+        <a href="#content" className="skip-link">Skip to content</a>
         <PostHogProvider>
         <WalletBoot>
         <ReferralCapture />
-        {children}
+        <main id="content" tabIndex={-1}>{children}</main>
         <AppBanner />
         <script
           dangerouslySetInnerHTML={{

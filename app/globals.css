@@ -57,6 +57,29 @@ body {
 ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--purple); }
 
+/* Skip link — first focusable element, off-screen until focused (WCAG 2.4.1).
+   position:fixed so it never contributes to layout or document scroll size. */
+.skip-link {
+  position: fixed;
+  top: -120px;
+  left: 12px;
+  z-index: 10000;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 10px 18px;
+  border: 1px solid var(--border2);
+  border-radius: 0 0 10px 10px;
+  background: #0d001a;
+  color: #f7f6ff;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.skip-link:focus { top: 0; box-shadow: 0 0 0 3px var(--green); }
+/* focus is moved here programmatically by the skip link — no ring needed */
+#content:focus { outline: none; }
+
 /* ---- HERO SECTION ---- */
 /* 2026: 78vh — games peek above the fold so users see what's playable without scroll */
 .hero {

@@ -9,8 +9,8 @@ import { useEffect, useState } from "react";
 
 const APK_URL =
   "https://github.com/gamerplex/gamerplex-downloads/releases/latest/download/Gamerplex.apk";
-const VERSION = "1.0.12";
-const FILE_SHA = "dfe858461374cbce43d53b4cf7314ef89dc95069d6a75869607ca2543d571e36";
+const VERSION = "1.0.16";
+const FILE_SHA = "c4abce23c6e34c6606436ea5c14e1ba4ff98b078151c0baf7a6c4a31c5634c3a";
 const CERT_SHA =
   "58:0F:82:51:11:E7:A5:62:A2:A7:C9:93:4D:EF:4C:ED:6D:F7:9D:A1:04:27:4D:98:00:C4:BD:54:F7:08:79:01";
 
@@ -27,7 +27,7 @@ export default function DownloadView() {
   }, []);
 
   return (
-    <main className="dl">
+    <div className="dl">
       <style>{CSS}</style>
       <a className="dl-brand" href="/">GAMERPLEX</a>
 
@@ -84,7 +84,7 @@ export default function DownloadView() {
         </div>
         <p className="dl-note">Verify a downloaded APK: <code>shasum -a 256 Gamerplex.apk</code> and <code>apksigner verify --print-certs Gamerplex.apk</code> — both must match the values above.</p>
       </section>
-    </main>
+    </div>
   );
 }
 

@@ -79,7 +79,7 @@ export default function DocsPage() {
         </aside>
 
         {/* Content */}
-        <main className="docs-main" style={{ flex: 1, padding: "4px 8px 64px 28px", maxWidth: 820, minWidth: 0 }}>
+        <div className="docs-main" style={{ flex: 1, padding: "4px 8px 64px 28px", maxWidth: 820, minWidth: 0 }}>
           <h1 style={{
             fontSize: 40, fontWeight: 700, marginBottom: 12, lineHeight: 1.1,
             background: "linear-gradient(135deg, #9945FF, #14F195)",
@@ -582,7 +582,7 @@ SF3000  — Superhuman (Stockfish skill 20)`}
               }}>Leaderboard</Link>
             </div>
           </div>
-        </main>
+        </div>
       </div>
     </GlassShell>
   );

@@ -7,5 +7,10 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <TcgQuizMode />;
+  return (
+    <>
+      <h1 className="sr-only">TCG Quiz</h1>
+      <TcgQuizMode />
+    </>
+  );
 }

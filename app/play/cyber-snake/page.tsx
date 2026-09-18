@@ -78,5 +78,10 @@ export async function generateMetadata({
 }
 
 export default function CyberSnakePage() {
-  return <CyberSnakeRouter />;
+  return (
+    <>
+      <h1 className="sr-only">Cyber Snake</h1>
+      <CyberSnakeRouter />
+    </>
+  );
 }

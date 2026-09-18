@@ -120,7 +120,7 @@ export default function ShopView() {
       <style>{CSS}</style>
 
       <header className="sh-head">
-        <span className="sh-title">Shop</span>
+        <h1 className="sh-title">Shop</h1>
         <div className="sh-bal">
           <span className="pill cr">⬡ {credits == null ? "—" : credits.toLocaleString()}</span>
           <a className="pill gm gx-transfer" href={FLIPCASH_GAME} target="_blank" rel="noopener noreferrer">◆ {game}</a>

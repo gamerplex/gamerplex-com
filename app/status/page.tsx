@@ -37,7 +37,7 @@ export default function StatusPage() {
   const overall: Light = err ? "down" : s?.overall ?? "operational";
 
   return (
-    <main style={wrap}>
+    <div style={wrap}>
       <a href="/" style={brand}>GAMERPLEX</a>
       <h1 style={h1}>System Status</h1>
 
@@ -61,7 +61,7 @@ export default function StatusPage() {
       <p style={foot}>
         {s?.checkedAt ? `Last checked ${new Date(s.checkedAt).toLocaleTimeString()}` : "Checking…"} · refreshes automatically
       </p>
-    </main>
+    </div>
   );
 }
 

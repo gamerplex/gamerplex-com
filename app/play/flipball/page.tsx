@@ -21,5 +21,10 @@ export const metadata: Metadata = {
 };
 
 export default function FlipballPage() {
-  return <FlipballShell />;
+  return (
+    <>
+      <h1 className="sr-only">Flipball</h1>
+      <FlipballShell />
+    </>
+  );
 }

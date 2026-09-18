@@ -98,7 +98,7 @@ export default async function ChallengePage({
 
   if (!score) {
     return (
-      <main style={{ maxWidth: 560, margin: "0 auto", padding: "60px 24px", color: "#e8e8f0", fontFamily: "system-ui" }}>
+      <div style={{ maxWidth: 560, margin: "0 auto", padding: "60px 24px", color: "#e8e8f0", fontFamily: "system-ui" }}>
         <div style={{
           textAlign: "center",
           padding: "32px 28px",
@@ -122,7 +122,7 @@ export default async function ChallengePage({
             textDecoration: "none",
           }}>Browse the arcade →</Link>
         </div>
-      </main>
+      </div>
     );
   }
 
@@ -135,7 +135,7 @@ export default async function ChallengePage({
   const ageDays = score.blockTime ? Math.floor((Date.now() / 1000 - score.blockTime) / 86400) : null;
 
   return (
-    <main style={{ maxWidth: 560, margin: "0 auto", padding: "60px 24px", color: "#e8e8f0", fontFamily: "system-ui" }}>
+    <div style={{ maxWidth: 560, margin: "0 auto", padding: "60px 24px", color: "#e8e8f0", fontFamily: "system-ui" }}>
       <div style={{ textAlign: "center", marginBottom: 28 }}>
         <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: 2, color: "#9090a8", textTransform: "uppercase" }}>
           On-chain challenge
@@ -220,6 +220,6 @@ export default async function ChallengePage({
           ← browse the rest of the arcade
         </Link>
       </div>
-    </main>
+    </div>
   );
 }
