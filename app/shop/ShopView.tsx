@@ -71,7 +71,10 @@ export default function ShopView() {
 
   function openSheet(item: Item, cur?: "cr" | "gm") {
     if (owned.has(item.id)) return;
-    const def = cur ?? (item.gm != null ? "gm" : "cr");
+    // Default to the currency that can actually complete a purchase. This used to
+    // prefer $GAME whenever an item had a $GAME price — which is all 11 of them — so
+    // every shopper landed on the one path that cannot check out on web.
+    const def = cur ?? (item.cr != null ? "cr" : "gm");
     setSheet({ item, cur: def });
     setStatus("idle");
     setBuyError(null);
@@ -82,9 +85,16 @@ export default function ShopView() {
     if (!sheet) return;
     const { item, cur } = sheet;
     track("purchase_confirmed", { item: item.id, currency: cur });
-    // $GAME spend isn't wired on web yet (needs an on-chain transfer via the wallet);
-    // the sheet routes $GAME to Flipcash top-up, so never fake-complete a $GAME buy.
-    if (cur === "gm") return;
+    // $GAME spend isn't wired on web yet (needs an on-chain transfer via the wallet).
+    // This used to `return` silently, so a player holding enough $GAME tapped
+    // "Confirm — N $GAME" and NOTHING happened: no error, no state change, button
+    // still live. The sheet no longer offers Confirm for $GAME (see render), so this
+    // is now only a guard — and it says something if it is ever reached.
+    if (cur === "gm") {
+      setBuyError("$GAME checkout isn't available on the web yet.");
+      track("purchase_failed", { item: item.id, reason: "gm_not_wired" });
+      return;
+    }
     setBuyError(null);
     setStatus("confirming");
     // Real server-side spend: deduct Credits + record ownership, atomically. Only
@@ -200,10 +210,31 @@ export default function ShopView() {
                     <div className="warn">Not enough Credits yet.</div>
                     <a className="cta" href="/#featured">Earn Credits — play a run</a>
                   </>
+                ) : sheet.cur === "gm" ? (
+                  /* Every catalog item carries a $GAME price and the sheet defaults to it,
+                     so this was the DEFAULT path for the whole shop — and it rendered a
+                     "Confirm" button that did nothing for anyone holding enough $GAME.
+                     Say so, and offer what actually works. */
+                  <>
+                    <div className="warn">$GAME checkout is coming to the web.</div>
+                    {sheet.item.cr != null ? (
+                      <>
+                        <button className="cta" onClick={() => setSheet({ ...sheet, cur: "cr" })}>
+                          Pay {sheet.item.cr.toLocaleString()} Credits instead
+                        </button>
+                        <div className="hint">Credits are earned free by playing.</div>
+                      </>
+                    ) : (
+                      <div className="hint">
+                        This one is $GAME-exclusive, so it isn&apos;t purchasable on the web yet.
+                        You can still <a className="lnk" href={FLIPCASH_GAME} target="_blank" rel="noopener noreferrer">hold $GAME on Flipcash</a>.
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <>
                     <button className="cta" onClick={confirm} disabled={status === "confirming"}>
-                      {status === "confirming" ? "Confirming…" : sheet.cur === "gm" ? `Confirm — ${sheet.item.gm} $GAME` : `Confirm — ${sheet.item.cr?.toLocaleString()} Credits`}
+                      {status === "confirming" ? "Confirming…" : `Confirm — ${sheet.item.cr?.toLocaleString()} Credits`}
                     </button>
                     {buyError && <div className="warn" style={{ marginTop: 10 }}>{buyError}</div>}
                   </>
