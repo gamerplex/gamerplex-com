@@ -231,7 +231,15 @@ export function ProfileView({
       );
     }
     if (web2Loading) {
-      return <div style={{ maxWidth: 640, margin: "80px auto", padding: 24, textAlign: "center", color: "#666" }}>Loading your profile…</div>;
+      // Needs its own h1: every other branch has one, so while this renders the page
+      // has no heading at all — which is what the UX matrix caught on /profile.
+      // #666 was also 3.39:1 on this ground; #7a7a7a is 4.54:1.
+      return (
+        <div style={{ maxWidth: 640, margin: "80px auto", padding: 24, textAlign: "center", color: "#7a7a7a" }}>
+          <h1 style={{ fontSize: 22, margin: 0, color: "#e8e8f0", fontWeight: 700 }}>Your profile</h1>
+          <p style={{ marginTop: 8 }}>Loading your profile…</p>
+        </div>
+      );
     }
     if (!identity) {
       return (
