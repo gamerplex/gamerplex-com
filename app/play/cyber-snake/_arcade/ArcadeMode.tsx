@@ -9,12 +9,8 @@ import bs58 from "bs58";
 import { getSfx } from "../../../../lib/arcade/sfx";
 import { fetchArcadeScore, shortAddr, type ArcadeScoreDetail } from "../../../../lib/arcade/leaderboard";
 import { PublicKey, Transaction } from "@solana/web3.js";
-import {
-  useAnchorWallet,
-  useConnection,
-  useWallet,
-} from "@solana/wallet-adapter-react";
-import { useWalletModal } from "@solana/wallet-adapter-react-ui";
+import { useConnection } from "@solana/wallet-adapter-react";
+import { useArcadeSave } from "../../../../lib/arcade/use-arcade-save";
 import {
   makeProgram,
   buildOpenProfileIx,
@@ -387,9 +383,7 @@ export default function CyberSnakeSolo() {
   }, [searchParams]);
 
   const { connection } = useConnection();
-  const anchorWallet = useAnchorWallet();
-  const { publicKey, connected } = useWallet();
-  const { setVisible: setWalletModalVisible } = useWalletModal();
+  const { publicKey, connected, anchorWallet, connectForSave, sendTx, connectError } = useArcadeSave();
   const [profileExists, setProfileExists] = useState<boolean | null>(null);
   const [busy, setBusy] = useState<null | "save" | "verify" | "receipt">(null);
   const [lastSaveSig, setLastSaveSig] = useState<string | null>(null);
@@ -397,6 +391,7 @@ export default function CyberSnakeSolo() {
   const [lastReceiptSig, setLastReceiptSig] = useState<string | null>(null);
   const [receiptNonce, setReceiptNonce] = useState<BN | null>(null);
   const [onchainError, setOnchainError] = useState<string | null>(null);
+  useEffect(() => { if (connectError) setOnchainError(connectError); }, [connectError]);
   const [savedThisRun, setSavedThisRun] = useState(false);
   const [verifiedThisRun, setVerifiedThisRun] = useState(false);
   const [ownedThisRun, setOwnedThisRun] = useState(false);
@@ -581,9 +576,7 @@ export default function CyberSnakeSolo() {
         })
       );
 
-      const sig = await program.provider.sendAndConfirm!(tx, [], {
-        skipPreflight: false,
-      });
+      const sig = await sendTx(program, tx);
       setLastSaveSig(sig);
       setSavedThisRun(true);
       setProfileExists(true);
@@ -652,9 +645,7 @@ export default function CyberSnakeSolo() {
         })
       );
 
-      const sig = await program.provider.sendAndConfirm!(tx, [], {
-        skipPreflight: false,
-      });
+      const sig = await sendTx(program, tx);
       setLastVerifySig(sig);
       setVerifiedThisRun(true);
     } catch (e: any) {
@@ -716,7 +707,7 @@ export default function CyberSnakeSolo() {
         })
       );
 
-      const sig = await program.provider.sendAndConfirm!(tx, [], { skipPreflight: false });
+      const sig = await sendTx(program, tx);
       setLastReceiptSig(sig);
       setReceiptNonce(nonce);
       setOwnedThisRun(true);
@@ -1098,14 +1089,14 @@ export default function CyberSnakeSolo() {
                     <KeyChip>↓</KeyChip>
                     <KeyChip>→</KeyChip>
                   </div>
-                  <span style={{ color: "#5a5a70", fontSize: 12 }}>or</span>
+                  <span style={{ color: "#79798b", fontSize: 12 }}>or</span>
                   <div style={{ display: "flex", gap: 6 }}>
                     <KeyChip>W</KeyChip>
                     <KeyChip>A</KeyChip>
                     <KeyChip>S</KeyChip>
                     <KeyChip>D</KeyChip>
                   </div>
-                  <span style={{ color: "#5a5a70", fontSize: 12 }}>·</span>
+                  <span style={{ color: "#79798b", fontSize: 12 }}>·</span>
                   <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                     <KeyChip>V</KeyChip>
                     <span style={{ color: "#8a8aa0", fontSize: 12 }}>toggle view</span>
@@ -1165,7 +1156,7 @@ export default function CyberSnakeSolo() {
                   {challenger ? "▶ Accept Challenge" : "▶ Start Game"}
                 </button>
 
-                <div style={{ fontSize: 11, color: "#5a5a70", zIndex: 1, textAlign: "center", maxWidth: 320 }}>
+                <div style={{ fontSize: 11, color: "#79798b", zIndex: 1, textAlign: "center", maxWidth: 320 }}>
                   Free to play — on-chain scoring optional at game over.
                 </div>
 
@@ -1291,7 +1282,7 @@ export default function CyberSnakeSolo() {
                       </>
                     ) : (
                       <button
-                        onClick={() => setWalletModalVisible(true)}
+                        onClick={connectForSave}
                         style={{ width: "100%", height: 48, border: "1px solid rgba(153,69,255,0.5)", borderRadius: 12, background: "rgba(153,69,255,0.12)", color: "#e8e8f0", fontSize: 14, fontWeight: 800, cursor: "pointer" }}
                       >
                         Connect wallet to save on-chain
@@ -1492,7 +1483,7 @@ export default function CyberSnakeSolo() {
             <summary style={{ cursor: "pointer", listStyle: "none", display: "flex", alignItems: "center", gap: 6, userSelect: "none" }}>
               <span style={{ color: "#4fc3f7", fontWeight: 700 }}>Controls</span>
               <span>arrow keys / WASD · swipe on mobile · <kbd style={{ padding: "1px 5px", background: "#14141f", border: "1px solid #2a3f55", borderRadius: 3, fontSize: 9 }}>M</kbd> mute</span>
-              <span style={{ marginLeft: "auto", fontSize: 10, color: "#5a5a70" }}>more</span>
+              <span style={{ marginLeft: "auto", fontSize: 10, color: "#79798b" }}>more</span>
             </summary>
             <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid #1a1a28", lineHeight: 1.6 }}>
               <strong style={{ color: "#ff9a40" }}>Hunger:</strong> eat within 30s or snake starves · <strong style={{ color: "#ff9a40" }}>Moves:</strong> max 130 direction changes per session
@@ -1561,8 +1552,8 @@ export default function CyberSnakeSolo() {
             <div style={{ marginTop: 10, fontSize: 12, color: "#a8a8c0", lineHeight: 1.7 }}>
               <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}><span style={{ color: "#4fc3f7" }}>💾 Save score</span><b>$0.05</b></div>
               <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}><span style={{ color: "#ffd740" }}>🏆 Save replay (verified)</span><b>$0.15</b></div>
-              <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}><span style={{ color: "#9945FF" }}>🎴 Mint cNFT receipt</span><b>$0.25</b></div>
-              <div style={{ fontSize: 10, color: "#666", marginTop: 8, lineHeight: 1.5 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}><span style={{ color: "#9C4BFF" }}>🎴 Mint cNFT receipt</span><b>$0.25</b></div>
+              <div style={{ fontSize: 10, color: "#7a7a7a", marginTop: 8, lineHeight: 1.5 }}>
                 Paid in USDC. ~$0.001/tx Solana gas. PlayerProfile setup ~$0.41 refundable rent (one-time per wallet).
               </div>
             </div>
@@ -1646,7 +1637,7 @@ function ProgressiveUpgradeStack(p: StackProps) {
       action: p.onWrapCnft,
       disabled: true,
       busy: false,
-      accent: "#9945FF",
+      accent: "#9C4BFF",
       valueLine: "Coming in v1.3",
     },
   }[nextTier ?? 1];

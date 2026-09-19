@@ -3,12 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BN } from "@coral-xyz/anchor";
 import { PublicKey, Transaction } from "@solana/web3.js";
-import {
-  useAnchorWallet,
-  useConnection,
-  useWallet,
-} from "@solana/wallet-adapter-react";
-import { useWalletModal } from "@solana/wallet-adapter-react-ui";
+import { useConnection } from "@solana/wallet-adapter-react";
+import { useArcadeSave } from "../../../../lib/arcade/use-arcade-save";
 import ModeToggle from "../../../../components/games/ModeToggle";
 import ShellLeaderboard from "../../../../components/arcade/ShellLeaderboard";
 import BackToGames from "../../../../components/arcade/BackToGames";
@@ -74,7 +70,7 @@ const SHAKE_DURATION_MS = 500;
 // Gamerplex-branded visual language (carried over from the reskin): purple =
 // the live rung / accent, cyan = the letter you changed, slate = board chrome.
 // Colors are frontend-only and never touch resolver verification.
-const ACCENT = "#9945FF"; // Gamerplex purple
+const ACCENT = "#9C4BFF"; // Gamerplex purple, +3% for AA on #0C0C14 (was #9945FF = 4.31:1 at 11-12px)
 const ACCENT_2 = "#7a2fe0";
 const CHANGED = "#22d3ee"; // brand cyan — highlights the one changed letter
 const TILE_DEFAULT = "#1a1a28";
@@ -215,15 +211,14 @@ export default function ArcadeMode() {
   const loopRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const { connection } = useConnection();
-  const anchorWallet = useAnchorWallet();
-  const { publicKey, connected } = useWallet();
-  const { setVisible: setWalletModalVisible } = useWalletModal();
+  const { publicKey, connected, anchorWallet, connectForSave, sendTx, connectError } = useArcadeSave();
   const [profileExists, setProfileExists] = useState<boolean | null>(null);
   const [busy, setBusy] = useState<null | "save" | "verify" | "receipt">(null);
   const [lastSaveSig, setLastSaveSig] = useState<string | null>(null);
   const [lastVerifySig, setLastVerifySig] = useState<string | null>(null);
   const [lastReceiptSig, setLastReceiptSig] = useState<string | null>(null);
   const [onchainError, setOnchainError] = useState<string | null>(null);
+  useEffect(() => { if (connectError) setOnchainError(connectError); }, [connectError]);
   const [savedThisRun, setSavedThisRun] = useState(false);
   const [verifiedThisRun, setVerifiedThisRun] = useState(false);
   const [ownedThisRun, setOwnedThisRun] = useState(false);
@@ -502,7 +497,12 @@ export default function ArcadeMode() {
 
   const onSaveOnChain = useCallback(async () => {
     const r = runRef.current;
-    if (!r || !anchorWallet || !publicKey) return;
+    if (!r) return;
+    // Never fail silently — a tap that does nothing is indistinguishable from a bug.
+    if (!publicKey || !anchorWallet) {
+      setOnchainError("Wallet not connected yet — tap “Connect wallet” above, then try again.");
+      return;
+    }
     if (paymentToken.kind === "game" && !hasEconomyConsent()) {
       setShowEconomyGate(true);
       return;
@@ -564,9 +564,7 @@ export default function ArcadeMode() {
         }),
       );
 
-      const sig = await program.provider.sendAndConfirm!(tx, [], {
-        skipPreflight: false,
-      });
+      const sig = await sendTx(program, tx);
       setLastSaveSig(sig);
       setSavedThisRun(true);
       setProfileExists(true);
@@ -641,9 +639,7 @@ export default function ArcadeMode() {
         }),
       );
 
-      const sig = await program.provider.sendAndConfirm!(tx, [], {
-        skipPreflight: false,
-      });
+      const sig = await sendTx(program, tx);
       setLastVerifySig(sig);
       setVerifiedThisRun(true);
     } catch (e: any) {
@@ -709,9 +705,7 @@ export default function ArcadeMode() {
         }),
       );
 
-      const sig = await program.provider.sendAndConfirm!(tx, [], {
-        skipPreflight: false,
-      });
+      const sig = await sendTx(program, tx);
       setLastReceiptSig(sig);
       setOwnedThisRun(true);
     } catch (e: any) {
@@ -870,6 +864,13 @@ export default function ArcadeMode() {
                   onChainSlot={
                     connected ? (
                       <>
+                        {/* Errors belong ABOVE the payment UI — at the bottom they sat
+                            below the fold, so a failed save looked like nothing happened. */}
+                        {onchainError && (
+                          <div style={{ width: "100%", marginBottom: 8, padding: "10px 12px", borderRadius: 10, background: "rgba(255,107,107,0.12)", border: "1px solid rgba(255,107,107,0.45)", color: "#ffb3b3", fontSize: 12.5, fontWeight: 700, lineHeight: 1.45, whiteSpace: "pre-line", wordBreak: "break-word" }}>
+                            ⚠ {onchainError}
+                          </div>
+                        )}
                         {!savedThisRun && (
                           <div style={{ width: "100%", marginBottom: 8 }}>
                             <PaymentMethodPicker
@@ -896,7 +897,7 @@ export default function ArcadeMode() {
                       </>
                     ) : (
                       <button
-                        onClick={() => setWalletModalVisible(true)}
+                        onClick={connectForSave}
                         style={{ width: "100%", height: 48, border: "1px solid rgba(153,69,255,0.5)", borderRadius: 12, background: "rgba(153,69,255,0.12)", color: "#e8e8f0", fontSize: 14, fontWeight: 800, cursor: "pointer" }}
                       >
                         Connect wallet to save on-chain
@@ -962,7 +963,7 @@ export default function ArcadeMode() {
             <summary style={{ cursor: "pointer", listStyle: "none", display: "flex", alignItems: "center", gap: 6, userSelect: "none", flexWrap: "wrap" }}>
               <span style={{ color: ACCENT, fontWeight: 700 }}>How to play</span>
               <span>change ONE letter to make a new word · chain the longest ladder before the timer · <kbd style={kbdStyle}>A–Z</kbd> letter · <kbd style={kbdStyle}>↵</kbd> submit · <kbd style={kbdStyle}>⌫</kbd> erase</span>
-              <span style={{ marginLeft: "auto", fontSize: 10, color: "#5a5a70" }}>more</span>
+              <span style={{ marginLeft: "auto", fontSize: 10, color: "#79798b" }}>more</span>
             </summary>
             <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid #1a1a28", lineHeight: 1.6 }}>
               You start on a random {WORD_LENGTH}-letter word. Each rung must be a real word that differs from the one above it in
@@ -988,10 +989,10 @@ export default function ArcadeMode() {
               <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}><span style={{ color: "#ffd740" }}>🏆 Save replay (verified)</span><b>$0.15</b></div>
               <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}><span style={{ color: "#c99aff" }}>🎴 Claim ownership</span><b>$0.25</b></div>
               <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}><span style={{ color: ACCENT }}>✨ Wrap as cNFT (v1.3)</span><b>$0.50</b></div>
-              <div style={{ fontSize: 10, color: "#666", marginTop: 8, lineHeight: 1.5 }}>
+              <div style={{ fontSize: 10, color: "#7a7a7a", marginTop: 8, lineHeight: 1.5 }}>
                 Paid in USDC. ~$0.001/tx Solana gas. PlayerProfile setup ~$0.41 refundable rent (one-time per wallet).
               </div>
-              <div style={{ fontSize: 10, color: "#555", marginTop: 6, lineHeight: 1.5 }}>
+              <div style={{ fontSize: 10, color: "#7a7a7a", marginTop: 6, lineHeight: 1.5 }}>
                 Start word deterministic from session seed · every ladder step re-validated on-chain · score = 20/rung + rare-letter bonus + speed bonus.
               </div>
             </div>
@@ -1498,9 +1499,9 @@ function ProgressiveUpgradeStack(p: StackProps) {
     ? 3
     : 4;
 
-  const tier1Text = !p.profileExists
-    ? "Save to the global leaderboard · $0.05 + ~$0.41 rent (refundable)"
-    : "Save to the global leaderboard · $0.05";
+  // Action-first label: this is the checkout button, so it must read as "pay now",
+  // not as a description of the offer (players tapped the currency tiles instead).
+  const tier1Text = "💾 Pay & save on-chain →";
   const tier1Why = !p.profileExists
     ? "Your score lives forever on Solana. One-time wallet onboarding ($0.41 refundable) on first save; $0.05 each run after."
     : "Your score lives forever on Solana — anyone can verify it. GPX5 memo permanent in tx history.";
@@ -1568,8 +1569,11 @@ function ProgressiveUpgradeStack(p: StackProps) {
             cursor: primaryConfig.disabled ? "not-allowed" : "pointer",
             fontFamily: "'Space Grotesk', sans-serif",
             letterSpacing: 0.3,
-            minWidth: 380,
+            width: "100%",
+            maxWidth: 420,
+            boxSizing: "border-box",
             opacity: primaryConfig.busy ? 0.7 : 1,
+            boxShadow: primaryConfig.disabled ? "none" : `0 6px 20px ${primaryConfig.accent}55`,
           }}
         >
           {primaryConfig.label}
