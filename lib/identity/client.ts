@@ -225,17 +225,44 @@ export type DailyStreak =
 // Claim today's daily-streak Credits reward. Idempotent per UTC day (server-side),
 // so it's safe to call on every load. Returns null when anonymous / failed.
 export async function claimDailyStreak(): Promise<DailyStreak | null> {
+  // 2026-09-20: this used to POST /api/auth/claim-daily, which returns 404 in
+  // production. That route lives on the unmerged `otp-login-only` branch and the
+  // own1 deploy rsyncs the WORKING TREE — so switching branches silently removed it
+  // from production while this caller kept pointing at it. The daily streak has been
+  // dead ever since: 27 users, 0 streaks on the current columns.
+  //
+  // Rebuilt on the two routes that ARE deployed:
+  //   POST /api/streak/ping   -> server-authoritative streak (idempotent per UTC day,
+  //                              freezes, milestones)
+  //   POST /api/credits/earn  -> the 5-Credit reward, server-fixed and deduped by
+  //                              refId, so calling this on every load is safe.
   try {
-    const r = await fetch(`${IDENTITY_URL}/api/auth/claim-daily`, {
+    const ping = await pingStreak();
+    if (!ping) return null;
+
+    const today = new Date().toISOString().slice(0, 10);
+    const r = await fetch('/api/credits/earn', {
       method: 'POST',
       credentials: 'include',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ action: 'daily_streak', refId: today }),
     });
-    if (!r.ok) return null;
-    return (await r.json()) as DailyStreak;
+    if (!r.ok) {
+      // The streak still advanced — report it without a reward rather than null,
+      // so a credits hiccup does not hide the streak the user just earned.
+      return { claimed: false, reason: 'already_claimed_today', streak: ping.streak };
+    }
+    const j = (await r.json()) as { ok?: boolean; deduped?: boolean };
+    return j.deduped
+      ? { claimed: false, reason: 'already_claimed_today', streak: ping.streak }
+      : { claimed: true, amount: DAILY_STREAK_CREDITS, streak: ping.streak };
   } catch {
     return null;
   }
 }
+
+/** Server-fixed in identity-service's earn catalog; mirrored for the reward toast. */
+export const DAILY_STREAK_CREDITS = 5;
 
 // Call at game START: mint a proof-of-play token bound to this user+game. Hold
 // the returned token until game end and pass it to awardPlay. Returns null if
