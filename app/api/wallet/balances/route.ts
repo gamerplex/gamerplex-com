@@ -14,11 +14,19 @@ import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { PAYMENT_TOKENS } from "../../../../lib/arcade/tokens";
 
 const NETWORK = process.env.NEXT_PUBLIC_SOLANA_NETWORK || "mainnet";
-const RPC =
-  process.env.NEXT_PUBLIC_SOLANA_RPC ||
-  (NETWORK === "mainnet"
+const PUBLIC_RPC =
+  NETWORK === "mainnet"
     ? "https://api.mainnet-beta.solana.com"
-    : "https://api.devnet.solana.com");
+    : "https://api.devnet.solana.com";
+
+// Tried in order. The configured endpoint is preferred, but it is NOT assumed to
+// work: as of 2026-09-20 the production NEXT_PUBLIC_SOLANA_RPC returns 404, which
+// made every balance read fail. One dead provider should degrade the picker, not
+// disable it — and a silent empty balance reads to the player as "you have no
+// $GAME", which is the exact wrong message to show someone we want to convert.
+const RPC_ENDPOINTS = [process.env.NEXT_PUBLIC_SOLANA_RPC, PUBLIC_RPC].filter(
+  (u): u is string => !!u && /^https?:\/\//.test(u),
+);
 
 const CACHE_TTL_MS = 30_000;
 const cache = new Map<string, { data: Record<string, number>; expiresAt: number }>();
@@ -43,10 +51,12 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const conn = new Connection(RPC, "confirmed");
   const balances: Record<string, number> = {};
+  let lastError = "";
 
-  try {
+  for (const endpoint of RPC_ENDPOINTS) {
+    const conn = new Connection(endpoint, "confirmed");
+    try {
     // Native SOL first — it has no token account.
     const sol = PAYMENT_TOKENS.find((t) => t.kind === "sol");
     if (sol) {
@@ -71,18 +81,19 @@ export async function GET(req: NextRequest) {
       const raw = info.data.readBigUInt64LE(64);
       balances[t.symbol] = Number(raw) / 10 ** t.decimals;
     });
-  } catch (e) {
-    // A balance lookup failing must never block a purchase — the picker treats
-    // an absent balance as "unknown" and still allows the attempt.
-    return NextResponse.json(
-      { balances, error: (e as Error).message.slice(0, 120), partial: true },
-      { status: 200 },
-    );
+      // Success on this endpoint — stop trying others.
+      cache.set(wallet, { data: balances, expiresAt: now + CACHE_TTL_MS });
+      return NextResponse.json(
+        { balances },
+        { headers: { "Cache-Control": "public, max-age=30" } },
+      );
+    } catch (e) {
+      lastError = (e as Error).message.slice(0, 120);
+      // Try the next endpoint rather than giving up on the first failure.
+    }
   }
 
-  cache.set(wallet, { data: balances, expiresAt: now + CACHE_TTL_MS });
-  return NextResponse.json(
-    { balances },
-    { headers: { "Cache-Control": "public, max-age=30" } },
-  );
+  // Every endpoint failed. Return 200 with partial:true — a balance lookup must
+  // never block a purchase; the picker treats absent balances as "unknown".
+  return NextResponse.json({ balances: {}, error: lastError, partial: true }, { status: 200 });
 }
