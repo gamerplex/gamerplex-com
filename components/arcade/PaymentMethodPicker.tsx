@@ -10,6 +10,7 @@
 //   <PaymentMethodPicker value={token} onChange={setToken} basePriceMicroUsd={BN(50_000)} />
 
 import type { CSSProperties } from "react";
+import { useEffect, useState } from "react";
 import { BN } from "@coral-xyz/anchor";
 import { PAYMENT_TOKENS, type PaymentTokenDef } from "../../lib/arcade/tokens";
 import { formatPrice } from "../../lib/arcade/save-score-payment";
@@ -23,6 +24,20 @@ interface Props {
   options?: PaymentTokenDef[];
   /** Compact mode — single row, smaller buttons. Default false. */
   compact?: boolean;
+  /** Connected wallet. When given, the picker shows balances and flags shortfalls. */
+  wallet?: string | null;
+}
+
+/** Live $GAME buy page. Same link the shop uses. */
+const FLIPCASH_GAME =
+  "https://app.flipcash.com/token/7TTBUfDomCKBMemv7FF37Tg3y52cRkAxn8vJnvKD4rsE";
+
+/** What the player must hold, in whole tokens, for this purchase. */
+function requiredAmount(token: PaymentTokenDef, basePriceMicroUsd: BN): number {
+  const discounted = basePriceMicroUsd
+    .mul(new BN(10_000 - token.discountBps))
+    .div(new BN(10_000));
+  return discounted.toNumber() / 1_000_000; // USD; converted per-token below
 }
 
 const wrap: CSSProperties = {
@@ -83,7 +98,33 @@ export default function PaymentMethodPicker({
   basePriceMicroUsd,
   options = PAYMENT_TOKENS,
   compact = false,
+  wallet = null,
 }: Props) {
+  // Balances drive the whole point of this component: previously every token was
+  // offered unconditionally, so a player could pick $GAME holding zero $GAME and
+  // only discover it when the payment failed. $GAME is the discounted path we most
+  // want taken, so that silent dead end was costing exactly the conversions we want.
+  const [balances, setBalances] = useState<Record<string, number> | null>(null);
+
+  useEffect(() => {
+    if (!wallet) { setBalances(null); return; }
+    let cancelled = false;
+    fetch(`/api/wallet/balances?wallet=${wallet}`)
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled && d?.balances) setBalances(d.balances); })
+      // A failed balance read must never block a purchase — fall back to
+      // "unknown", which renders exactly as before.
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [wallet]);
+
+  const usdPrice = (t: PaymentTokenDef) => requiredAmount(t, basePriceMicroUsd);
+  const gameToken = options.find((t) => t.kind === "game");
+  const selectedShort =
+    balances && value.kind === "game" && gameToken
+      ? (balances[gameToken.symbol] ?? 0) <= 0
+      : false;
+
   return (
     <div>
       {!compact && <div style={label}>Pay with</div>}
@@ -103,14 +144,26 @@ export default function PaymentMethodPicker({
               {t.discountBps > 0 && <span style={badge}>−20%</span>}
               {!compact && (
                 <div style={{ fontSize: 10, opacity: 0.65, marginTop: 3, fontWeight: 500 }}>
-                  ${(basePriceMicroUsd.toNumber() * (10_000 - t.discountBps) / 10_000 / 1_000_000).toFixed(2)}
+                  ${usdPrice(t).toFixed(2)}
+                </div>
+              )}
+              {!compact && balances && (
+                <div style={{ fontSize: 9, marginTop: 2, color: (balances[t.symbol] ?? 0) > 0 ? "#7bd88f" : "#8a8aa0" }}>
+                  {(balances[t.symbol] ?? 0) > 0
+                    ? `you have ${(balances[t.symbol] ?? 0).toLocaleString(undefined, { maximumFractionDigits: 4 })}`
+                    : "none"}
                 </div>
               )}
             </button>
           );
         })}
       </div>
-      {!compact && <FlipcashCta />}
+      {/* The top-up prompt shows in compact mode too: a player who has selected
+          $GAME with an empty balance is one tap from a failed payment, and that
+          is precisely the moment worth interrupting. The generic Flipcash CTA
+          stays full-mode-only, since it is informational rather than blocking. */}
+      {selectedShort && <GameTopUp usd={usdPrice(value)} />}
+      {!compact && !selectedShort && <FlipcashCta />}
     </div>
   );
 }
@@ -145,6 +198,34 @@ const flipcashBtn: CSSProperties = {
   whiteSpace: "nowrap",
 };
 
+/**
+ * Shown when $GAME is selected but the wallet holds none. This is the funnel step
+ * that did not exist: previously the player just hit a failed payment.
+ */
+function GameTopUp({ usd }: { usd: number }) {
+  return (
+    <div style={{ ...flipcashWrap, borderColor: "rgba(153,69,255,0.45)" }}>
+      <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.35 }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: "#e8e8f0" }}>
+          You don&apos;t have any $GAME yet
+        </span>
+        <span style={{ fontSize: 10, color: "#8a8aa0" }}>
+          This save costs about ${usd.toFixed(2)} in $GAME — 20% less than paying in stablecoins.
+        </span>
+      </div>
+      <a
+        href={FLIPCASH_GAME}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={() => track("flipcash_handoff_start", { source: "payment_picker", usd })}
+        style={{ ...flipcashBtn, background: "linear-gradient(90deg,#9C4BFF,#14F195)", color: "#0c0c14", border: "none" }}
+      >
+        Get $GAME
+      </a>
+    </div>
+  );
+}
+
 function FlipcashCta() {
   return (
     <div style={flipcashWrap}>
@@ -152,17 +233,18 @@ function FlipcashCta() {
         <span style={{ fontSize: 11, fontWeight: 700, color: "#e8e8f0" }}>No USDC?</span>
         <span style={{ fontSize: 10, color: "#8a8aa0" }}>Apple / Google Pay → USDC via Flipcash</span>
       </div>
-      <a
-        href="https://www.flipcash.com/"
-        target="_blank"
-        rel="noopener noreferrer"
-        style={flipcashBtn}
-        aria-label="Pay with Flipcash"
-        onClick={() => track("flipcash_cta_clicked", { surface: "payment_picker" })}
+      {/* Not wired yet — a live-looking button that only opens a marketing site reads
+          as a broken checkout. Disabled until the on-ramp actually returns USDC. */}
+      <button
+        type="button"
+        disabled
+        title="Coming soon — pay with USDC, SOL or $GAME above"
+        style={{ ...flipcashBtn, opacity: 0.45, cursor: "not-allowed", border: "1px dashed #3a3a55" }}
+        aria-label="Pay with Flipcash — coming soon"
       >
         <span aria-hidden style={{ fontSize: 13, fontWeight: 900 }}>F</span>
-        Pay with Flipcash
-      </a>
+        Flipcash · Coming soon
+      </button>
     </div>
   );
 }

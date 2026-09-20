@@ -5,8 +5,8 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { BN } from "@coral-xyz/anchor";
 import { PublicKey, Transaction } from "@solana/web3.js";
-import { useAnchorWallet, useConnection, useWallet } from "@solana/wallet-adapter-react";
-import { useWalletModal } from "@solana/wallet-adapter-react-ui";
+import { useConnection } from "@solana/wallet-adapter-react";
+import { useArcadeSave } from "../../../../lib/arcade/use-arcade-save";
 import ModeToggle from "../../../../components/games/ModeToggle";
 import {
   PIECES, isW, isB, pt, initBoard, getValid, isAttacked, execMove,
@@ -51,10 +51,8 @@ const MIN_SAVE_LAMPORTS = 10_000_000;
 type Phase = "ready" | "playing" | "gameover";
 
 export default function ArcadeMode() {
-  const { publicKey } = useWallet();
-  const { setVisible: setWalletModalVisible } = useWalletModal();
+  const { publicKey, anchorWallet, connectForSave, sendTx, connectError } = useArcadeSave();
   const { connection } = useConnection();
-  const anchorWallet = useAnchorWallet();
 
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
@@ -98,6 +96,7 @@ export default function ArcadeMode() {
   const [lastVerifySig, setLastVerifySig] = useState<string | null>(null);
   const [lastReceiptSig, setLastReceiptSig] = useState<string | null>(null);
   const [onchainError, setOnchainError] = useState<string | null>(null);
+  useEffect(() => { if (connectError) setOnchainError(connectError); }, [connectError]);
   const [profileExists, setProfileExists] = useState<boolean | null>(null);
 
   // Web2 identity (email-first). Wallet is separate + only powers the optional on-chain save.
@@ -427,7 +426,7 @@ export default function ArcadeMode() {
         gameId: MAGIC_CHESS_GAME_ID,
       }));
 
-      const sig = await program.provider.sendAndConfirm!(tx, [], { skipPreflight: false });
+      const sig = await sendTx(program, tx);
       setLastSaveSig(sig); setSavedThisRun(true); setProfileExists(true);
       track("score_save_succeeded", { game: "magic-chess", bot: bot.id, sig, score: finalScore, sink_type: "save", token: paymentToken.symbol, amount: SCORE_COMMIT_MICRO_USD / 1e6 });
       // Arcade Shell: stitch the on-chain tx onto the web2 leaderboard row → ✓ Verified.
@@ -474,7 +473,7 @@ export default function ArcadeMode() {
         moveLog,
       }));
 
-      const sig = await program.provider.sendAndConfirm!(tx, [], { skipPreflight: false });
+      const sig = await sendTx(program, tx);
       setLastVerifySig(sig); setVerifiedThisRun(true);
     } catch (e: any) {
       console.error("verify failed:", e);
@@ -521,7 +520,7 @@ export default function ArcadeMode() {
         gameId: MAGIC_CHESS_GAME_ID,
       }));
 
-      const sig = await program.provider.sendAndConfirm!(tx, [], { skipPreflight: false });
+      const sig = await sendTx(program, tx);
       setLastReceiptSig(sig); setOwnedThisRun(true);
     } catch (e: any) {
       console.error("mint receipt failed:", e);
@@ -778,7 +777,7 @@ export default function ArcadeMode() {
                         <ReferrerBanner connectedWallet={publicKey ?? null} />
                         {!publicKey ? (
                           <button
-                            onClick={() => setWalletModalVisible(true)}
+                            onClick={connectForSave}
                             style={{ width: "100%", padding: "12px", border: "1px solid rgba(153,69,255,0.5)", borderRadius: 10, background: "rgba(153,69,255,0.12)", color: "#e8e8f0", fontSize: 13, fontWeight: 800, cursor: "pointer" }}
                           >
                             Connect wallet to save on-chain
@@ -790,6 +789,7 @@ export default function ArcadeMode() {
                                 value={paymentToken}
                                 onChange={setPaymentToken}
                                 basePriceMicroUsd={new BN(SCORE_COMMIT_MICRO_USD)}
+                                wallet={publicKey?.toBase58() ?? null}
                                 compact
                               />
                             )}

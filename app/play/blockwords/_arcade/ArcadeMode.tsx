@@ -877,6 +877,7 @@ export default function ArcadeMode() {
                               value={paymentToken}
                               onChange={setPaymentToken}
                               basePriceMicroUsd={new BN(SCORE_COMMIT_MICRO_USD)}
+                              wallet={publicKey?.toBase58() ?? null}
                             />
                           </div>
                         )}
