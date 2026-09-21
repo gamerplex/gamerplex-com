@@ -7,6 +7,7 @@
 // (the native Profile tab owns wallet/$GAME via MWA); on web it routes to /app/profile.
 // Standardized so the same chip is dropped into Sledgit + PLG headers too.
 
+import { useWallet } from "@solana/wallet-adapter-react";
 import { useEffect, useState } from 'react';
 
 import { useIdentity } from '../../lib/identity/useIdentity';
@@ -32,6 +33,7 @@ function initials(user: { handle: string | null; email: string | null }): string
 
 export function AccountChip() {
   const { user, isSignedIn } = useIdentity();
+  const { publicKey } = useWallet();
   const [credits, setCredits] = useState<number | null>(null);
   const [game, setGame] = useState<number | null>(null);
 
@@ -43,9 +45,12 @@ export function AccountChip() {
   }, [isSignedIn]);
 
   useEffect(() => {
-    if (!user?.walletAddress) { setGame(null); return; }
-    void getGameBalance(user.walletAddress).then(setGame);
-  }, [user?.walletAddress]);
+    // Same two-wallets problem as the Shop: fall back to the connected wallet so a
+    // player who connected Phantom without a SIWS link still sees their $GAME.
+    const addr = user?.walletAddress ?? publicKey?.toBase58() ?? null;
+    if (!addr) { setGame(null); return; }
+    void getGameBalance(addr).then(setGame);
+  }, [user?.walletAddress, publicKey]);
 
   if (!isSignedIn || !user) {
     return (

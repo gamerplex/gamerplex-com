@@ -8,6 +8,7 @@
 // no own bottom nav, no horizontal scroll).
 
 import { useEffect, useMemo, useState } from "react";
+import { useWallet } from "@solana/wallet-adapter-react";
 import { getCredits, getIdentity, getGameBalance } from "../../lib/identity/client";
 import { track } from "../../lib/analytics";
 
@@ -47,7 +48,8 @@ type Filter = "all" | "power" | "cosmetic" | "owned";
 
 export default function ShopView() {
   const [credits, setCredits] = useState<number | null>(null);
-  const [game, setGame] = useState<number>(0); // $GAME balance of the linked wallet
+  const [game, setGame] = useState<number>(0); // $GAME balance of the wallet you pay from
+  const { publicKey } = useWallet();
   const [owned, setOwned] = useState<Set<string>>(new Set(["pixel"]));
   const [filter, setFilter] = useState<Filter>("all");
   const [sheet, setSheet] = useState<{ item: Item; cur: "cr" | "gm" } | null>(null);
@@ -55,10 +57,19 @@ export default function ShopView() {
   const [buyError, setBuyError] = useState<string | null>(null);
 
   useEffect(() => {
-    void getIdentity().then((id) => getGameBalance(id?.walletAddress).then(setGame));
+    // Prefer the CONNECTED wallet — that is what a purchase spends from, and it is
+    // what PaymentMethodPicker reads. identity.walletAddress only fills in after a
+    // SIWS link, which nothing outside /arcade performs, so relying on it alone
+    // showed 0 $GAME to anyone who had merely connected Phantom.
+    const connected = publicKey?.toBase58();
+    if (connected) {
+      void getGameBalance(connected).then(setGame);
+    } else {
+      void getIdentity().then((id) => getGameBalance(id?.walletAddress).then(setGame));
+    }
     void getCredits().then((c) => setCredits(c?.perApp.find((a) => a.app === "gamerplex")?.balance ?? c?.total ?? 0));
     track("shop_view", {});
-  }, []);
+  }, [publicKey]);
 
   const items = useMemo(() => {
     if (filter === "owned") return CATALOG.filter((i) => owned.has(i.id));
