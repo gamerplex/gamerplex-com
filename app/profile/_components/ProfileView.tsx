@@ -27,6 +27,7 @@ import { getIdentity, getCredits, type IdentityUser } from "../../../lib/identit
 import EmailLoginModal from "../../../components/arcade/EmailLoginModal";
 import ClaimHandleModal from "../../../components/arcade/ClaimHandleModal";
 import ReferrersBoard from "../../../components/arcade/ReferrersBoard";
+import LinkWalletButton from "../../../components/identity/LinkWalletButton";
 import OnboardingMeter from "../../../components/arcade/OnboardingMeter";
 import { glassPanel, glassInset } from "../../../components/glass";
 import { buildShareUrl } from "../../../lib/arcade/referral";
@@ -407,6 +408,7 @@ export function ProfileView({
               <li>💠 Pay with SOL / USDC / $GAME</li>
             </ul>
             <WalletMultiButton />
+            <div style={{ marginTop: 12 }}><LinkWalletButton /></div>
             <div style={{ fontSize: 11, color: "#666", marginTop: 10 }}>Your email scores stay yours either way — connecting just adds the on-chain layer.</div>
           </div>
         </Section>
