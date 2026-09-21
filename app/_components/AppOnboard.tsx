@@ -44,18 +44,21 @@ export default function AppOnboard() {
     ...(flags.native ? [{ done: flags.notif, icon: "🔔", label: "Turn on reminders", hint: "in Settings" }] : []),
     { done: flags.streak, icon: "🔥", label: "Start a daily streak", hint: "play daily" },
     { done: flags.shop, icon: "🛒", label: "Peek at the Shop", hint: "Shop tab" },
-    { done: flags.wallet, icon: "👛", label: "Connect a wallet", hint: "Profile · optional" },
+    { done: flags.wallet, icon: "👛", label: "Connect a wallet", hint: "Profile", optional: true },
   ];
-  const done = steps.filter((s) => s.done).length;
-  const pct = Math.round((done / steps.length) * 100);
-  const complete = done === steps.length;
-
-  if (dismissed) return null;
+  // Optional steps are shown but never gate completion — otherwise "optional" is
+  // a lie and the card can never retire.
+  const required = steps.filter((s) => !("optional" in s && s.optional));
+  const done = required.filter((s) => s.done).length;
+  const pct = Math.round((done / required.length) * 100);
+  const complete = done === required.length;
 
   const retire = () => {
     try { localStorage.setItem("gpx_onboard_done", "1"); } catch { /* no-op */ }
     setDismissed(true);
   };
+
+  if (dismissed) return null;
 
   return (
     <>
@@ -68,9 +71,11 @@ export default function AppOnboard() {
           </div>
         ) : (
           <>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 8 }}>
               <span style={{ fontSize: 14, fontWeight: 800, color: "#fff" }}>Get started</span>
+              <span style={{ flex: 1 }} />
               <span style={{ fontSize: 13, fontWeight: 800, color: "#14F195", fontFamily: "ui-monospace,monospace" }}>{pct}%</span>
+              <button onClick={retire} aria-label="Dismiss getting started" title="Dismiss" style={dismiss}>&times;</button>
             </div>
             <div style={{ height: 7, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden", marginBottom: 12 }}>
               <div style={{ width: `${pct}%`, height: "100%", background: "linear-gradient(90deg,#14F195,#35e0ff)", transition: "width .4s ease" }} />
@@ -83,7 +88,9 @@ export default function AppOnboard() {
                   {!s.done && "action" in s && s.action ? (
                     <button onClick={() => setShowLogin(true)} style={cta}>Sign in</button>
                   ) : !s.done && "hint" in s && s.hint ? (
-                    <span style={{ fontSize: 11.5, color: "#8a80b0" }}>{s.hint}</span>
+                    <span style={{ fontSize: 11.5, color: "#8a80b0" }}>
+                      {s.hint}{"optional" in s && s.optional ? " · optional" : ""}
+                    </span>
                   ) : null}
                 </div>
               ))}
@@ -107,6 +114,10 @@ const wrap: React.CSSProperties = {
 const cta: React.CSSProperties = {
   background: "linear-gradient(100deg,#9945ff,#7a2bff)", color: "#fff", fontWeight: 800, fontSize: 12.5,
   border: "none", borderRadius: 9, padding: "6px 13px", cursor: "pointer",
+};
+const dismiss: React.CSSProperties = {
+  background: "none", border: "none", color: "#8a80b0", fontSize: 20, lineHeight: 1,
+  cursor: "pointer", padding: "0 2px", fontWeight: 700,
 };
 const ghost: React.CSSProperties = {
   background: "none", border: "1px solid rgba(255,255,255,0.2)", color: "#cbbfff", fontWeight: 700,

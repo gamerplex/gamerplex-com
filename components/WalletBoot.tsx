@@ -35,6 +35,10 @@ function WalletConnectTracker() {
     const addr = publicKey.toBase58();
     if (trackedRef.current === addr) return;
     trackedRef.current = addr;
+    // Onboarding reads this: a browser wallet connect is not an identity link
+    // (users.walletAddress stays null until SIWS), so without it the "connect a
+    // wallet" step could never tick for someone who did exactly that.
+    try { localStorage.setItem("gpx_wallet_ok", "1"); } catch { /* no-op */ }
     track("wallet_connected", { address: addr });
   }, [connected, publicKey]);
 
