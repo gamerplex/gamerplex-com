@@ -59,6 +59,17 @@ export function track(event: string, properties?: Record<string, unknown>) {
 
   if (!ALLOWED.has(event)) return;
 
+  // Starting a game IS daily activity — ping the streak here rather than on home-page
+  // mount. Opening the landing page was the old definition, which meant a player who
+  // went straight to a game and played three rounds registered nothing, while someone
+  // who loaded the home page and left registered a full day.
+  //
+  // This is the one place every game already funnels through, so it covers all of them
+  // without touching each ArcadeMode. The server is idempotent per UTC day, so firing
+  // on every run is harmless; fire-and-forget so it can never delay gameplay.
+  void fetch('/api/streak/ping', { method: 'POST', credentials: 'include', keepalive: true })
+    .catch(() => {});
+
   const props = properties ?? {};
   const game = typeof props.game === "string" ? props.game : undefined;
 
