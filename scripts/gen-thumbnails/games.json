@@ -53,6 +53,12 @@
       "out": "sledgit/shinji-quiz.png",
       "subject": "a single glossy holographic collectible trading card beside a floating paintbrush and artist palette, blank generic card face, no characters, no text",
       "accent": "warm orange and violet"
+    },
+    {
+      "id": "omega-city",
+      "out": "omega-city/banner.png",
+      "subject": "a shield-shaped walled city seen from high above at night, its dense district grid glowing with cold cyan LED tower facades and dot-matrix light lines, while a few districts at the edges burn warm violet and gold as if held against the machine, thin luminous street canyons dividing the blocks",
+      "accent": "cold corporate cyan against warm violet and gold"
     }
   ]
 }

@@ -11,6 +11,7 @@ export const GAMES: GameDef[] = [
   { name: "Time Gate", slug: "time-gate", tag: "Fly the sequence, beat the clock.", path: "/play/time-gate", accent: CYAN },
   { name: "Netherlevel", slug: "netherlevel", tag: "Descend the trap halls. Ascend to escape.", path: "/play/netherlevel", accent: PURPLE },
   { name: "TCG Quiz", slug: "tcg-quiz", tag: "Real cards. Name the set, artist, year.", path: "/play/tcg-quiz", accent: CYAN },
+  { name: "Omega City", sub: "Humanity's Last Stand", slug: "omega-city", tag: "69 districts. One AI. Pick a side.", path: "https://omega.gamerplex.com", accent: CYAN },
   { name: "PLG", sub: "Pet Legends Global", slug: "pet-legends", tag: "Raise & battle AI pets, globally.", path: "https://play.petlegends.com", accent: PURPLE },
 ];
 
