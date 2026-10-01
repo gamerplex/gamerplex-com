@@ -1729,7 +1729,12 @@ html.gx-no-transfer .gx-transfer { display: none !important; }
   --shell-muted: #b98fb2;
   --shell-muted-2: #8a6a86;
   --shell-done: #8fae9f;
-  --shell-on-accent: #11060e;   /* dark label: cyan/magenta fills are bright */
+  /* Stays LIGHT. This token is the bright thing itself — it is a white button
+     FILL in ShellResultScreen and light TEXT on a dark panel in
+     ShellLeaderboard. Darkening it for the theme made the leaderboard header
+     render at 1.02:1 and would have turned the primary button black.
+     Ink-on-a-bright-fill is --shell-on-bright, below. */
+  --shell-on-accent: #fff0fb;
   --shell-on-bright: #0d0210;
   --shell-danger: #ff6b8a;
   --shell-lavender: #ff8ac4;
