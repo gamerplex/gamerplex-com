@@ -1,7 +1,8 @@
 import { Metadata } from "next";
 import Link from "next/link";
 
-const RESOLVER_URL = process.env.NEXT_PUBLIC_RESOLVER_URL || "https://resolver.gamerplex.com";
+import { buildPlayUrl, fetchChallenge, gameMeta, type Challenge } from "../../../lib/arcade/challenge";
+
 const NET = process.env.NEXT_PUBLIC_SOLANA_NETWORK || "mainnet";
 const CLUSTER = NET === "mainnet" ? "" : `?cluster=${NET}`;
 const SITE =
@@ -12,64 +13,25 @@ const SITE =
       ? `https://${process.env.VERCEL_URL}`
       : "https://gamerplex.com");
 
-interface ScoreMemo {
-  ok: boolean;
-  tx: string;
-  blockTime: number | null;
-  gameSlug: string;
-  variant: string;
-  player: string;
-  score: number;
-  continues: number;
-  powerups: number;
-  duration: number;
-  seedB58: string;
-}
-
-const GAME_META: Record<string, { emoji: string; label: string; route: string; accent: string }> = {
-  flipball: { emoji: "🎯", label: "Flipball", route: "/play/flipball", accent: "#00ffd1" },
-  "cyber-snake": { emoji: "🐍", label: "Cyber Snake", route: "/play/cyber-snake", accent: "#4fc3f7" },
-  "chess-puzzles": { emoji: "♟", label: "Magic Chess Puzzles", route: "/play/magic-chess", accent: "#c99aff" },
-  blockwords: { emoji: "🔮", label: "Blockwords", route: "/play/blockwords", accent: "#ffd24a" },
-};
-
-function shortWallet(w: string): string {
-  return w.length > 8 ? `${w.slice(0, 4)}…${w.slice(-4)}` : w;
-}
-
-async function fetchScore(sig: string): Promise<ScoreMemo | null> {
-  if (!sig || sig.length < 32 || sig.length > 128) return null;
-  try {
-    const r = await fetch(`${RESOLVER_URL}/arcade/score/${encodeURIComponent(sig)}`, {
-      next: { revalidate: 60 },
-    });
-    if (!r.ok) return null;
-    const j = (await r.json()) as ScoreMemo;
-    return j.ok ? j : null;
-  } catch {
-    return null;
-  }
-}
-
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
-  const score = await fetchScore(id);
-  if (!score) {
+  const c = await fetchChallenge(id);
+  if (!c) {
     return {
       title: "Challenge — gamerplex.com",
       description: "Beat this score on Gamerplex Arcade.",
     };
   }
-  const game = GAME_META[score.gameSlug] ?? { label: score.gameSlug, emoji: "🎮", route: "/", accent: "#9945ff" };
-  const title = `${game.emoji} Beat ${score.score.toLocaleString()} on ${game.label}`;
-  const desc = `${shortWallet(score.player)} scored ${score.score.toLocaleString()}. Same seed, same physics. Pure skill.`;
+  const game = gameMeta(c.gameSlug);
+  const title = `${game.emoji} Beat ${c.score.toLocaleString()} on ${game.label}`;
+  const desc = `${c.who} scored ${c.score.toLocaleString()}. Same seed, same physics. Pure skill.`;
   // Per-challenge OG image for EVERY game (was cyber-snake only → others showed
-  // the generic logo). The route reads the on-chain score, so it can't be forged.
-  const ogImage = `${SITE}/api/og/challenge?sig=${encodeURIComponent(id)}`;
+  // the generic logo). The route re-reads the score server-side, so it can't be forged.
+  const ogImage = `${SITE}/api/og/challenge?id=${encodeURIComponent(id)}`;
   return {
     title,
     description: desc,
@@ -88,15 +50,62 @@ export async function generateMetadata({
   };
 }
 
+function ProofBadge({ c }: { c: Challenge }) {
+  if (c.kind === "onchain" && c.tx) {
+    return (
+      <a
+        href={`https://explorer.solana.com/tx/${c.tx}${CLUSTER}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+          padding: "4px 10px",
+          borderRadius: 999,
+          background: "rgba(20,241,149,0.08)",
+          border: "1px solid rgba(20,241,149,0.35)",
+          color: "#14F195",
+          fontSize: 11,
+          fontWeight: 700,
+          letterSpacing: 0.5,
+          textDecoration: "none",
+        }}
+      >
+        ✓ Verified on-chain ↗
+      </a>
+    );
+  }
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        padding: "4px 10px",
+        borderRadius: 999,
+        background: "rgba(255,255,255,0.04)",
+        border: "1px solid #303050",
+        color: "#9090a8",
+        fontSize: 11,
+        fontWeight: 700,
+        letterSpacing: 0.5,
+      }}
+    >
+      Recorded
+    </span>
+  );
+}
+
 export default async function ChallengePage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const score = await fetchScore(id);
+  const c = await fetchChallenge(id);
 
-  if (!score) {
+  if (!c) {
     return (
       <div style={{ maxWidth: 560, margin: "0 auto", padding: "60px 24px", color: "#e8e8f0", fontFamily: "system-ui" }}>
         <div style={{
@@ -109,7 +118,7 @@ export default async function ChallengePage({
           <div style={{ fontSize: 56, marginBottom: 8, opacity: 0.6 }}>⌛</div>
           <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 8 }}>Challenge not found</div>
           <div style={{ color: "#9090a8", fontSize: 13, marginBottom: 24 }}>
-            Either the score tx hasn&apos;t indexed yet, or the link is malformed.
+            Either the run hasn&apos;t indexed yet, or the link is malformed.
           </div>
           <Link href="/" style={{
             display: "inline-block",
@@ -126,19 +135,16 @@ export default async function ChallengePage({
     );
   }
 
-  const game = GAME_META[score.gameSlug] ?? { label: score.gameSlug, emoji: "🎮", route: "/", accent: "#9945ff" };
-  const sep = game.route.includes("?") ? "&" : "?";
-  const playUrl =
-    `${game.route}${sep}referrer=${encodeURIComponent(score.player)}` +
-    `&sig=${encodeURIComponent(score.tx)}`;
+  const game = gameMeta(c.gameSlug);
+  const playUrl = buildPlayUrl(c, id);
   const isExternal = game.route.startsWith("http");
-  const ageDays = score.blockTime ? Math.floor((Date.now() / 1000 - score.blockTime) / 86400) : null;
+  const ageDays = c.at ? Math.floor((Date.now() / 1000 - c.at) / 86400) : null;
 
   return (
     <div style={{ maxWidth: 560, margin: "0 auto", padding: "60px 24px", color: "#e8e8f0", fontFamily: "system-ui" }}>
       <div style={{ textAlign: "center", marginBottom: 28 }}>
         <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: 2, color: "#9090a8", textTransform: "uppercase" }}>
-          On-chain challenge
+          Arcade challenge
         </div>
         <div style={{ fontSize: 56, marginTop: 12, lineHeight: 1 }}>{game.emoji}</div>
         <div style={{ fontSize: 13, color: game.accent, fontFamily: "monospace", marginTop: 8, letterSpacing: 1, textTransform: "uppercase" }}>
@@ -155,25 +161,19 @@ export default async function ChallengePage({
         marginBottom: 20,
       }}>
         <div style={{ fontSize: 11, color: "#9090a8", letterSpacing: 1, textTransform: "uppercase", marginBottom: 6 }}>
-          {shortWallet(score.player)} scored
+          {c.who} scored
         </div>
         <div style={{ fontSize: 52, fontWeight: 900, color: game.accent, fontFamily: "monospace", letterSpacing: -1, lineHeight: 1 }}>
-          {score.score.toLocaleString()}
+          {c.score.toLocaleString()}
         </div>
-        {ageDays !== null && (
-          <div style={{ fontSize: 11, color: "#9090a8", marginTop: 8 }}>
-            {ageDays === 0 ? "today" : ageDays === 1 ? "yesterday" : `${ageDays} days ago`}
-            {" · "}
-            <a
-              href={`https://explorer.solana.com/tx/${score.tx}${CLUSTER}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ color: "#9945ff", textDecoration: "none" }}
-            >
-              view on chain ↗
-            </a>
-          </div>
-        )}
+        <div style={{ marginTop: 12, display: "flex", gap: 10, justifyContent: "center", alignItems: "center", flexWrap: "wrap" }}>
+          <ProofBadge c={c} />
+          {ageDays !== null && (
+            <span style={{ fontSize: 11, color: "#9090a8" }}>
+              {ageDays === 0 ? "today" : ageDays === 1 ? "yesterday" : `${ageDays} days ago`}
+            </span>
+          )}
+        </div>
       </div>
 
       <a
@@ -194,7 +194,7 @@ export default async function ChallengePage({
           boxShadow: `0 0 24px ${game.accent}40`,
         }}
       >
-        BEAT {score.score.toLocaleString()} →
+        BEAT {c.score.toLocaleString()} →
       </a>
 
       <div style={{
@@ -207,7 +207,9 @@ export default async function ChallengePage({
         color: "#9090a8",
         lineHeight: 1.6,
       }}>
-        <strong style={{ color: "#e8e8f0" }}>How it works:</strong> play the game free. Sign in and you both earn bonus Credits — a welcome bonus for you and a referral bonus for {shortWallet(score.player)}, who brought you here. Pure skill — no wager, no lobby, no 1v1.
+        <strong style={{ color: "#e8e8f0" }}>How it works:</strong> play the game free — no signup to
+        start. Sign in and you both earn bonus Credits: a welcome bonus for you and a referral bonus for{" "}
+        {c.who}, who brought you here. Pure skill — no wager, no lobby, no 1v1.
       </div>
 
       <div style={{ marginTop: 20, textAlign: "center" }}>

@@ -17,6 +17,7 @@ import ClaimHandleModal from "../../../components/arcade/ClaimHandleModal";
 import FlipballGame from "./FlipballGame";
 import { getIdentity, getCredits, claimReferral, type IdentityUser } from "../../../lib/identity/client";
 import { buildShareUrl, getStoredReferralCode } from "../../../lib/arcade/referral";
+import { buildChallengeUrl } from "../../../lib/arcade/challenge";
 import { track } from "../../../lib/analytics";
 
 const PENDING_KEY = "flipball_pending_score";
@@ -25,6 +26,8 @@ export default function FlipballShell() {
   const [saved, setSaved] = useState<null | "saving" | "saved" | "signed_out" | "error">(null);
   const [lastScore, setLastScore] = useState<number | null>(null);   // triggers the result overlay
   const [savedBest, setSavedBest] = useState<number | null>(null);   // server-returned personal best
+  // Score-row id from the free save → the share becomes a /challenge link (the viral loop).
+  const [scoreId, setScoreId] = useState<number | null>(null);
   const [showShare, setShowShare] = useState(false);
   const [showClaim, setShowClaim] = useState(false);
   const lastRun = useRef<string | null>(null);
@@ -61,16 +64,17 @@ export default function FlipballShell() {
       body: payload,
     })
       .then(async (r) => {
-        if (r.status === 401) return { status: "signed_out" as const, best: null };
-        if (!r.ok) return { status: "error" as const, best: null };
+        if (r.status === 401) return { status: "signed_out" as const, best: null, scoreId: null };
+        if (!r.ok) return { status: "error" as const, best: null, scoreId: null };
         const b = await r.json().catch(() => ({}));
-        return { status: "saved" as const, best: typeof b?.best === "number" ? b.best : null };
+        return { status: "saved" as const, best: typeof b?.best === "number" ? b.best : null, scoreId: typeof b?.scoreId === "number" ? b.scoreId : null };
       })
-      .catch(() => ({ status: "error" as const, best: null }))
+      .catch(() => ({ status: "error" as const, best: null, scoreId: null }))
       .then((res) => {
         setSaved(res.status);
         if (res.status === "saved") {
           if (res.best != null) setSavedBest(res.best);
+          if (res.scoreId != null) setScoreId(res.scoreId);
           try { window.localStorage.removeItem(PENDING_KEY); } catch {}
           // A score now exists — re-attempt any pending referral. The route only
           // pays out once BOTH sides are fully onboarded (proof-of-life gate).
@@ -93,6 +97,7 @@ export default function FlipballShell() {
       lastRun.current = refId;
       setLastScore(d.score);
       setSavedBest(null);
+      setScoreId(null);
       track("game_over", { game: "flipball", score: d.score, signed_in: !!meRef.current });
       submitScore(JSON.stringify({ gameId: "flipball", score: d.score, refId, durationSec: d.durationSec }));
     };
@@ -188,7 +193,7 @@ export default function FlipballShell() {
         open={showShare}
         onClose={() => setShowShare(false)}
         text={`🎱 FLIPBALL — I scored ${(lastScore ?? 0).toLocaleString()}! Can you beat it?`}
-        url={buildShareUrl("https://gamerplex.com/play/flipball", me?.id)}
+        url={buildChallengeUrl(scoreId, "https://gamerplex.com/play/flipball", me?.id)}
       />
       <ClaimHandleModal open={showClaim} onClose={() => setShowClaim(false)} onClaimed={() => { setShowClaim(false); void refreshIdentity(); }} />
 

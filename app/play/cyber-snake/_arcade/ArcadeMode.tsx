@@ -41,6 +41,7 @@ import PaymentMethodPicker from "../../../../components/arcade/PaymentMethodPick
 import BackToGames from "../../../../components/arcade/BackToGames";
 import { purchasesEnabled } from "../../../../lib/arcade/killswitch";
 import { getStoredReferrer, buildShareUrl, getStoredReferralCode } from "../../../../lib/arcade/referral";
+import { buildChallengeUrl } from "../../../../lib/arcade/challenge";
 import { submitReplay } from "@gamerplex/sdk/arcade";
 import { track, identifyWallet } from "../../../../lib/analytics";
 import { EconomyConsentModal, hasEconomyConsent } from "../../../../lib/arcade/economy-gate";
@@ -402,6 +403,8 @@ export default function CyberSnakeSolo() {
   const meRef = useRef<IdentityUser | null>(null);
   const [credits, setCredits] = useState<number | null>(null);
   const [savedBest, setSavedBest] = useState<number | null>(null);  // server-returned personal best
+  // Score-row id from the free save → the share becomes a /challenge link (the viral loop).
+  const [scoreId, setScoreId] = useState<number | null>(null);
   const [showClaim, setShowClaim] = useState(false);                // free username claim modal
   const [showShare, setShowShare] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
@@ -890,6 +893,7 @@ export default function CyberSnakeSolo() {
             if (!b) return; // 401 / non-2xx — leave the stash for retry
             try { if (typeof window !== "undefined") window.localStorage.removeItem("snake_pending_score"); } catch {}
             if (typeof b.best === "number") setSavedBest(b.best);
+            if (typeof b.scoreId === "number") setScoreId(b.scoreId);
             // A score now exists — re-attempt any pending referral (paid out only once both sides onboarded).
             const rc = getStoredReferralCode();
             if (rc && meRef.current) void claimReferral(rc.value);
@@ -1296,7 +1300,7 @@ export default function CyberSnakeSolo() {
                   open={showShare}
                   onClose={() => setShowShare(false)}
                   text={`🐍 Just scored ${g.score} on Cyber Snake. Beat me?`}
-                  url={buildShareUrl("https://gamerplex.com/play/cyber-snake", me?.id)}
+                  url={buildChallengeUrl(scoreId, "https://gamerplex.com/play/cyber-snake", me?.id)}
                   onShared={(m) => track("share_result", { game: "cyber-snake", method: m })}
                 />
                 <GoPlusModal open={showPlus} onClose={() => setShowPlus(false)} source="gameover" />

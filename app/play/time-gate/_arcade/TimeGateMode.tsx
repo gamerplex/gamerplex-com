@@ -19,6 +19,7 @@ import { sfxRung, sfxInvalid, sfxMilestone, sfxGameOver, haptic } from "../../..
 import { track } from "../../../../lib/analytics";
 import { getIdentity, getCredits, type IdentityUser } from "../../../../lib/identity/client";
 import { buildShareUrl } from "../../../../lib/arcade/referral";
+import { buildChallengeUrl } from "../../../../lib/arcade/challenge";
 import { TimeGateGame, type HudState } from "../_game/timeGate";
 import { seedFrom } from "../_game/frame";
 
@@ -43,6 +44,8 @@ export default function TimeGateMode() {
   const meRef = useRef<IdentityUser | null>(null);
   const [credits, setCredits] = useState<number | null>(null);
   const [savedBest, setSavedBest] = useState<number | null>(null);
+  // Score-row id from the free save → the share becomes a /challenge link (the viral loop).
+  const [scoreId, setScoreId] = useState<number | null>(null);
   const [saveState, setSaveState] = useState<"saving" | "saved" | "signed_out" | "error">("signed_out");
   const [showLogin, setShowLogin] = useState(false);
 
@@ -92,6 +95,7 @@ export default function TimeGateMode() {
         }
         try { if (typeof window !== "undefined") window.localStorage.removeItem(PENDING_KEY); } catch {}
         if (typeof b.best === "number") setSavedBest(b.best);
+            if (typeof b.scoreId === "number") setScoreId(b.scoreId);
         setSaveState("saved");
         track("score_save_succeeded", { game: "time-gate", score, best: b.best ?? null, was_best: b.best === score });
       })
@@ -130,7 +134,7 @@ export default function TimeGateMode() {
     runSeedRef.current = runSeed;
     startedAt.current = Date.now();
     endedHandled.current = false;
-    setSavedBest(null);
+    setSavedBest(null); setScoreId(null);
     setSaveState(meRef.current ? "saving" : "signed_out");
     setHud(HUD0);
     setPhase("playing");
@@ -278,7 +282,7 @@ export default function TimeGateMode() {
                 open={showShare}
                 onClose={() => setShowShare(false)}
                 text={`◇ TIME GATE — I scored ${hud.score.toLocaleString()} flying the sequence. Beat it?`}
-                url={buildShareUrl("https://gamerplex.com/play/time-gate", me?.id)}
+                url={buildChallengeUrl(scoreId, "https://gamerplex.com/play/time-gate", me?.id)}
                 onShared={(m) => track("share_result", { game: "time-gate", method: m })}
               />
 

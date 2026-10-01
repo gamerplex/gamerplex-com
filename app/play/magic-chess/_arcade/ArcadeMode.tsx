@@ -21,6 +21,7 @@ import {
   MAGIC_CHESS_GAME_ID, ARCADE_NETWORK,
 } from "../../../../lib/arcade/client";
 import { getStoredReferrer, buildShareUrl, getStoredReferralCode } from "../../../../lib/arcade/referral";
+import { buildChallengeUrl } from "../../../../lib/arcade/challenge";
 import { submitReplay } from "@gamerplex/sdk/arcade";
 import { track, identifyWallet } from "../../../../lib/analytics";
 import { EconomyConsentModal, hasEconomyConsent } from "../../../../lib/arcade/economy-gate";
@@ -104,6 +105,8 @@ export default function ArcadeMode() {
   const meRef = useRef<IdentityUser | null>(null);
   const [credits, setCredits] = useState<number | null>(null);
   const [savedBest, setSavedBest] = useState<number | null>(null);  // server-returned personal best
+  // Score-row id from the free save → the share becomes a /challenge link (the viral loop).
+  const [scoreId, setScoreId] = useState<number | null>(null);
   const [showClaim, setShowClaim] = useState(false);                // free username claim modal
   const [showLogin, setShowLogin] = useState(false);
   const [showShare, setShowShare] = useState(false);
@@ -219,7 +222,7 @@ export default function ArcadeMode() {
     lastMoveAtRef.current = 0;
     setSavedThisRun(false); setVerifiedThisRun(false); setOwnedThisRun(false);
     setLastSaveSig(null); setLastVerifySig(null); setLastReceiptSig(null);
-    setOnchainError(null); setSavedBest(null);
+    setOnchainError(null); setSavedBest(null); setScoreId(null);
   }, []);
 
   const startGame = useCallback(() => {
@@ -350,6 +353,7 @@ export default function ArcadeMode() {
         if (!b) return; // 401 / non-2xx — leave the stash for retry
         try { if (typeof window !== "undefined") window.localStorage.removeItem(stashKey); } catch {}
         if (typeof b.best === "number") setSavedBest(b.best);
+            if (typeof b.scoreId === "number") setScoreId(b.scoreId);
         // A score now exists (a completion step) — re-attempt any pending referral.
         // The route only pays out once BOTH sides are fully onboarded (#3 proof-of-life).
         const rc = getStoredReferralCode();
@@ -820,7 +824,7 @@ export default function ArcadeMode() {
                     open={showShare}
                     onClose={() => setShowShare(false)}
                     text={`♟️ Magic Chess — ${finalScore.toLocaleString()} pts vs ${bot?.label ?? "AI"}. Can you beat it?`}
-                    url={buildShareUrl("https://gamerplex.com/play/magic-chess", me?.id)}
+                    url={buildChallengeUrl(scoreId, "https://gamerplex.com/play/magic-chess", me?.id)}
                     onShared={(m) => track("share_result", { game: "magic-chess", method: m })}
                   />
                   <GoPlusModal open={showPlus} onClose={() => setShowPlus(false)} source="gameover" />

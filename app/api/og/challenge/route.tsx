@@ -1,54 +1,34 @@
-// GET /api/og/challenge?sig=<txSig>
+// GET /api/og/challenge?id=<challengeId>   (legacy: ?sig=<txSig>)
 //
 // Generic per-challenge OG image (1200×630) for ANY arcade game. Used by the
-// og:image on /challenge/[sig] so shared links show the game + score instead of
-// a generic logo (the #1 viral fix). The on-chain score memo is the source of
-// truth — we fetch from the resolver (never trust query params), so the image
-// can't be forged by editing the URL.
+// og:image on /challenge/[id] so shared links show the game + score instead of
+// a generic logo (the #1 viral fix). The run is re-read server-side from the
+// resolver (on-chain) or identity (free web2 row) — never from query params —
+// so the image can't be forged by editing the URL.
 
 import { ImageResponse } from "next/og";
+
+import { fetchChallenge, gameMeta } from "../../../../lib/arcade/challenge";
 
 // Node runtime — Edge's 1MB bundle ceiling can't fit next/og on Hobby.
 export const runtime = "nodejs";
 
-const RESOLVER_URL =
-  process.env.NEXT_PUBLIC_RESOLVER_URL || "https://resolver.gamerplex.com";
-
-const GAME_META: Record<string, { emoji: string; label: string; accent: string; route: string }> = {
-  flipball: { emoji: "🎯", label: "FLIPBALL", accent: "#00ffd1", route: "/play/flipball" },
-  "cyber-snake": { emoji: "🐍", label: "CYBER SNAKE", accent: "#7cd1ff", route: "/play/cyber-snake" },
-  "chess-puzzles": { emoji: "♟", label: "MAGIC CHESS", accent: "#c99aff", route: "/play/magic-chess" },
-  blockwords: { emoji: "🔮", label: "BLOCKWORDS", accent: "#ffd24a", route: "/play/blockwords" },
-};
-
-function shortAddr(addr: string): string {
-  if (!addr || addr.length <= 8) return addr || "?";
-  return `${addr.slice(0, 4)}…${addr.slice(-4)}`;
-}
-
 export async function GET(req: Request) {
   const url = new URL(req.url);
-  const sig = url.searchParams.get("sig");
+  // ?id is the current param; ?sig kept so links already shared keep rendering.
+  const id = url.searchParams.get("id") || url.searchParams.get("sig") || "";
 
-  let score: number | null = null;
-  let player: string | null = null;
-  let gameSlug = "";
-  if (sig && sig.length >= 32 && sig.length <= 128) {
-    try {
-      const r = await fetch(`${RESOLVER_URL}/arcade/score/${sig}`, { cache: "no-store" });
-      if (r.ok) {
-        const j = await r.json();
-        if (j?.ok) {
-          score = Number(j.score);
-          player = String(j.player || "");
-          gameSlug = String(j.gameSlug || "");
-        }
-      }
-    } catch { /* fall through to generic card */ }
-  }
-
-  const meta = GAME_META[gameSlug] ?? { emoji: "🎮", label: "GAMERPLEX ARCADE", accent: "#9945ff", route: "/arcade" };
-  const isChallenge = score != null && player != null;
+  const c = await fetchChallenge(id);
+  const g = c ? gameMeta(c.gameSlug) : null;
+  const meta = {
+    emoji: g?.emoji ?? "🎮",
+    label: (g?.label ?? "Gamerplex Arcade").toUpperCase(),
+    accent: g?.accent ?? "#9945ff",
+    route: g?.route ?? "/arcade",
+  };
+  const isChallenge = c != null;
+  const score = c?.score ?? null;
+  const who = c?.who ?? null;
 
   return new ImageResponse(
     (
@@ -77,13 +57,15 @@ export async function GET(req: Request) {
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             <div style={{ fontSize: 54, fontWeight: 800, color: "#ff9a40", letterSpacing: 2 }}>Beat this score.</div>
             <div style={{ display: "flex", alignItems: "baseline", gap: 24 }}>
-              <span style={{ fontSize: 28, color: "#8a8aa0" }}>{shortAddr(player!)}</span>
+              <span style={{ fontSize: 28, color: "#8a8aa0" }}>{who}</span>
               <span style={{ fontSize: 28, color: "#5a5a70" }}>·</span>
               <span style={{ fontSize: 144, fontWeight: 900, color: meta.accent, lineHeight: 1, fontFamily: "monospace" }}>
                 {score!.toLocaleString()}
               </span>
             </div>
-            <div style={{ fontSize: 26, color: "#8a8aa0", marginTop: 12 }}>Same seed · same run · pure skill</div>
+            <div style={{ fontSize: 26, color: "#8a8aa0", marginTop: 12 }}>
+              {c!.kind === "onchain" ? "Verified on-chain · pure skill" : "Same seed · same run · pure skill"}
+            </div>
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>

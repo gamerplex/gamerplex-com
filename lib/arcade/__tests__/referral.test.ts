@@ -8,26 +8,34 @@ import {
 } from "../referral";
 
 const SS_KEY = "gamerplex:referrer:v2";
-const TTL_MS = 30 * 60 * 1000;
+// Must track REFERRAL_TTL_MS in referral.ts. It was widened from 30 min to 7 days
+// (a link clicked today must still attribute when they sign up tomorrow) and this
+// constant was not updated, so the TTL cases asserted against the old window.
+const TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 const referrer = Keypair.generate().publicKey;
 const other = Keypair.generate().publicKey;
 
 function installWindow() {
   const store = new Map<string, string>();
+  const storage = {
+    getItem: (k: string) => (store.has(k) ? store.get(k)! : null),
+    setItem: (k: string, v: string) => void store.set(k, v),
+    removeItem: (k: string) => void store.delete(k),
+  };
+  // referral.ts stores on localStorage (a referral must survive a tab close, see
+  // its header comment). This fake used to provide ONLY sessionStorage, so all
+  // 11 storage-backed cases here failed silently against a correct implementation.
   (globalThis as any).window = {
-    sessionStorage: {
-      getItem: (k: string) => (store.has(k) ? store.get(k)! : null),
-      setItem: (k: string, v: string) => void store.set(k, v),
-      removeItem: (k: string) => void store.delete(k),
-    },
+    localStorage: storage,
+    sessionStorage: storage,
     location: { search: "" },
   };
   return store;
 }
 
 function storeRaw(payload: unknown) {
-  (globalThis as any).window.sessionStorage.setItem(SS_KEY, JSON.stringify(payload));
+  (globalThis as any).window.localStorage.setItem(SS_KEY, JSON.stringify(payload));
 }
 
 describe("referral: getStoredReferrer / getStoredReferrerInfo", () => {
@@ -47,7 +55,7 @@ describe("referral: getStoredReferrer / getStoredReferrerInfo", () => {
     expect(info?.source).toBe("url-hint");
   });
 
-  it("expires an entry older than the 30-minute TTL and clears it", () => {
+  it("expires an entry older than the TTL and clears it", () => {
     storeRaw({ pubkey: referrer.toBase58(), source: "url-hint", storedAt: Date.now() - TTL_MS - 1 });
     expect(getStoredReferrer().equals(PublicKey.default)).toBe(true);
     // getStoredReferrer removes the expired key.
@@ -110,12 +118,16 @@ describe("referral: SSR safety (no window)", () => {
 describe("referral: pickReferrerFromUrl", () => {
   function installWindowWithSearch(search: string) {
     const store = new Map<string, string>();
+    // Same localStorage fix as installWindow() above — referral.ts writes to
+    // localStorage, so a sessionStorage-only fake made every case here fail.
+    const storage = {
+      getItem: (k: string) => (store.has(k) ? store.get(k)! : null),
+      setItem: (k: string, v: string) => void store.set(k, v),
+      removeItem: (k: string) => void store.delete(k),
+    };
     (globalThis as any).window = {
-      sessionStorage: {
-        getItem: (k: string) => (store.has(k) ? store.get(k)! : null),
-        setItem: (k: string, v: string) => void store.set(k, v),
-        removeItem: (k: string) => void store.delete(k),
-      },
+      localStorage: storage,
+      sessionStorage: storage,
       location: { search },
     };
     return store;

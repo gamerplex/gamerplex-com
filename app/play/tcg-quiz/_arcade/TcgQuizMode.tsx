@@ -27,6 +27,7 @@ import { sfxRung, sfxInvalid, sfxMilestone, sfxGameOver, haptic } from "../../..
 import { track } from "../../../../lib/analytics";
 import { getIdentity, getCredits, claimReferral, type IdentityUser } from "../../../../lib/identity/client";
 import { buildShareUrl, getStoredReferralCode } from "../../../../lib/arcade/referral";
+import { buildChallengeUrl } from "../../../../lib/arcade/challenge";
 import { GLASS_CSS, glassPanel, GREEN } from "../../../../components/glass";
 
 type Phase = "ready" | "playing" | "over";
@@ -61,6 +62,8 @@ export default function TcgQuizMode() {
   const meRef = useRef<IdentityUser | null>(null);
   const [credits, setCredits] = useState<number | null>(null);
   const [savedBest, setSavedBest] = useState<number | null>(null);
+  // Score-row id from the free save → the share becomes a /challenge link (the viral loop).
+  const [scoreId, setScoreId] = useState<number | null>(null);
   const [saveState, setSaveState] = useState<"saving" | "saved" | "signed_out" | "error">("signed_out");
   const [showLogin, setShowLogin] = useState(false);
   const [showShare, setShowShare] = useState(false);
@@ -111,6 +114,7 @@ export default function TcgQuizMode() {
         }
         try { window.localStorage.removeItem(PENDING_KEY); } catch {}
         if (typeof b.best === "number") setSavedBest(b.best);
+            if (typeof b.scoreId === "number") setScoreId(b.scoreId);
         setSaveState("saved");
         track("score_save_succeeded", { game: "tcg-quiz", score: final, best: b.best ?? null });
         const rc = getStoredReferralCode();
@@ -130,7 +134,7 @@ export default function TcgQuizMode() {
       startedAt.current = Date.now();
       setQs(b.questions);
       setIdx(0); setScore(0); setStreak(0); setCorrectN(0); setPicked(null);
-      setSavedBest(null);
+      setSavedBest(null); setScoreId(null);
       setSaveState(meRef.current ? "saving" : "signed_out");
       setMode(m);
       setPhase("playing");
@@ -291,7 +295,7 @@ export default function TcgQuizMode() {
               />
             </div>
             <ShareSheet open={showShare} onClose={() => setShowShare(false)} text={shareText}
-              url={buildShareUrl("https://gamerplex.com/play/tcg-quiz", me?.id)}
+              url={buildChallengeUrl(scoreId, "https://gamerplex.com/play/tcg-quiz", me?.id)}
               onShared={(m) => track("share_result", { game: "tcg-quiz", method: m })} />
             <ClaimHandleModal open={showClaim} onClose={() => setShowClaim(false)} onClaimed={() => { setShowClaim(false); void refreshIdentity(); }} />
             <div style={{ ...glassPanel, borderRadius: 20, padding: 16, marginTop: 16 }}>

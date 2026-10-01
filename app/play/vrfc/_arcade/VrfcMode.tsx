@@ -22,6 +22,7 @@ import { sfxRung, sfxInvalid, sfxMilestone, sfxGameOver, haptic, isMuted, setMut
 import { track, identifyWallet } from "../../../../lib/analytics";
 import { getIdentity, getCredits, earnCredits, claimReferral, type IdentityUser } from "../../../../lib/identity/client";
 import { buildShareUrl, getStoredReferralCode } from "../../../../lib/arcade/referral";
+import { buildChallengeUrl } from "../../../../lib/arcade/challenge";
 import { GLASS_CSS, glassPanel, GREEN } from "../../../../components/glass";
 // On-chain arcade parity with the sibling games (cyber-snake/blockwords).
 import { submitReplayFireAndForget, openSession } from "@gamerplex/sdk/arcade";
@@ -61,6 +62,8 @@ export default function VrfcMode() {
   const meRef = useRef<IdentityUser | null>(null);
   const [credits, setCredits] = useState<number | null>(null);
   const [savedBest, setSavedBest] = useState<number | null>(null);
+  // Score-row id from the free save → the share becomes a /challenge link (the viral loop).
+  const [scoreId, setScoreId] = useState<number | null>(null);
   const [saveState, setSaveState] = useState<"saving" | "saved" | "signed_out" | "error">("signed_out");
   const [showLogin, setShowLogin] = useState(false);
   const [showShare, setShowShare] = useState(false);
@@ -118,6 +121,7 @@ export default function VrfcMode() {
         }
         try { if (typeof window !== "undefined") window.localStorage.removeItem(PENDING_KEY); } catch {}
         if (typeof b.best === "number") setSavedBest(b.best);
+            if (typeof b.scoreId === "number") setScoreId(b.scoreId);
         setSaveState("saved");
         track("score_save_succeeded", { game: "vrfc", score, best: b.best ?? null, was_best: b.best === score });
         const rc = getStoredReferralCode();
@@ -180,7 +184,7 @@ export default function VrfcMode() {
     runSeedRef.current = runSeed;
     startedAt.current = Date.now();
     endedHandled.current = false;
-    setSavedBest(null);
+    setSavedBest(null); setScoreId(null);
     setSaveState(meRef.current ? "saving" : "signed_out");
     setHud(HUD0);
     setPhase("playing");
@@ -412,7 +416,7 @@ export default function VrfcMode() {
                 open={showShare}
                 onClose={() => setShowShare(false)}
                 text={shareText}
-                url={buildShareUrl("https://gamerplex.com/play/vrfc", me?.id)}
+                url={buildChallengeUrl(scoreId, "https://gamerplex.com/play/vrfc", me?.id)}
                 onShared={(m) => track("share_result", { game: "vrfc", method: m })}
               />
               <GoPlusModal open={showPlus} onClose={() => setShowPlus(false)} source="gameover" />
