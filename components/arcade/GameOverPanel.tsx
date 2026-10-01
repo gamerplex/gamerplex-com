@@ -92,12 +92,12 @@ export default function GameOverPanel({
     } catch { setVerify("error"); }
   };
 
-  const gold = "#ffd740";
-  const green = "#14F195";
+  const gold = "var(--yellow)";
+  const green = "var(--green)";
 
   return (
     <div style={{ width: "100%", maxWidth: 420, margin: "0 auto", padding: "clamp(12px, 4vw, 20px)", boxSizing: "border-box" }}>
-      <div style={{ textAlign: "center", fontSize: 11, fontWeight: 800, letterSpacing: 3, color: "#777" }}>
+      <div style={{ textAlign: "center", fontSize: 11, fontWeight: 800, letterSpacing: 3, color: "var(--shell-muted-2)" }}>
         {isNewBest ? "🎉  NEW PERSONAL BEST" : "GAME OVER"}
       </div>
 
@@ -108,21 +108,21 @@ export default function GameOverPanel({
           <StatTile
             label="YOUR BEST"
             value={isNewBest ? score : myBest ?? score}
-            accent={isNewBest ? gold : "#e8e8f0"}
+            accent={isNewBest ? gold : "var(--shell-text)"}
           />
         )}
       </div>
 
       {/* One tiny, muted save-status line — never competes with the CTAs. */}
       <div style={{ minHeight: 18, marginTop: 10, textAlign: "center", fontSize: 12 }}>
-        {save === "saving" && <span style={{ color: "#888" }}>Saving your score…</span>}
+        {save === "saving" && <span style={{ color: "var(--shell-muted-2)" }}>Saving your score…</span>}
         {save === "saved" && (
-          <span style={{ color: "#7a8a80" }}>
+          <span style={{ color: "var(--shell-done)" }}>
             ✓ Saved{!isNewBest && myBest !== null ? ` · ${(myBest - score).toLocaleString()} to beat your best` : ""}
           </span>
         )}
         {save === "error" && (
-          <span style={{ color: "#ff6b6b" }}>
+          <span style={{ color: "var(--shell-danger)" }}>
             Couldn’t save.{" "}
             <button onClick={doSave} style={{ background: "none", border: "none", color: green, fontWeight: 700, cursor: "pointer", padding: 0, fontSize: 12 }}>Retry</button>
           </span>
@@ -131,16 +131,16 @@ export default function GameOverPanel({
 
       {/* Signed-out: the save-CTA IS the hero. No wallet, just email. */}
       {save === "signed_out" && (
-        <a href={loginHref} style={{ ...cta, background: "linear-gradient(90deg,#9945FF,#14F195)", color: "#00110a", marginTop: 4 }}>
+        <a href={loginHref} style={{ ...cta, background: "linear-gradient(90deg,var(--purple),var(--green))", color: "var(--shell-on-bright)", marginTop: 4 }}>
           Sign in to save your score &amp; rank
         </a>
       )}
 
       {/* Primary + secondary actions — one clear next step. */}
-      <button onClick={onPlayAgain} style={{ ...cta, background: green, color: "#00110a", marginTop: 12 }}>
+      <button onClick={onPlayAgain} style={{ ...cta, background: green, color: "var(--shell-on-bright)", marginTop: 12 }}>
         ✦ Play Again
       </button>
-      <button onClick={onHome} style={{ ...cta, background: "transparent", color: "#c8c8d4", border: "1px solid rgba(255,255,255,0.14)", marginTop: 8 }}>
+      <button onClick={onHome} style={{ ...cta, background: "transparent", color: "var(--shell-text-2)", border: "1px solid rgba(255,255,255,0.14)", marginTop: 8 }}>
         Home
       </button>
 
@@ -154,12 +154,12 @@ export default function GameOverPanel({
             <button
               onClick={upgrade}
               disabled={verify === "saving"}
-              style={{ background: "none", border: "none", cursor: verify === "saving" ? "default" : "pointer", fontSize: 12, fontWeight: 700, color: "#b388ff" }}
+              style={{ background: "none", border: "none", cursor: verify === "saving" ? "default" : "pointer", fontSize: 12, fontWeight: 700, color: "var(--shell-lavender)" }}
             >
               {verify === "saving" ? "Saving on-chain…" : "🔒 Make this score permanent · $0.05"}
             </button>
           )}
-          {verify === "error" && <div style={{ fontSize: 11, color: "#ff6b6b", marginTop: 4 }}>On-chain save failed — your leaderboard score is safe.</div>}
+          {verify === "error" && <div style={{ fontSize: 11, color: "var(--shell-danger)", marginTop: 4 }}>On-chain save failed — your leaderboard score is safe.</div>}
         </div>
       )}
 
@@ -172,7 +172,7 @@ export default function GameOverPanel({
       <div style={{ textAlign: "center", marginTop: 16 }}>
         <button
           onClick={() => { setShowPlus(true); track("plus_opened", { source: "gameover", game: gameId }); }}
-          style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, fontWeight: 600, color: "#666" }}
+          style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, fontWeight: 600, color: "var(--shell-muted-2)" }}
         >
           ✦ Go Plus — more play, no ads
         </button>
@@ -192,7 +192,7 @@ function StatTile({ label, value, accent, glow }: { label: string; value: number
       <div style={{ fontSize: "clamp(26px, 9vw, 38px)", fontWeight: 900, fontFamily: "monospace", color: accent, lineHeight: 1 }}>
         {value.toLocaleString()}
       </div>
-      <div style={{ fontSize: 9, letterSpacing: 1.5, color: "#777", marginTop: 6, fontWeight: 700 }}>{label}</div>
+      <div style={{ fontSize: 9, letterSpacing: 1.5, color: "var(--shell-muted-2)", marginTop: 6, fontWeight: 700 }}>{label}</div>
     </div>
   );
 }

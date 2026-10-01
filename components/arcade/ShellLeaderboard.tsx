@@ -33,7 +33,7 @@ export type LbGame = { id: string; label: string; emoji: string };
 
 // ── liquid-glass tokens + micro-interactions ───────────────────────────────
 const MONO = "'JetBrains Mono', ui-monospace, monospace";
-const GOLD = "#ffd740", SILVER = "#cfd6e6", BRONZE = "#e59a63";
+const GOLD = "var(--yellow)", SILVER = "var(--shell-text-2)", BRONZE = "var(--shell-warm-2)";
 
 function hexA(hex: string, a: number) {
   const n = parseInt(hex.slice(1), 16);
@@ -41,8 +41,8 @@ function hexA(hex: string, a: number) {
 }
 // Deterministic gradient avatar per player — a stable visual identity.
 const AV: [string, string][] = [
-  [PURPLE, "#f553bf"], [GREEN, "#35e0ff"], ["#f553bf", GOLD],
-  ["#35e0ff", PURPLE], [GOLD, GREEN], ["#ff7a3c", "#f553bf"],
+  [PURPLE, "var(--shell-hot)"], [GREEN, "var(--shell-cool)"], ["var(--shell-hot)", GOLD],
+  ["var(--shell-cool)", PURPLE], [GOLD, GREEN], ["var(--shell-warm)", "var(--shell-hot)"],
 ];
 function avatarGrad(id: string) {
   let h = 0;
@@ -152,7 +152,7 @@ export default function ShellLeaderboard({
                 onClick={() => setActiveGame(g.id)}
                 style={{
                   fontSize: 12.5, fontWeight: 800, padding: "7px 14px", borderRadius: 999,
-                  color: active ? "#04120b" : "rgba(255,255,255,0.86)",
+                  color: active ? "var(--shell-on-bright)" : "rgba(255,255,255,0.86)",
                   background: active ? `linear-gradient(100deg, ${PURPLE}, ${GREEN})` : "rgba(255,255,255,0.06)",
                   border: active ? "1px solid transparent" : "1px solid rgba(255,255,255,0.14)",
                   boxShadow: active ? "0 6px 18px rgba(20,241,149,0.28)" : "none",
@@ -167,7 +167,7 @@ export default function ShellLeaderboard({
       )}
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
-        <h3 style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, fontWeight: 900, letterSpacing: 1.4, color: "#fff", margin: 0, textTransform: "uppercase" }}>
+        <h3 style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, fontWeight: 900, letterSpacing: 1.4, color: "var(--shell-on-accent)", margin: 0, textTransform: "uppercase" }}>
           <span style={{ fontSize: 17, filter: "drop-shadow(0 0 8px rgba(255,215,64,0.5))" }}>🏆</span>
           Leaderboard
           <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: 0.8, color: hexA(GREEN, 0.9), background: hexA(GREEN, 0.1), border: `1px solid ${hexA(GREEN, 0.3)}`, padding: "2px 8px", borderRadius: 999, textTransform: "uppercase" }}>
@@ -187,7 +187,7 @@ export default function ShellLeaderboard({
                     onClick={() => setWinState(w)}
                     style={{
                       fontSize: 11, fontWeight: 800, padding: "5px 11px", border: "none", borderRadius: 999,
-                      color: active ? "#04120b" : "rgba(255,255,255,0.6)",
+                      color: active ? "var(--shell-on-bright)" : "rgba(255,255,255,0.6)",
                       background: active ? `linear-gradient(100deg, ${PURPLE}, ${GREEN})` : "transparent",
                       boxShadow: active ? "0 3px 10px rgba(20,241,149,0.3)" : "none",
                     }}
@@ -280,18 +280,18 @@ function Row({ r, me, i = 0 }: { r: LbRow; me: boolean; i?: number }) {
         <div
           style={{
             width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
-            background: me ? `linear-gradient(135deg, ${GREEN}, #35e0ff)` : avatarGrad(r.userId),
+            background: me ? `linear-gradient(135deg, ${GREEN}, var(--shell-cool))` : avatarGrad(r.userId),
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 12, fontWeight: 900, color: "#08120c",
+            fontSize: 12, fontWeight: 900, color: "var(--shell-on-bright)",
             boxShadow: `inset 0 1px 0 rgba(255,255,255,0.45), 0 2px 8px ${hexA(me ? GREEN : PURPLE, 0.3)}`,
           }}
         >
           {me ? "★" : short(r.handle, r.userId).charAt(0).toUpperCase()}
         </div>
-        <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: me ? "#fff" : "#eef0f6", fontWeight: me ? 800 : 600, fontSize: 13.5, letterSpacing: "-0.1px" }}>
+        <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: me ? "var(--shell-on-accent)" : "var(--shell-text)", fontWeight: me ? 800 : 600, fontSize: 13.5, letterSpacing: "-0.1px" }}>
           {me ? "You" : short(r.handle, r.userId)}
           {me && (
-            <span style={{ marginLeft: 7, fontSize: 9, fontWeight: 900, letterSpacing: 0.6, color: "#04120b", background: GREEN, padding: "2px 6px", borderRadius: 999, verticalAlign: "middle" }}>
+            <span style={{ marginLeft: 7, fontSize: 9, fontWeight: 900, letterSpacing: 0.6, color: "var(--shell-on-bright)", background: GREEN, padding: "2px 6px", borderRadius: 999, verticalAlign: "middle" }}>
               YOU
             </span>
           )}

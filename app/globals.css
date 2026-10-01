@@ -28,6 +28,27 @@
   --glow-purple: 0 0 32px rgba(153, 69, 255, 0.45);
   --glow-green: 0 0 32px rgba(20, 241, 149, 0.4);
   --max: 1560px;          /* wide portal content width */
+
+  /* Arcade Shell tokens. The shell (ShellResultScreen / ShellLeaderboard /
+     GameOverPanel) is shared by all 11 games, so these are the colours a player
+     sees after every run. They were inline literals, which meant a theme could
+     not reach the highest-traffic surface on the site. Values here are the
+     literals they replaced, so the default portal renders exactly as before. */
+  --shell-ink: #0a0a12;
+  --shell-text: #e8e8f0;
+  --shell-text-2: #c8c8d4;
+  --shell-muted: #9a9ab0;
+  --shell-muted-2: #777;
+  --shell-done: #7a8a80;        /* completed step — green-grey, not neutral */
+  --shell-on-accent: #fff;      /* label on a filled accent button */
+  --shell-on-bright: #00110a;   /* ink on a bright CTA fill */
+  --shell-danger: #ff6b6b;
+  --shell-lavender: #b388ff;
+  --shell-violet: #9c27b0;
+  --shell-hot: #f553bf;
+  --shell-cool: #35e0ff;
+  --shell-warm: #ff7a3c;
+  --shell-warm-2: #e59a63;
 }
 
 * { box-sizing: border-box; }
@@ -1699,6 +1720,24 @@ html.gx-no-transfer .gx-transfer { display: none !important; }
   --surface-hi: rgba(66, 24, 76, 0.76);
   --glow-purple: 0 0 32px rgba(255, 46, 136, 0.45);
   --glow-green: 0 0 32px rgba(34, 227, 255, 0.40);
+
+  /* The shared Arcade Shell, retinted. This is what makes the theme visible on
+     every game-over screen and leaderboard rather than only the backdrop. */
+  --shell-ink: #0c0610;
+  --shell-text: #fff0fb;
+  --shell-text-2: #e3bcd9;
+  --shell-muted: #b98fb2;
+  --shell-muted-2: #8a6a86;
+  --shell-done: #8fae9f;
+  --shell-on-accent: #11060e;   /* dark label: cyan/magenta fills are bright */
+  --shell-on-bright: #0d0210;
+  --shell-danger: #ff6b8a;
+  --shell-lavender: #ff8ac4;
+  --shell-violet: #c0379b;
+  --shell-hot: #ff2e88;
+  --shell-cool: #22e3ff;
+  --shell-warm: #ffb340;
+  --shell-warm-2: #e0a070;
 }
 
 /* Horizon grid — the synthwave signature, drawn once behind everything.

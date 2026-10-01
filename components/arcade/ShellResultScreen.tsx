@@ -145,7 +145,7 @@ export default function ShellResultScreen({
       )}
       {saveStatus === "saving" && <div style={{ fontSize: 13, color: t.sub, minHeight: 20, fontWeight: 700 }}>Saving your score…</div>}
       {saveStatus === "error" && (
-        <div style={{ fontSize: 13, color: "#ff6b6b", minHeight: 20, fontWeight: 700 }}>
+        <div style={{ fontSize: 13, color: "var(--shell-danger)", minHeight: 20, fontWeight: 700 }}>
           Couldn’t save.{" "}
           {onRetrySave && <button onClick={onRetrySave} style={linkBtn(t.head)}>Retry</button>}
         </div>
@@ -194,8 +194,8 @@ export default function ShellResultScreen({
             // Aspirational, not loud: a premium shimmering "verified forever" flex
             // that invites the paid save without out-shouting the free loops above.
             <button onClick={() => setShowOnchain(true)} className="gp-shine" style={onchainTeaser}>
-              <span style={{ fontSize: 14.5, fontWeight: 900, letterSpacing: 0.2, color: "#fff" }}>🔒 Make it permanent — Verified ✓</span>
-              <span style={{ fontSize: 11, fontWeight: 600, opacity: 0.82, marginTop: 3, color: "#cdbcff" }}>Provably yours forever · on Solana · $0.05</span>
+              <span style={{ fontSize: 14.5, fontWeight: 900, letterSpacing: 0.2, color: "var(--shell-on-accent)" }}>🔒 Make it permanent — Verified ✓</span>
+              <span style={{ fontSize: 11, fontWeight: 600, opacity: 0.82, marginTop: 3, color: "var(--shell-lavender)" }}>Provably yours forever · on Solana · $0.05</span>
             </button>
           ) : (
             <div style={{ width: "100%" }}>{onChainSlot}</div>
@@ -247,16 +247,16 @@ function footerLink(color: string): React.CSSProperties {
 // vibrant green→cyan, co-equal, NOT a faded ghost). tertiary = the $0.05 upsell,
 // deliberately quiet so it never outshouts the two FREE addictive loops.
 const GRADIENT = {
-  head: "#fff", hero: "#fff", sub: "rgba(255,255,255,0.9)",
+  head: "var(--shell-on-accent)", hero: "var(--shell-on-accent)", sub: "rgba(255,255,255,0.9)",
   stripBg: "rgba(255,255,255,0.12)", stripBorder: "rgba(255,255,255,0.28)",
-  primary: { background: "#fff", color: "#9c27b0", boxShadow: "0 8px 26px rgba(0,0,0,0.28)" } as React.CSSProperties,
-  secondary: { background: "linear-gradient(100deg,#14F195,#22d3ee)", color: "#03251b", boxShadow: "0 8px 24px rgba(20,241,149,0.42)" } as React.CSSProperties,
+  primary: { background: "var(--shell-on-accent)", color: "var(--shell-violet)", boxShadow: "0 8px 26px rgba(0,0,0,0.28)" } as React.CSSProperties,
+  secondary: { background: "linear-gradient(100deg,var(--green),var(--cyan))", color: "var(--shell-on-bright)", boxShadow: "0 8px 24px rgba(20,241,149,0.42)" } as React.CSSProperties,
   tertiary: { background: "transparent", color: "rgba(255,255,255,0.82)", border: "1px solid rgba(255,255,255,0.32)", fontSize: 13, height: 44 } as React.CSSProperties,
 };
 const DARK = {
-  head: "#e8e8f0", hero: "#14F195", sub: "#9a9ab0",
+  head: "var(--shell-text)", hero: "var(--green)", sub: "var(--shell-muted)",
   stripBg: "rgba(255,255,255,0.04)", stripBorder: "rgba(255,255,255,0.1)",
-  primary: { background: "#fff", color: "#0a0a12", boxShadow: "0 8px 24px rgba(255,255,255,0.12)" } as React.CSSProperties,
-  secondary: { background: "linear-gradient(100deg,#14F195,#22d3ee)", color: "#03251b", boxShadow: "0 8px 22px rgba(20,241,149,0.35)" } as React.CSSProperties,
-  tertiary: { background: "transparent", color: "#b388ff", border: "1px solid rgba(153,69,255,0.4)", fontSize: 13, height: 44 } as React.CSSProperties,
+  primary: { background: "var(--shell-on-accent)", color: "var(--shell-ink)", boxShadow: "0 8px 24px rgba(255,255,255,0.12)" } as React.CSSProperties,
+  secondary: { background: "linear-gradient(100deg,var(--green),var(--cyan))", color: "var(--shell-on-bright)", boxShadow: "0 8px 22px rgba(20,241,149,0.35)" } as React.CSSProperties,
+  tertiary: { background: "transparent", color: "var(--shell-lavender)", border: "1px solid rgba(153,69,255,0.4)", fontSize: 13, height: 44 } as React.CSSProperties,
 };
