@@ -1804,3 +1804,13 @@ html.gx-no-transfer .gx-transfer { display: none !important; }
     linear-gradient(180deg, #1b0d21 0%, #120a16 45%, #0c0610 100%) !important;
   background-attachment: fixed !important;
 }
+
+/* A theme is a cosmetic, so it must not change what a player sees mid-run.
+   The scanline overlay sits at z-index 9998 — above the game canvas — and the
+   horizon grid shows around a letterboxed one. Both are suppressed inside
+   /play. The token retint is deliberately NOT suppressed: the results screen
+   and leaderboard are chrome around the game, and they are the point. */
+:root[data-theme="neon-grid"] body[data-ingame]::before,
+:root[data-theme="neon-grid"] body[data-ingame]::after {
+  content: none;
+}
