@@ -4,6 +4,7 @@ import ReferralCapture from "../components/arcade/ReferralCapture";
 import PostHogProvider from "../components/PostHogProvider";
 import WalletBoot from "../components/WalletBoot";
 import AppBanner from "../components/AppBanner";
+import ThemeApplier from "../components/ThemeApplier";
 
 export const metadata: Metadata = {
   title: "GAMERPLEX | The Gaming Protocol",
@@ -71,6 +72,7 @@ export default function RootLayout({
       </head>
       <body style={{ backgroundColor: '#0d001a', margin: 0, padding: 0 }}>
         <a href="#content" className="skip-link">Skip to content</a>
+        <ThemeApplier />
         <PostHogProvider>
         <WalletBoot>
         <ReferralCapture />

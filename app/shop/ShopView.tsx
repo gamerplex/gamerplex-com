@@ -42,6 +42,7 @@ const CATALOG: Item[] = [
   { id: "void", cat: "cosmetic", name: "Void Chrome", emoji: "🖤", desc: "Liquid-metal board skin. Goes further in $GAME.", cr: 3200, gm: 18, accent: "#9945FF" },
   { id: "founder", cat: "cosmetic", name: "Founder Frame", emoji: "👑", desc: "Profile frame — $GAME-exclusive, this season only.", gm: 22, exclusive: true, badge: "$GAME EXCLUSIVE", accent: "#ffaa00" },
   { id: "pixel", cat: "cosmetic", name: "Pixel Trail", emoji: "🟩", desc: "Retro 8-bit particle trail.", cr: 1200, gm: 8, accent: "#14F195" },
+  { id: "theme-neon-grid", cat: "cosmetic", name: "Neon Grid", emoji: "📺", desc: "Site theme — plum-black CRT, magenta/cyan split, scanlines and a horizon grid. Applies everywhere.", gm: 100, exclusive: true, badge: "SITE THEME", accent: "#ff2e88" },
 ];
 
 type Filter = "all" | "power" | "cosmetic" | "owned";
@@ -50,7 +51,9 @@ export default function ShopView() {
   const [credits, setCredits] = useState<number | null>(null);
   const [game, setGame] = useState<number>(0); // $GAME balance of the wallet you pay from
   const { publicKey } = useWallet();
-  const [owned, setOwned] = useState<Set<string>>(new Set(["pixel"]));
+  // Real ownership from the server. This was hardcoded to ["pixel"], so every
+  // visitor saw Pixel Trail as owned and nothing they bought survived a reload.
+  const [owned, setOwned] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState<Filter>("all");
   const [sheet, setSheet] = useState<{ item: Item; cur: "cr" | "gm" } | null>(null);
   const [status, setStatus] = useState<"idle" | "confirming" | "done">("idle");
@@ -68,6 +71,13 @@ export default function ShopView() {
       void getIdentity().then((id) => getGameBalance(id?.walletAddress).then(setGame));
     }
     void getCredits().then((c) => setCredits(c?.perApp.find((a) => a.app === "gamerplex")?.balance ?? c?.total ?? 0));
+    // Durable ownership, so "Owned" survives a reload and a different device.
+    void fetch("/api/inventory", { credentials: "include", cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : { items: [] }))
+      .then((b: { items?: { itemId?: string }[] }) => {
+        setOwned(new Set((b.items ?? []).map((i) => i.itemId).filter(Boolean) as string[]));
+      })
+      .catch(() => { /* signed out or offline — nothing is owned */ });
     track("shop_view", {});
   }, [publicKey]);
 

@@ -1660,3 +1660,103 @@ html.gx-native .bottom-nav-m { display: none !important; }
    buy links, wallet send) — see ENGINEERING/STORE_COMPLIANCE.md. dApp/web builds
    are unaffected. */
 html.gx-no-transfer .gx-transfer { display: none !important; }
+
+/* ───────────────────────────────────────────────────────────────────────────
+   THEME: Neon Grid  (shop item `theme-neon-grid`, cosmetic, $GAME)
+   Applied by <ThemeApplier> as [data-theme="neon-grid"] on <html>.
+
+   The default portal is cool indigo-violet. A hue shift alone would not read as
+   something you bought, so this moves three things at once: the ink goes warm
+   plum-black, the single brand accent becomes a CRT chromatic PAIR (magenta +
+   cyan, the aberration you get off a tube), and the page gains scanlines and a
+   horizon grid. Every component retints through the existing tokens — no
+   component knows this theme exists.
+   ─────────────────────────────────────────────────────────────────────────── */
+:root[data-theme="neon-grid"] {
+  --bg: #120a16;          /* plum-black: warm where the default is cool */
+  --bg2: #1a0d20;
+  --s1: #22102a;
+  --s2: #2b1435;
+  --s3: #371a43;
+  --border: #5e2063;
+  --border2: #96309b;
+  --text: #fff0fb;        /* warm white, not blue-white */
+  --dim: #d9a8cf;
+  --dim2: #946a90;
+  /* The brand pair swaps: cyan takes the primary-action role, magenta the brand
+     role. Keeping both chromatic is what makes it read retro rather than
+     "dark theme with one neon colour". */
+  --green: #22e3ff;
+  --purple: #ff2e88;
+  --cyan: #22e3ff;
+  --pink: #ff2e88;
+  --orange: #ffb340;
+  --yellow: #ffe14d;
+  --red: #ff3860;
+  --card-bg: rgba(255, 46, 136, 0.075);
+  --card-bg-hi: rgba(255, 46, 136, 0.14);
+  --surface: rgba(45, 16, 52, 0.60);
+  --surface-hi: rgba(66, 24, 76, 0.76);
+  --glow-purple: 0 0 32px rgba(255, 46, 136, 0.45);
+  --glow-green: 0 0 32px rgba(34, 227, 255, 0.40);
+}
+
+/* Horizon grid — the synthwave signature, drawn once behind everything.
+   Fixed so it does not scroll with content, and masked out toward the top so it
+   reads as a floor rather than wallpaper. */
+:root[data-theme="neon-grid"] body::before {
+  content: "";
+  position: fixed;
+  inset: auto 0 0 0;
+  height: 46vh;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    repeating-linear-gradient(to right,
+      rgba(255, 46, 136, 0.16) 0 1px, transparent 1px 72px),
+    repeating-linear-gradient(to bottom,
+      rgba(34, 227, 255, 0.13) 0 1px, transparent 1px 48px);
+  mask-image: linear-gradient(to top, #000 0%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to top, #000 0%, transparent 100%);
+}
+
+/* Scanlines — 1px on, 2px off. Kept under 4% so text stays crisp; this is a
+   texture you notice on flat fills, not something you read through. */
+:root[data-theme="neon-grid"] body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9998;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.035) 0 1px,
+    transparent 1px 3px
+  );
+}
+
+/* The tube never quite focuses: a hair of magenta/cyan bleed on big headings.
+   Dropped entirely for reduced-motion and on narrow screens, where the offset
+   costs legibility more than it buys character. */
+@media (min-width: 720px) and (prefers-reduced-motion: no-preference) {
+  :root[data-theme="neon-grid"] h1,
+  :root[data-theme="neon-grid"] h2 {
+    text-shadow:
+      -0.5px 0 0 rgba(255, 46, 136, 0.42),
+       0.5px 0 0 rgba(34, 227, 255, 0.34);
+  }
+}
+
+/* The default backdrop is a fixed aurora with hardcoded stops and !important, so
+   retinting --bg alone leaves the most visible surface on the page untouched.
+   This restates it in the theme's palette; the attribute selector outranks the
+   plain `body` rule, so !important on both resolves our way. */
+:root[data-theme="neon-grid"] body {
+  background:
+    radial-gradient(60% 50% at 12% 8%, rgba(255, 46, 136, 0.26) 0%, transparent 60%),
+    radial-gradient(55% 45% at 88% 6%, rgba(34, 227, 255, 0.20) 0%, transparent 55%),
+    radial-gradient(70% 60% at 78% 92%, rgba(255, 179, 64, 0.13) 0%, transparent 60%),
+    radial-gradient(60% 50% at 20% 96%, rgba(34, 227, 255, 0.12) 0%, transparent 55%),
+    linear-gradient(180deg, #1b0d21 0%, #120a16 45%, #0c0610 100%) !important;
+  background-attachment: fixed !important;
+}
