@@ -25,6 +25,7 @@ import { formatDuration } from "../../../lib/arcade/leaderboard";
 import { ReceiptActionModal } from "./ReceiptActionModal";
 import { getIdentity, getCredits, type IdentityUser } from "../../../lib/identity/client";
 import EmailLoginModal from "../../../components/arcade/EmailLoginModal";
+import SignInMethods from "../../../components/identity/SignInMethods";
 import ClaimHandleModal from "../../../components/arcade/ClaimHandleModal";
 import ReferrersBoard from "../../../components/arcade/ReferrersBoard";
 import LinkWalletButton from "../../../components/identity/LinkWalletButton";
@@ -398,6 +399,15 @@ export function ProfileView({
           </div>
         </Section>
 
+        {/* ── How you sign in ──────────────────────────────────────────── */}
+        <Section title="How you sign in">
+          <SignInMethods
+            user={identity}
+            onAddEmail={() => setShowLogin(true)}
+            onChanged={refreshIdentity}
+          />
+        </Section>
+
         {/* ── Optional web3 upgrade ────────────────────────────────────── */}
         <Section title="Go on-chain (optional)">
           <div className="gx-web-only" style={{ ...glassPanel, padding: "18px 16px", borderRadius: 16 }}>
@@ -414,6 +424,14 @@ export function ProfileView({
         </Section>
 
         <ClaimHandleModal open={showClaim} onClose={() => setShowClaim(false)} onClaimed={refreshIdentity} />
+        {/* Reachable from "Add email" above: for an account with no email yet, this
+            is what attaches one — the shell is absorbed into it server-side. */}
+        <EmailLoginModal
+          open={showLogin}
+          onClose={() => { setShowLogin(false); void refreshIdentity(); }}
+          title="Add your email"
+          subtitle="Keeps your scores and items if you change device."
+        />
       </div>
     );
   }

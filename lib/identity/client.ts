@@ -19,6 +19,38 @@ export interface IdentityUser {
   walletAddress: string | null;
   handleOnChain: boolean;
   createdAt: string;
+  // Which sign-in methods this account has. OPTIONAL on purpose: an
+  // identity-service that predates it simply omits the field, and callers fall
+  // back to the columns above rather than rendering everything as unlinked.
+  linked?: { email: boolean; wallet: boolean; flipcash: boolean };
+}
+
+/** Which sign-in methods an account has, tolerant of an older identity-service. */
+export function linkedMethods(u: IdentityUser): { email: boolean; wallet: boolean; flipcash: boolean } {
+  if (u.linked) return u.linked;
+  return {
+    email: Boolean(u.email) && u.emailVerified,
+    wallet: Boolean(u.walletAddress),
+    // Not derivable from any other field — an older service cannot tell us, and
+    // guessing "linked" would be worse than admitting we do not know.
+    flipcash: false,
+  };
+}
+
+/**
+ * End the session. There was no way to sign out at all, which with three sign-in
+ * methods means no way off an account you landed on by mistake.
+ */
+export async function logout(): Promise<boolean> {
+  try {
+    const r = await fetch(`${IDENTITY_URL}/api/auth/logout`, {
+      method: "POST",
+      credentials: "include",
+    });
+    return r.ok;
+  } catch {
+    return false;
+  }
 }
 
 export interface SiwsChallenge {
