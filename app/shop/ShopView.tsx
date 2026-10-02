@@ -8,6 +8,8 @@
 // no own bottom nav, no horizontal scroll).
 
 import { useEffect, useMemo, useState } from "react";
+
+import StarterPackOffer from "../../components/shop/StarterPackOffer";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { getCredits, getIdentity, getGameBalance } from "../../lib/identity/client";
 import { track } from "../../lib/analytics";
@@ -49,6 +51,16 @@ const CATALOG: Item[] = [
   { id: "pixel", cat: "cosmetic", name: "Pixel Trail", emoji: "🟩", desc: "Retro 8-bit particle trail.", cr: 1200, gm: 8, accent: "#14F195" },
   { id: "theme-neon-grid", cat: "cosmetic", name: "Neon Grid", emoji: "📺", desc: "Site theme — plum-black CRT, magenta/cyan split, scanlines and a horizon grid. Applies everywhere.", usd: 1.5, exclusive: true, badge: "SITE THEME", accent: "#ff2e88" },
 ];
+
+// Human label for an item id, taken from CATALOG so the Flipcash pack cannot
+// describe an item differently from the rest of the shop. qty is part of the
+// identity here ("continue5" IS five continues), so it belongs in the name.
+function nameFor(id: string): string {
+  const it = CATALOG.find((c) => c.id === id);
+  if (!it) return id;
+  const base = it.cat === "cosmetic" && id.startsWith("theme-") ? `${it.name} theme` : it.name;
+  return it.qty && it.qty > 1 ? `${it.qty} × ${base}` : base;
+}
 
 type Filter = "all" | "power" | "cosmetic" | "owned";
 
@@ -102,7 +114,6 @@ export default function ShopView() {
   }, [filter, owned]);
 
   const featured = CATALOG.find((i) => i.featured);
-  const starter = CATALOG.find((i) => i.starter);
 
   function openSheet(item: Item, cur?: "cr" | "gm") {
     if (owned.has(item.id)) return;
@@ -190,12 +201,13 @@ export default function ShopView() {
         </button>
       )}
 
-      {filter === "all" && starter && !owned.has(starter.id) && (
-        <button className="starter" onClick={() => openSheet(starter)}>
-          <span className="st-emoji">{starter.emoji}</span>
-          <span className="st-body"><b>{starter.name}</b><span>{starter.desc}</span></span>
-          <span className="st-price">◆ {starter.gm}</span>
-        </button>
+      {/* The Starter Pack, paid in Flipcash. This replaces the old gm-priced
+          starter hero, which opened a sheet that could never actually charge. */}
+      {filter === "all" && (
+        <StarterPackOffer
+          nameFor={nameFor}
+          owned={owned.has("theme-neon-grid") && owned.has("continue5")}
+        />
       )}
 
       <div className="grid">
@@ -345,12 +357,6 @@ const CSS = `
 .feat-desc{font-size:13px;color:#c8c8da;}
 .feat-price{margin-top:8px;font-size:12px;color:#b0b0c8;}
 .feat-price .pg{color:#fff;background:var(--gm);padding:3px 10px;border-radius:999px;font-weight:800;box-shadow:0 0 14px rgba(153,69,255,.5);}
-.starter{width:100%;display:flex;align-items:center;gap:12px;border:1px solid rgba(20,241,149,.4);background:rgba(20,241,149,.08);border-radius:16px;padding:12px 14px;margin-bottom:16px;cursor:pointer;color:#e8e8f0;text-align:left;}
-.st-emoji{font-size:28px;}
-.st-body{flex:1;display:flex;flex-direction:column;}
-.st-body b{font-size:15px;}
-.st-body span{font-size:12px;color:#b0b0c8;}
-.st-price{color:#fff;background:var(--gm);padding:6px 12px;border-radius:999px;font-weight:800;font-size:13px;box-shadow:0 0 14px rgba(153,69,255,.5);}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
 .card{border:1px solid var(--gb);background:var(--glass);backdrop-filter:blur(14px);border-radius:18px;padding:12px;cursor:pointer;position:relative;display:flex;flex-direction:column;gap:6px;transition:transform .14s ease;}
 .card:active{transform:scale(.98);}
