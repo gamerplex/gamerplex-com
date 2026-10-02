@@ -11,6 +11,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { getCredits, getIdentity, getGameBalance } from "../../lib/identity/client";
 import { track } from "../../lib/analytics";
+import { quote, formatGame, formatUsd } from "../../lib/arcade/pricing";
 
 const FLIPCASH_GAME = "https://app.flipcash.com/token/7TTBUfDomCKBMemv7FF37Tg3y52cRkAxn8vJnvKD4rsE";
 
@@ -23,7 +24,11 @@ interface Item {
   qty?: number;
   desc: string;
   cr?: number; // Credits price (absent = $GAME-exclusive)
-  gm?: number; // $GAME price
+  gm?: number; // legacy fixed $GAME price — superseded by `usd` where set
+  // Price of record, in USD. The $GAME amount is derived from it at spot and is
+  // 20% cheaper; see lib/arcade/pricing.ts for why the discount cannot take the
+  // price under $1.
+  usd?: number;
   exclusive?: boolean;
   badge?: string;
   featured?: boolean;
@@ -42,7 +47,7 @@ const CATALOG: Item[] = [
   { id: "void", cat: "cosmetic", name: "Void Chrome", emoji: "🖤", desc: "Liquid-metal board skin. Goes further in $GAME.", cr: 3200, gm: 18, accent: "#9945FF" },
   { id: "founder", cat: "cosmetic", name: "Founder Frame", emoji: "👑", desc: "Profile frame — $GAME-exclusive, this season only.", gm: 22, exclusive: true, badge: "$GAME EXCLUSIVE", accent: "#ffaa00" },
   { id: "pixel", cat: "cosmetic", name: "Pixel Trail", emoji: "🟩", desc: "Retro 8-bit particle trail.", cr: 1200, gm: 8, accent: "#14F195" },
-  { id: "theme-neon-grid", cat: "cosmetic", name: "Neon Grid", emoji: "📺", desc: "Site theme — plum-black CRT, magenta/cyan split, scanlines and a horizon grid. Applies everywhere.", gm: 100, exclusive: true, badge: "SITE THEME", accent: "#ff2e88" },
+  { id: "theme-neon-grid", cat: "cosmetic", name: "Neon Grid", emoji: "📺", desc: "Site theme — plum-black CRT, magenta/cyan split, scanlines and a horizon grid. Applies everywhere.", usd: 1.5, exclusive: true, badge: "SITE THEME", accent: "#ff2e88" },
 ];
 
 type Filter = "all" | "power" | "cosmetic" | "owned";
@@ -58,6 +63,7 @@ export default function ShopView() {
   const [sheet, setSheet] = useState<{ item: Item; cur: "cr" | "gm" } | null>(null);
   const [status, setStatus] = useState<"idle" | "confirming" | "done">("idle");
   const [buyError, setBuyError] = useState<string | null>(null);
+  const [usdPerGame, setUsdPerGame] = useState<number | null>(null);
 
   useEffect(() => {
     // Prefer the CONNECTED wallet — that is what a purchase spends from, and it is
@@ -78,6 +84,14 @@ export default function ShopView() {
         setOwned(new Set((b.items ?? []).map((i) => i.itemId).filter(Boolean) as string[]));
       })
       .catch(() => { /* signed out or offline — nothing is owned */ });
+    // Spot, for items priced in USD. A failure leaves the USD side showing and
+    // the $GAME figure hidden, rather than quoting a stale number.
+    void fetch("/api/game-price", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((b: { usdPerGame?: number } | null) => {
+        if (b && typeof b.usdPerGame === "number") setUsdPerGame(b.usdPerGame);
+      })
+      .catch(() => { /* USD price still renders */ });
     track("shop_view", {});
   }, [publicKey]);
 
@@ -185,7 +199,7 @@ export default function ShopView() {
       )}
 
       <div className="grid">
-        {items.map((it) => <Card key={it.id} it={it} owned={owned.has(it.id)} onOpen={openSheet} />)}
+        {items.map((it) => <Card key={it.id} it={it} owned={owned.has(it.id)} onOpen={openSheet} usdPerGame={usdPerGame} />)}
         {items.length === 0 && (
           <div className="empty">Nothing here yet — <a href="/#featured">play a run</a> to earn Credits.</div>
         )}
@@ -209,7 +223,21 @@ export default function ShopView() {
                   <div><div className="sh-nm">{sheet.item.name}{sheet.item.qty ? ` ×${sheet.item.qty}` : ""}</div><div className="sh-ds">{sheet.item.desc}</div></div>
                 </div>
                 <div className="curs">
-                  {sheet.item.gm != null && (
+                  {sheet.item.usd != null && (() => {
+                    const q = quote(sheet.item.usd, usdPerGame);
+                    return (
+                      <div className="cur">
+                        <span className="cur-tag">20% OFF IN $GAME</span>
+                        <span className="cur-p">
+                          {q.game != null ? <>◆ {formatGame(q.game)}</> : formatUsd(q.usdInGame)}
+                        </span>
+                        <span className="cur-h">
+                          {formatUsd(sheet.item.usd)} in stablecoin · you pay {formatUsd(q.usdInGame)}
+                        </span>
+                      </div>
+                    );
+                  })()}
+                  {sheet.item.usd == null && sheet.item.gm != null && (
                     <button className={`cur gm ${sheet.cur === "gm" ? "on" : ""}`} onClick={() => setSheet({ ...sheet, cur: "gm" })}>
                       <span className="cur-tag">GOES FURTHER</span><span className="cur-p">◆ {sheet.item.gm}</span><span className="cur-h">You have {game}</span>
                     </button>
@@ -269,7 +297,8 @@ export default function ShopView() {
   );
 }
 
-function Card({ it, owned, onOpen }: { it: Item; owned: boolean; onOpen: (i: Item, c?: "cr" | "gm") => void }) {
+function Card({ it, owned, onOpen, usdPerGame }: { it: Item; owned: boolean; onOpen: (i: Item, c?: "cr" | "gm") => void; usdPerGame: number | null }) {
+  const q = it.usd != null ? quote(it.usd, usdPerGame) : null;
   return (
     <div className={`card ${owned ? "owned" : ""}`} style={{ ["--a" as string]: it.accent }} onClick={() => onOpen(it)}>
       {it.badge && !owned && <span className="c-badge">{it.badge}</span>}
@@ -281,7 +310,13 @@ function Card({ it, owned, onOpen }: { it: Item; owned: boolean; onOpen: (i: Ite
       ) : (
         <div className="c-prices">
           {it.cr != null && <button className="pchip cr" onClick={(e) => { e.stopPropagation(); onOpen(it, "cr"); }}>⬡ {it.cr.toLocaleString()}</button>}
-          {it.gm != null && <button className="pchip gm" onClick={(e) => { e.stopPropagation(); onOpen(it, "gm"); }}>◆ {it.gm}</button>}
+          {it.usd != null ? (
+            <button className="pchip gm" onClick={(e) => { e.stopPropagation(); onOpen(it, "gm"); }}>
+              {formatUsd(it.usd)}{q && q.game != null ? <> · ◆ {formatGame(q.game)}</> : null}
+            </button>
+          ) : it.gm != null ? (
+            <button className="pchip gm" onClick={(e) => { e.stopPropagation(); onOpen(it, "gm"); }}>◆ {it.gm}</button>
+          ) : null}
         </div>
       )}
     </div>
