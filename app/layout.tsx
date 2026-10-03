@@ -68,7 +68,14 @@ export default function RootLayout({
         />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+        {/* Space Grotesk was referenced in 18 files and never loaded — every one of
+            those rules silently fell back, including .gl-root (home, leaderboard,
+            docs, profile). It only ships 300–700, so the 800/900 weights used in
+            places get synthesised; that is a separate cleanup. */}
+        <link
+          href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@500;600;700&display=swap"
+          rel="stylesheet"
+        />
       </head>
       <body style={{ backgroundColor: '#0d001a', margin: 0, padding: 0 }}>
         <a href="#content" className="skip-link">Skip to content</a>

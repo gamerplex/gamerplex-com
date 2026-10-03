@@ -26,7 +26,7 @@ export const glassInset: React.CSSProperties = {
 };
 
 export const GLASS_CSS = `
-  .gl-root { position:relative; min-height:100vh; background:#07060f; color:#fff; font-family:'Space Grotesk',system-ui,sans-serif; overflow-x:hidden; }
+  .gl-root { position:relative; min-height:100dvh; background:#07060f; color:#fff; font-family:'Space Grotesk',system-ui,sans-serif; overflow-x:hidden; }
   .gl-bg { position:fixed; inset:0; z-index:0;
     background:
       radial-gradient(85% 55% at 22% -10%, rgba(153,69,255,0.34) 0%, transparent 60%),
@@ -44,7 +44,12 @@ export const GLASS_CSS = `
   .gl-logo { font-weight:900; font-style:italic; font-size:17px; letter-spacing:-0.5px; background:linear-gradient(135deg,#9945FF,#14F195); -webkit-background-clip:text; background-clip:text; color:transparent; text-decoration:none; }
   .gl-mn { font-size:10px; font-weight:800; letter-spacing:1px; color:#04120b; background:${GREEN}; padding:4px 10px; border-radius:999px; }
   .gl-signin { background:rgba(255,255,255,0.14); border:1px solid rgba(255,255,255,0.26); color:#fff; font-weight:800; font-size:13px; padding:8px 16px; border-radius:999px; cursor:pointer; backdrop-filter:blur(10px); font-family:inherit; }
-  .gl-signin:hover { background:rgba(255,255,255,0.22); }
+  /* Touch fakes a hover and leaves it stuck after a tap; gate it on a device
+     that can really hover. :active below is what touch users get instead. */
+  @media (hover: hover) and (pointer: fine) {
+    .gl-signin:hover { background:rgba(255,255,255,0.22); }
+  }
+  .gl-signin:active { background:rgba(255,255,255,0.28); transform:scale(0.98); }
   .gl-user { display:inline-flex; align-items:center; gap:6px; text-decoration:none; color:#fff; font-weight:800; font-size:13px; padding:7px 14px; border-radius:999px; max-width:160px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; background:rgba(20,241,149,0.14); border:1px solid rgba(20,241,149,0.42); }
 
   .gl-hero-grid { display:grid; grid-template-columns:1fr; gap:16px; margin-bottom:34px; }
@@ -68,7 +73,10 @@ export const GLASS_CSS = `
 
   .gl-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; margin-bottom:34px; }
   .gl-card { position:relative; overflow:hidden; border-radius:24px; min-height:220px; text-decoration:none; color:#fff; display:flex; flex-direction:column; border:1px solid rgba(255,255,255,0.14); box-shadow:0 12px 40px rgba(0,0,0,0.36); transition:transform .16s ease, box-shadow .16s ease; }
-  .gl-card:hover { transform:translateY(-4px); box-shadow:0 24px 64px rgba(0,0,0,0.5); }
+  @media (hover: hover) and (pointer: fine) {
+    .gl-card:hover { transform:translateY(-4px); box-shadow:0 24px 64px rgba(0,0,0,0.5); }
+  }
+  .gl-card:active { transform:scale(0.985); }
   .gl-card-img { position:absolute; inset:0; background-size:cover; background-position:center; }
   .gl-card-img::after { content:""; position:absolute; inset:0; background:linear-gradient(180deg, color-mix(in srgb, var(--accent) 16%, transparent) 0%, transparent 30%, rgba(7,6,15,0.30) 58%, rgba(7,6,15,0.74) 80%, rgba(7,6,15,0.93) 100%); }
   .gl-arrow { position:absolute; top:12px; right:12px; z-index:2; width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:15px; background:rgba(10,10,18,0.35); border:1px solid rgba(255,255,255,0.3); backdrop-filter:blur(8px); color:#fff; }

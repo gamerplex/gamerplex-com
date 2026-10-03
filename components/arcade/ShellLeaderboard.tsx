@@ -56,12 +56,19 @@ const SLB_CSS = `
   @keyframes slbSheen { 0% { transform:translateX(-130%); } 55%,100% { transform:translateX(340%); } }
   @keyframes slbSkel { 0% { background-position:-200% 0; } 100% { background-position:200% 0; } }
   .slb-row { transition:transform .14s ease, box-shadow .14s ease, filter .14s ease; animation:slbIn .34s ease both; }
-  .slb-row:hover { transform:translateY(-1px); filter:brightness(1.08); }
+  /* Touch fakes a hover and leaves it stuck after a tap; gate it on a device
+     that can really hover. :active below is what touch users get instead. */
+  @media (hover: hover) and (pointer: fine) {
+    .slb-row:hover { transform:translateY(-1px); filter:brightness(1.08); }
+  }
   .slb-me { position:relative; overflow:hidden; }
   .slb-me::after { content:""; position:absolute; top:0; left:0; width:34%; height:100%; pointer-events:none;
     background:linear-gradient(100deg, transparent, rgba(255,255,255,0.16), transparent); animation:slbSheen 3.8s ease-in-out infinite; }
   .slb-seg, .slb-pill { font-family:inherit; cursor:pointer; white-space:nowrap; transition:background .15s, color .15s, box-shadow .15s, border-color .15s; }
-  .slb-pill:hover { filter:brightness(1.1); }
+  @media (hover: hover) and (pointer: fine) {
+    .slb-pill:hover { filter:brightness(1.1); }
+  }
+  .slb-pill:active { filter:brightness(1.18); transform:scale(0.97); }
   .slb-skel { background:linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.11) 37%, rgba(255,255,255,0.04) 63%);
     background-size:200% 100%; animation:slbSkel 1.3s linear infinite; }
   @media (prefers-reduced-motion: reduce){ .slb-row, .slb-me::after, .slb-skel { animation:none !important; } }

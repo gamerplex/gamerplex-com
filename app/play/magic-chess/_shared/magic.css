@@ -35,10 +35,13 @@
   text-transform: uppercase;
   letter-spacing: 1px;
 }
-.magic-chess-btn:hover {
-  transform: scale(1.05);
-  box-shadow: 0 0 45px rgba(0, 240, 255, 0.5);
+@media (hover: hover) and (pointer: fine) {
+  .magic-chess-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 45px rgba(0, 240, 255, 0.5);
+  }
 }
+.magic-chess-btn:active { transform: scale(0.98); }
 
 .magic-chess-label {
   font-family: 'Cinzel Decorative', serif;
@@ -129,8 +132,10 @@
 }
 
 /* Board hover glow */
-.magic-square:hover {
-  box-shadow: inset 0 0 15px rgba(153, 69, 255, 0.3) !important;
+@media (hover: hover) and (pointer: fine) {
+  .magic-square:hover {
+    box-shadow: inset 0 0 15px rgba(153, 69, 255, 0.3) !important;
+  }
 }
 
 /* Selected piece lift */

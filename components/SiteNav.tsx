@@ -114,9 +114,10 @@ export function SiteNav({ links, right }: Props) {
           font-size: 13px;
           text-decoration: none;
         }
-        .site-nav-drawer a:hover {
-          background: #14141f;
+        @media (hover: hover) and (pointer: fine) {
+          .site-nav-drawer a:hover { background: #14141f; }
         }
+        .site-nav-drawer a:active { background: #1b1b2b; }
         .site-nav-drawer-right {
           padding: 8px 4px 4px;
           border-top: 1px solid #252540;

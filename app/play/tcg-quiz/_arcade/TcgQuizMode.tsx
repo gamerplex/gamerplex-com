@@ -184,7 +184,7 @@ export default function TcgQuizMode() {
   const shareText = `🃏 TCG Quiz — ${score.toLocaleString()} pts (${correctN}/${qs.length}) on Gamerplex. Know your cards better than me?`;
 
   return (
-    <div style={{ position: "relative", minHeight: "100vh", background: "#07060f", color: "#fff", fontFamily: "'Space Grotesk', sans-serif", overflowX: "hidden" }}>
+    <div style={{ position: "relative", minHeight: "100dvh", background: "#07060f", color: "#fff", fontFamily: "'Space Grotesk', sans-serif", overflowX: "hidden" }}>
       <style>{GLASS_CSS}</style>
       <div className="gl-bg" aria-hidden="true" />
 

@@ -60,6 +60,51 @@ html, body {
   font-family: 'JetBrains Mono', monospace;
   -webkit-font-smoothing: antialiased;
 }
+
+/* ── Mobile platform baseline ──────────────────────────────────────────────
+   Most people meet this site on a phone, and inside the Expo app it IS a
+   WebView, so these are the lines that decide "installed app" vs "website in a
+   browser". The native shell sets no scroll/zoom overrides, so CSS owns all of
+   it — and because the app loads the site live, these ship without a new APK. */
+html {
+  /* The loudest "this is a website" tell: a translucent grey box flashed over
+     anything tapped. Removing it means every tappable thing needs its own
+     :active state, which is why those are added alongside. */
+  -webkit-tap-highlight-color: transparent;
+  /* Stops the font inflating when the phone is turned to landscape. */
+  -webkit-text-size-adjust: 100%;
+  /* `contain`, deliberately NOT `none`: it keeps the page from chaining its
+     scroll to pull-to-refresh while leaving the WebView's own gesture handling
+     intact. `none` is the usual advice for a plain web app and is wrong here. */
+  overscroll-behavior-y: contain;
+}
+/* Below 16px iOS zooms on focus and does not zoom back out, leaving the layout
+   cropped and drifted. The fix is the font size, never maximum-scale. */
+input, textarea, select { font-size: 16px; }
+/* `manipulation` drops the double-tap-zoom wait so a tap registers immediately
+   instead of ~300ms later. user-select keeps a long-press from selecting a
+   button's label — controls are not content, so this never goes on body. */
+button, a, [role="button"] {
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ── Surfaces the browser draws for us ─────────────────────────────────────
+   Selection, caret, focus ring, scrollbar and form accents all shipped as
+   system defaults — system blue on a plum-black site. Theming them from the
+   palette is the cheapest signal that a page was built rather than assembled,
+   and it shows on desktop as much as on mobile. */
+::selection { background: rgba(153, 69, 255, 0.45); color: #fff; }
+html { caret-color: var(--purple); accent-color: var(--purple); scrollbar-color: var(--border2) var(--bg); }
+/* :focus-visible, not :focus — a keyboard ring that also appears on every mouse
+   click reads as a bug and gets deleted, which is how focus styles get lost. */
+:focus-visible {
+  outline: 2px solid var(--purple);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+a { text-underline-offset: 2px; }
 /* Living aurora backdrop — vibrant, not flat black. Fixed so it doesn't scroll. */
 body {
   background:
@@ -69,7 +114,9 @@ body {
     radial-gradient(60% 50% at 20% 96%, rgba(20,241,149,0.12) 0%, transparent 55%),
     linear-gradient(180deg, #1a0d3e 0%, #160a33 45%, #12082b 100%) !important;
   background-attachment: fixed !important;
-  min-height: 100vh;
+  /* dvh, not vh: 100vh is the viewport with the browser chrome COLLAPSED, so on
+     load — URL bar visible — a 100vh body overflows by exactly that bar. */
+  min-height: 100dvh;
 }
 
 /* Scrollbar */
@@ -1430,7 +1477,11 @@ html, body {
   text-transform: uppercase;
   transition: color 0.2s;
 }
-.nav-links a:hover { color: var(--green); }
+/* Touch has no hover, so the browser fakes one and leaves it stuck after a
+   tap. Gate it on a device that can actually hover. */
+@media (hover: hover) and (pointer: fine) {
+  .nav-links a:hover { color: var(--green); }
+}
 
 /* ============================================================
    MOBILE FIXES — inline-styled pages (leaderboard, activity, games, docs)

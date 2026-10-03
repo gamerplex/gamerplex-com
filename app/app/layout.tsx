@@ -6,7 +6,7 @@ import { AccountChip } from "../../components/identity/AccountChip";
 // The AccountChip is the ONE standardized login affordance (top-right, every tab).
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ minHeight: "100vh", background: "#0d001a", color: "#ece7ff" }}>
+    <div style={{ minHeight: "100dvh", background: "#0d001a", color: "#ece7ff" }}>
       <style>{GLASS_CSS}</style>
       <AccountChip />
       {/* reserve space for the fixed chip so it never overlaps page content */}
