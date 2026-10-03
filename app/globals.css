@@ -89,6 +89,18 @@ button, a, [role="button"] {
   user-select: none;
   -webkit-user-select: none;
 }
+/* Removing the tap highlight above took away the ONLY press feedback that
+   unstyled tappables had, so this restores a floor for all of them. A native
+   button responds the instant a finger lands; a web button that only reacts on
+   click responds when the finger LEAVES, which reads as lag even at 0ms.
+   100ms/ease-out is the press window. Anything with its own :active overrides
+   this by specificity, and reduced-motion users still get the colour change. */
+button:active, a:active, [role="button"]:active { transform: scale(0.97); }
+button, a, [role="button"] { transition: transform 100ms cubic-bezier(0.22, 1, 0.36, 1); }
+@media (prefers-reduced-motion: reduce) {
+  button, a, [role="button"] { transition: none; }
+  button:active, a:active, [role="button"]:active { transform: none; opacity: 0.82; }
+}
 
 /* ── Surfaces the browser draws for us ─────────────────────────────────────
    Selection, caret, focus ring, scrollbar and form accents all shipped as

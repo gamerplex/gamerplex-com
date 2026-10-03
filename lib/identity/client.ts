@@ -107,6 +107,9 @@ export interface EmailSignupResult {
   error?: string;
   status?: string;
   throttled?: boolean;
+  /** Whether the mail actually left our server. The API has always returned this;
+   *  it was dropped here, so a provider outage looked like a successful signup. */
+  verificationEmailSent?: boolean;
 }
 
 export async function emailSignup(email: string): Promise<EmailSignupResult> {
@@ -135,7 +138,9 @@ export function isNativeApp(): boolean {
 // Email OTP — the native-app sign-in. Request a 6-digit code, then verify it.
 // verify is credentialed so the service sets the shared `.gamerplex.com` session
 // cookie directly into this (WebView) origin — no cookie copying.
-export async function requestEmailOtp(email: string): Promise<{ ok: boolean; error?: string }> {
+export async function requestEmailOtp(
+  email: string,
+): Promise<{ ok: boolean; error?: string; sent?: boolean }> {
   try {
     const r = await fetch(`${IDENTITY_URL}/api/auth/email/otp`, {
       method: 'POST',
@@ -144,7 +149,10 @@ export async function requestEmailOtp(email: string): Promise<{ ok: boolean; err
       body: JSON.stringify({ email: email.trim().toLowerCase() }),
     });
     if (!r.ok) return { ok: false, error: r.status === 429 ? 'rate_limited' : `otp_${r.status}` };
-    return { ok: true };
+    // `sent` is absent on an older identity-service; treat that as "assume sent"
+    // rather than showing a failure that may not have happened.
+    const j = (await r.json().catch(() => ({}))) as { sent?: boolean };
+    return { ok: true, sent: j.sent };
   } catch {
     return { ok: false, error: 'network' };
   }

@@ -55,7 +55,10 @@ const SLB_CSS = `
   @keyframes slbIn { from { opacity:0; transform:translateY(7px); } to { opacity:1; transform:none; } }
   @keyframes slbSheen { 0% { transform:translateX(-130%); } 55%,100% { transform:translateX(340%); } }
   @keyframes slbSkel { 0% { background-position:-200% 0; } 100% { background-position:200% 0; } }
-  .slb-row { transition:transform .14s ease, box-shadow .14s ease, filter .14s ease; animation:slbIn .34s ease both; }
+  /* Digits in a column have to line up, and the list re-renders on every
+     filter switch — proportional figures make the numbers jitter. */
+  .slb-row { transition:transform .14s ease, box-shadow .14s ease, filter .14s ease; animation:slbIn .34s ease both;
+    font-variant-numeric:tabular-nums; }
   /* Touch fakes a hover and leaves it stuck after a tap; gate it on a device
      that can really hover. :active below is what touch users get instead. */
   @media (hover: hover) and (pointer: fine) {

@@ -69,6 +69,19 @@ export default function EmailLoginModal({
     // Native app → email a 6-digit code (magic links can't return to the app).
     // Web → the existing one-tap magic link.
     const res = native ? await requestEmailOtp(e) : await emailSignup(e);
+    // `ok` only means the request was accepted. The server separately reports
+    // whether the mail actually left — and when the provider rejects it, saying
+    // "check your email" sends someone to wait for a mail that will never come.
+    // Absent (older identity-service) is treated as sent, so this never invents
+    // a failure. Explicit false is a real delivery failure.
+    const delivered = native
+      ? (res as { sent?: boolean }).sent !== false
+      : (res as { verificationEmailSent?: boolean }).verificationEmailSent !== false;
+    if (res.ok && !delivered) {
+      setState("idle");
+      setErr("We couldn't send that email right now. It's us, not you — try again shortly.");
+      return;
+    }
     if (res.ok) {
       setState(native ? "code" : "sent");
       if (native) setTimeout(() => inputRef.current?.focus(), 60);

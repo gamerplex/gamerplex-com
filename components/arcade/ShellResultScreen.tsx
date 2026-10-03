@@ -118,7 +118,7 @@ export default function ShellResultScreen({
       {hasBest && !isNewBest && (
         <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: 1.5, color: t.sub, textTransform: "uppercase", marginTop: 4 }}>This run</div>
       )}
-      <div style={{ fontSize: "clamp(60px, 16vw, 108px)", fontWeight: 900, fontStyle: "italic", lineHeight: 1, color: t.hero, textShadow: theme === "gradient" ? "0 6px 34px rgba(0,0,0,0.28)" : "none", margin: "2px 0" }}>
+      <div style={{ fontSize: "clamp(60px, 16vw, 108px)", fontWeight: 900, fontStyle: "italic", lineHeight: 1, color: t.hero, fontVariantNumeric: "tabular-nums", textShadow: theme === "gradient" ? "0 6px 34px rgba(0,0,0,0.28)" : "none", margin: "2px 0" }}>
         {score.toLocaleString()}
       </div>
       {extraStat && (

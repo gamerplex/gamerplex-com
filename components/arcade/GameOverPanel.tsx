@@ -189,7 +189,7 @@ function StatTile({ label, value, accent, glow }: { label: string; value: number
       background: glow ? "rgba(255,215,64,0.08)" : "rgba(255,255,255,0.04)",
       border: `1px solid ${glow ? "rgba(255,215,64,0.5)" : "rgba(255,255,255,0.08)"}`,
     }}>
-      <div style={{ fontSize: "clamp(26px, 9vw, 38px)", fontWeight: 900, fontFamily: "monospace", color: accent, lineHeight: 1 }}>
+      <div style={{ fontSize: "clamp(26px, 9vw, 38px)", fontWeight: 900, fontFamily: "monospace", color: accent, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
         {value.toLocaleString()}
       </div>
       <div style={{ fontSize: 9, letterSpacing: 1.5, color: "var(--shell-muted-2)", marginTop: 6, fontWeight: 700 }}>{label}</div>
