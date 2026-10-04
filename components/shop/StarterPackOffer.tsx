@@ -50,6 +50,7 @@ export default function StarterPackOffer({
   const [intent, setIntent] = useState<Intent | null>(null);
   const [failed, setFailed] = useState(false);
   const [showQr, setShowQr] = useState(false);
+  const [handedOff, setHandedOff] = useState(false);
 
   useEffect(() => {
     if (owned) return;
@@ -72,6 +73,7 @@ export default function StarterPackOffer({
 
   const pay = () => {
     track("flipcash_handoff_start", { tier: "starter-pack", priceUsd });
+    setHandedOff(true);
     // Opens the Flipcash app where installed; otherwise their web page, which
     // offers the download. Either way the user ends up somewhere useful.
     window.location.href = payUrl;
@@ -127,6 +129,18 @@ export default function StarterPackOffer({
         {pack.worth.promoUsd > 0 && <> + the ${pack.worth.promoUsd.toFixed(2)} site theme</>}
       </div>
 
+      {/* Flipcash charges our profile's $2 chat-init fee on the FIRST MESSAGE, so
+          sending it IS the payment. Without saying so the chat opens and appears
+          to do nothing, and the buyer waits for a prompt that never comes. */}
+      <ol className="fcp-steps gx-transfer">
+        <li>Flipcash opens a chat with <b>@gamerplex</b>.</li>
+        <li>
+          <b>Send any message.</b> That is what pays the ${priceUsd.toFixed(2)} — Flipcash asks you
+          to confirm it.
+        </li>
+        <li>Your sign-in link comes straight back in that chat.</li>
+      </ol>
+
       {/* The money-movement control: hidden in store builds by gx-transfer. */}
       <div className="fcp-cta gx-transfer">
         <button className="fcp-btn" onClick={pay}>
@@ -148,8 +162,15 @@ export default function StarterPackOffer({
         <div className="fcp-qr gx-transfer">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={intent.qr} alt={`QR code to pay $${priceUsd.toFixed(2)} with Flipcash`} width={176} height={176} />
-          <p>Open Flipcash on your phone and scan this.</p>
+          <p>Scan with Flipcash, then send any message in the chat to pay.</p>
         </div>
+      )}
+
+      {handedOff && (
+        <p className="fcp-wait gx-transfer" role="status">
+          Waiting for your payment. If the Flipcash chat is open but nothing happened, you have not
+          sent a message yet — type anything and send it. Nothing is charged until you do.
+        </p>
       )}
 
       <p className="fcp-note">
@@ -184,6 +205,11 @@ const CSS = `
 .fcp-qr{margin-top:12px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 .fcp-qr img{border-radius:10px;background:#fff;padding:6px;width:176px;height:176px}
 .fcp-qr p{font-size:12px;opacity:.75;margin:0}
+.fcp-steps{margin:14px 0 0;padding:0 0 0 18px;display:grid;gap:5px;font-size:13px;line-height:1.45}
+.fcp-steps li{padding-left:2px}
+.fcp-steps b{color:#39ffd0;font-weight:700}
+.fcp-wait{margin:10px 0 0;padding:9px 11px;border-radius:10px;font-size:12.5px;line-height:1.45;
+  border:1px solid rgba(255,210,63,.35);background:rgba(255,210,63,.08);color:#ffd23f}
 .fcp-note{margin:12px 0 0;font-size:12px;opacity:.7;line-height:1.45}
 @media (max-width:420px){.fcp-price{text-align:left}.fcp-btn{flex-basis:100%}}
 `;
