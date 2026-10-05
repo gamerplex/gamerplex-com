@@ -129,16 +129,19 @@ export default function StarterPackOffer({
         {pack.worth.promoUsd > 0 && <> + the ${pack.worth.promoUsd.toFixed(2)} site theme</>}
       </div>
 
-      {/* Flipcash charges our profile's $2 chat-init fee on the FIRST MESSAGE, so
-          sending it IS the payment. Without saying so the chat opens and appears
-          to do nothing, and the buyer waits for a prompt that never comes. */}
+      {/* What the buyer must actually DO, verified against a real purchase on
+          2026-10-05. Two earlier versions of this were wrong: the chat-init fee is
+          charged only on the FIRST chat ever opened, so a returning buyer can never
+          pay that way, and a buyer cannot enter a $GAME quantity at all — the
+          Flipcash client sends a fiat amount and converts. So: an amount, with the
+          $ button, in the chat. */}
       <ol className="fcp-steps gx-transfer">
         <li>Flipcash opens a chat with <b>@gamerplex</b>.</li>
         <li>
-          <b>Send any message.</b> That is what pays the ${priceUsd.toFixed(2)} — Flipcash asks you
-          to confirm it.
+          Tap the <b>$ button</b> and send <b>${priceUsd.toFixed(2)}</b> of $GAME (your own
+          currency is fine — Flipcash converts).
         </li>
-        <li>Your sign-in link comes straight back in that chat.</li>
+        <li>Your pack and a one-tap sign-in link come straight back in that chat.</li>
       </ol>
 
       {/* The money-movement control: hidden in store builds by gx-transfer. */}
@@ -162,20 +165,20 @@ export default function StarterPackOffer({
         <div className="fcp-qr gx-transfer">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={intent.qr} alt={`QR code to pay $${priceUsd.toFixed(2)} with Flipcash`} width={176} height={176} />
-          <p>Scan with Flipcash, then send any message in the chat to pay.</p>
+          <p>Scan with Flipcash, then send {`$${priceUsd.toFixed(2)}`} of $GAME in the chat with the $ button.</p>
         </div>
       )}
 
       {handedOff && (
         <p className="fcp-wait gx-transfer" role="status">
-          Waiting for your payment. If the Flipcash chat is open but nothing happened, you have not
-          sent a message yet — type anything and send it. Nothing is charged until you do.
+          Waiting for your payment. Opening the chat does not charge anything — you have to send
+          the amount with the <b>$</b> button. It usually unlocks within a few seconds of arriving.
         </p>
       )}
 
       <p className="fcp-note">
         No password. Your sign-in link arrives in the Flipcash chat, and everything you buy after
-        this can be paid for in that same conversation.
+        this can be paid for in that same conversation — no second payment to sign in again.
       </p>
     </section>
   );

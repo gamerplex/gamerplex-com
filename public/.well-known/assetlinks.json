@@ -3,8 +3,10 @@
     "relation": ["delegate_permission/common.handle_all_urls"],
     "target": {
       "namespace": "android_app",
-      "package_name": "com.gamerplex.app",
-      "sha256_cert_fingerprints": ["TODO:REPLACE_WITH_SIGNING_KEY_FINGERPRINT"]
+      "package_name": "com.gamerplex.mobile",
+      "sha256_cert_fingerprints": [
+        "58:0F:82:51:11:E7:A5:62:A2:A7:C9:93:4D:EF:4C:ED:6D:F7:9D:A1:04:27:4D:98:00:C4:BD:54:F7:08:79:01"
+      ]
     }
   }
 ]
