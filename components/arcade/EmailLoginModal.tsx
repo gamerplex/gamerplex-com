@@ -7,6 +7,8 @@
 // optional "save on-chain" step elsewhere.
 
 import { useEffect, useRef, useState } from "react";
+
+import FlipcashLinkPaste from "./FlipcashLinkPaste";
 import { emailSignup, isNativeApp, requestEmailOtp, verifyEmailOtp } from "../../lib/identity/client";
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
@@ -250,6 +252,10 @@ export default function EmailLoginModal({
             <div style={{ fontSize: 11, color: "#6a6385", textAlign: "center", marginTop: 12 }}>
               Free · no password · your score saves the moment you tap the link
             </div>
+            {/* The way in that does not depend on email delivery or on which app
+                wins a link tap. Inside the native WebView this is the ONLY path
+                that puts the session in the jar the app reads. */}
+            <FlipcashLinkPaste />
           </>
         )}
       </div>
