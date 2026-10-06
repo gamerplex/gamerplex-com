@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import ReferralCapture from "../components/arcade/ReferralCapture";
 import PostHogProvider from "../components/PostHogProvider";
+import TraceProbe from "../components/TraceProbe";
 import WalletBoot from "../components/WalletBoot";
 import AppBanner from "../components/AppBanner";
 import BackendStatusBanner from "../components/BackendStatusBanner";
@@ -87,6 +88,7 @@ export default function RootLayout({
         {/* Above the content: an outage must be visible before someone concludes
             their account is gone and tries to buy it back. */}
         <BackendStatusBanner />
+        <TraceProbe />
         <main id="content" tabIndex={-1}>{children}</main>
         <AppBanner />
         <script

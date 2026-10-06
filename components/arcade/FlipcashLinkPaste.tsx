@@ -15,7 +15,9 @@
 //
 // It works in a normal browser too, where it simply signs that browser in.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+import { track } from "../../lib/analytics";
 
 const AUTH = "https://auth.gamerplex.com";
 
@@ -38,12 +40,21 @@ export default function FlipcashLinkPaste() {
   const [raw, setRaw] = useState("");
   const [bad, setBad] = useState(false);
 
+  // Fires when the control is actually on screen, which is the top of the funnel:
+  // without it a person who never pastes is indistinguishable from one who never
+  // saw the option, and those call for opposite fixes.
+  useEffect(() => { track("flipcash_signin_shown"); }, []);
+
   const go = () => {
     const token = tokenFromPaste(raw);
     if (!token) {
       setBad(true);
+      // A rejected paste is a product failure, not a user error: it usually means
+      // they copied something other than the link, which is a wording problem.
+      track("flipcash_signin_bad_paste");
       return;
     }
+    track("flipcash_signin_submitted");
     // A full navigation, not fetch(): the point is for the redeem response to set
     // its cookie on THIS browsing context, which is the app's WebView.
     window.location.href = `${AUTH}/flipcash-link?token=${encodeURIComponent(token)}`;

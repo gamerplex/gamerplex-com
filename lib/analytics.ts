@@ -8,6 +8,8 @@
 // `arcade_leaderboard_prewarmed` cron spam, which is what justified dropping it.
 // Do NOT start emitting high-volume machine events through here.
 
+import { isTracing, traceId } from "./trace";
+
 const IDENTITY_URL =
   process.env.NEXT_PUBLIC_IDENTITY_URL || "https://auth.gamerplex.com";
 
@@ -19,7 +21,23 @@ const lastByEvent = new Map<string, number>();
 
 // Only these reach the server. Everything else is a no-op: the table answers one
 // question, and an open funnel is how the old instance filled with 343k junk rows.
-const ALLOWED = new Set(["play_started", "game_started"]);
+//
+// The flipcash_* entries were added once Flipcash became the primary way in on
+// every sign-in surface: with email undeliverable it is the ONLY working path, and
+// its drop-off was completely invisible — StarterPackOffer had been calling
+// track() with names that this set silently discarded. Each one is a deliberate
+// human action, at most a few per session, so none of them can become the kind of
+// machine-generated volume that justified this list in the first place.
+const ALLOWED = new Set([
+  "play_started",
+  "game_started",
+  // Flipcash funnel: offered -> tapped out to the app -> pasted back -> failed.
+  "flipcash_signin_shown",
+  "flipcash_signin_submitted",
+  "flipcash_signin_bad_paste",
+  "flipcash_handoff_start",
+  "flipcash_qr_shown",
+]);
 
 /**
  * Durable per-browser id, so "how many people played" and "did they come back" are
@@ -52,12 +70,19 @@ function anonId(): string | undefined {
 
 export function track(event: string, properties?: Record<string, unknown>) {
   if (typeof window === "undefined") return;
-  const now = Date.now();
-  const last = lastByEvent.get(event) ?? 0;
-  if (now - last < DEDUP_MS) return; // deduped — a loop firing the same event
-  lastByEvent.set(event, now);
 
-  if (!ALLOWED.has(event)) return;
+  // A trace is a sequence of same-named events by definition, so it must skip the
+  // per-name dedup and the allowlist. It only reaches here when the device has
+  // tracing explicitly switched on, which expires by itself.
+  const tracing = event === "trace" && isTracing();
+
+  const now = Date.now();
+  if (!tracing) {
+    const last = lastByEvent.get(event) ?? 0;
+    if (now - last < DEDUP_MS) return; // deduped — a loop firing the same event
+    lastByEvent.set(event, now);
+    if (!ALLOWED.has(event)) return;
+  }
 
   // Starting a game IS daily activity — ping the streak here rather than on home-page
   // mount. Opening the landing page was the old definition, which meant a player who
@@ -67,10 +92,14 @@ export function track(event: string, properties?: Record<string, unknown>) {
   // This is the one place every game already funnels through, so it covers all of them
   // without touching each ArcadeMode. The server is idempotent per UTC day, so firing
   // on every run is harmless; fire-and-forget so it can never delay gameplay.
-  void fetch('/api/streak/ping', { method: 'POST', credentials: 'include', keepalive: true })
-    .catch(() => {});
+  if (!tracing) {
+    void fetch('/api/streak/ping', { method: 'POST', credentials: 'include', keepalive: true })
+      .catch(() => {});
+  }
 
-  const props = properties ?? {};
+  const props = tracing
+    ? { ...(properties ?? {}), trace: traceId(), path: window.location.pathname + window.location.search }
+    : (properties ?? {});
   const game = typeof props.game === "string" ? props.game : undefined;
 
   try {
