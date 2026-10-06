@@ -21,7 +21,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef } from "react";
 
 import { track } from "../lib/analytics";
-import { applyTraceFromUrl, describeTarget, isTracing, traceId } from "../lib/trace";
+import { applyTraceFromUrl, describeTarget, isBetaDefault, isTracing, traceId } from "../lib/trace";
 
 function Probe() {
   const pathname = usePathname();
@@ -90,11 +90,15 @@ function Probe() {
     };
   }, []);
 
-  // A visible marker, because a trace left on by accident is worse than no trace.
+  // Always visible, never silent: recording someone without telling them is not a
+  // thing to do by default. Muted while it is only the beta default, loud when it
+  // was switched on deliberately, so a forgotten explicit trace still stands out.
   if (!isTracing()) return null;
+  const beta = isBetaDefault();
   return (
-    <div style={badge} aria-live="polite">
-      ● tracing {traceId()} · <a href="?trace=0" style={{ color: "inherit" }}>stop</a>
+    <div style={beta ? badgeQuiet : badge} aria-live="polite">
+      ● {beta ? "beta trace" : `tracing ${traceId()}`} ·{" "}
+      <a href="?trace=0" style={{ color: "inherit" }}>stop</a>
     </div>
   );
 }
@@ -102,6 +106,13 @@ function Probe() {
 function shortUrl(u: string) {
   try { return new URL(u, location.origin).pathname.slice(0, 48); } catch { return u.slice(0, 48); }
 }
+
+const badgeQuiet: React.CSSProperties = {
+  position: "fixed", bottom: 8, left: 8, zIndex: 9999,
+  background: "rgba(0,0,0,.45)", color: "rgba(255,255,255,.62)",
+  font: "500 10.5px/1 system-ui, sans-serif", padding: "5px 8px", borderRadius: 999,
+  pointerEvents: "auto",
+};
 
 const badge: React.CSSProperties = {
   position: "fixed", bottom: 8, left: 8, zIndex: 9999,

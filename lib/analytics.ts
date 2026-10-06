@@ -8,7 +8,7 @@
 // `arcade_leaderboard_prewarmed` cron spam, which is what justified dropping it.
 // Do NOT start emitting high-volume machine events through here.
 
-import { isTracing, traceId } from "./trace";
+import { isTracing, noteTraceEvent, traceId } from "./trace";
 
 const IDENTITY_URL =
   process.env.NEXT_PUBLIC_IDENTITY_URL || "https://auth.gamerplex.com";
@@ -97,6 +97,7 @@ export function track(event: string, properties?: Record<string, unknown>) {
       .catch(() => {});
   }
 
+  if (tracing) noteTraceEvent();
   const props = tracing
     ? { ...(properties ?? {}), trace: traceId(), path: window.location.pathname + window.location.search }
     : (properties ?? {});

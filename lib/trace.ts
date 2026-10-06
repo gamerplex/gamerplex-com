@@ -7,18 +7,35 @@
 // mentioned. With tracing on, the app records every page, every click and every
 // failure against one trace id, and the answer to "where did it break" is a query.
 //
-// OFF BY DEFAULT, and deliberately so: the events table exists to answer "how many
-// plays per game", and an open funnel is exactly how its predecessor filled with
-// 343k junk rows. Tracing is opt-in per device, expires on its own, and is meant
-// for a developer reproducing something — never for collecting on real players.
+// ON BY DEFAULT during the beta, because there are no real users yet and the whole
+// point is that a failure should not need reproducing. A switch you have to
+// remember to flip is a switch that is off the one time it mattered.
 //
-// Turn on:  https://gamerplex.com/?trace=1       (persists ~2h on that device)
-// Turn off: https://gamerplex.com/?trace=0
+// It expires BY DATE, not by anyone remembering. After BETA_TRACE_UNTIL it reverts
+// to opt-in with no code change and no deploy — which matters because the risk here
+// was never volume, it is that default-on quietly outlives the beta and starts
+// recording real people. A per-session cap stops a runaway loop filling the table
+// the way cron spam filled its predecessor (343k junk rows, 96% machine events).
+//
+// Force on:  https://gamerplex.com/?trace=1   (overrides the date, ~2h)
+// Force off: https://gamerplex.com/?trace=0   (overrides default-on, this device)
 
 const KEY = 'gpx_trace';
+const OFF_KEY = 'gpx_trace_off';
 const ID_KEY = 'gpx_trace_id';
+const COUNT_KEY = 'gpx_trace_n';
 /** Long enough for a test run, short enough that nobody leaves it on by accident. */
 const TTL_MS = 2 * 60 * 60 * 1000;
+
+/**
+ * Default-on ends here, by the calendar. Push it out deliberately if the beta runs
+ * long; do not remove the check. This is the thing that stops a debug default
+ * becoming a permanent one.
+ */
+const BETA_TRACE_UNTIL = Date.parse('2026-12-01T00:00:00Z');
+
+/** A run is tens of events. Hundreds means a loop, not a person. */
+const MAX_EVENTS_PER_SESSION = 400;
 
 function now() { return Date.now(); }
 
@@ -26,9 +43,31 @@ function now() { return Date.now(); }
 export function isTracing(): boolean {
   if (typeof window === 'undefined') return false;
   try {
+    // An explicit ?trace=0 wins over the beta default, so it can always be silenced.
+    if (localStorage.getItem(OFF_KEY)) return false;
+    // A session that has produced hundreds of events is looping, not testing.
+    if (Number(sessionStorage.getItem(COUNT_KEY) || 0) > MAX_EVENTS_PER_SESSION) return false;
     const until = Number(localStorage.getItem(KEY) || 0);
-    if (!until || now() > until) return false;
-    return true;
+    if (until && now() <= until) return true;      // explicitly switched on
+    return now() < BETA_TRACE_UNTIL;               // beta default
+  } catch { return false; }
+}
+
+/** Counts toward the per-session cap. Called once per recorded event. */
+export function noteTraceEvent(): void {
+  try {
+    const n = Number(sessionStorage.getItem(COUNT_KEY) || 0) + 1;
+    sessionStorage.setItem(COUNT_KEY, String(n));
+  } catch { /* no storage — the cap simply does not apply */ }
+}
+
+/** True while the beta default is what is keeping tracing on. */
+export function isBetaDefault(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    if (localStorage.getItem(OFF_KEY)) return false;
+    const until = Number(localStorage.getItem(KEY) || 0);
+    return !(until && now() <= until) && now() < BETA_TRACE_UNTIL;
   } catch { return false; }
 }
 
@@ -46,8 +85,16 @@ export function traceId(): string {
 
 export function setTracing(on: boolean): void {
   try {
-    if (on) localStorage.setItem(KEY, String(now() + TTL_MS));
-    else { localStorage.removeItem(KEY); sessionStorage.removeItem(ID_KEY); }
+    if (on) {
+      localStorage.setItem(KEY, String(now() + TTL_MS));
+      localStorage.removeItem(OFF_KEY);
+    } else {
+      localStorage.removeItem(KEY);
+      // Sticky, so ?trace=0 also defeats the beta default on this device.
+      localStorage.setItem(OFF_KEY, '1');
+      sessionStorage.removeItem(ID_KEY);
+      sessionStorage.removeItem(COUNT_KEY);
+    }
   } catch { /* private mode — tracing simply stays off */ }
 }
 
