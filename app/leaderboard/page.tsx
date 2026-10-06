@@ -67,7 +67,7 @@ export default function LeaderboardPage() {
         open={showLogin}
         onClose={() => { setShowLogin(false); void refresh(); }}
         title="Sign in to save your rank"
-        subtitle="Enter your email — we'll send a one-tap sign-in link. No password, no wallet."
+        subtitle="Flipcash is the fastest way in — no password, no wallet."
       />
     </div>
   );

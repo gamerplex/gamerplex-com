@@ -17,7 +17,7 @@ export default function EmailLoginModal({
   open,
   onClose,
   title = "Save your score & streak",
-  subtitle = "Enter your email — we'll send a one-tap sign-in link. No password, no wallet.",
+  subtitle = "Flipcash is the fastest way in — no password, no wallet.",
 }: {
   open: boolean;
   onClose: () => void;
@@ -217,11 +217,25 @@ export default function EmailLoginModal({
         ) : (
           <>
             <div style={{ fontSize: 18, fontWeight: 800, color: "#f4f2fb", marginBottom: 6, paddingRight: 28 }}>{hinted ? "Welcome back 👋" : title}</div>
-            <div style={{ fontSize: 13, color: "#9a92b5", lineHeight: 1.5, marginBottom: 16 }}>
+            <div style={{ fontSize: 13, color: "#9a92b5", lineHeight: 1.5, marginBottom: 14 }}>
               {hinted
-                ? `Continue with your Gamerplex account — one tap ${native ? "sends a code" : "sends a sign-in link"} to the email below.`
-                : native ? "Enter your email — we'll send a 6-digit code to sign in. No password, no wallet." : subtitle}
+                ? "Continue with your Gamerplex account."
+                : "Flipcash is the fastest way in — no password, no wallet, nothing to wait for."}
             </div>
+
+            {/* FLIPCASH FIRST, everywhere. Email is still offered below, but it
+                cannot lead: the mail provider has been unable to deliver to any
+                new address, so leading with it sends people to wait for a message
+                that never arrives. Inside the native WebView this is also the only
+                path that puts the session in the jar the app actually reads. */}
+            <FlipcashLinkPaste />
+
+            <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "18px 0 14px" }}>
+              <span style={{ flex: 1, height: 1, background: "#2a2440" }} />
+              <span style={{ fontSize: 11, color: "#6a6385", letterSpacing: ".08em" }}>OR EMAIL</span>
+              <span style={{ flex: 1, height: 1, background: "#2a2440" }} />
+            </div>
+
             <input
               ref={inputRef}
               type="email"
@@ -246,22 +260,32 @@ export default function EmailLoginModal({
               }}
             />
             {err && <div style={{ color: "#ff7a86", fontSize: 12, marginTop: 8 }}>{err}</div>}
-            <button onClick={submit} disabled={state === "sending"} style={{ ...primaryBtn, opacity: state === "sending" ? 0.7 : 1 }}>
+            <button onClick={submit} disabled={state === "sending"} style={{ ...secondaryBtn, opacity: state === "sending" ? 0.7 : 1 }}>
               {state === "sending" ? "Sending…" : hinted ? "Continue →" : native ? "Email me a code" : "Email me a sign-in link"}
             </button>
             <div style={{ fontSize: 11, color: "#6a6385", textAlign: "center", marginTop: 12 }}>
               Free · no password · your score saves the moment you tap the link
             </div>
-            {/* The way in that does not depend on email delivery or on which app
-                wins a link tap. Inside the native WebView this is the ONLY path
-                that puts the session in the jar the app reads. */}
-            <FlipcashLinkPaste />
           </>
         )}
       </div>
     </div>
   );
 }
+
+/** Email is the fallback now, so it reads as one: outlined, not filled. */
+const secondaryBtn: React.CSSProperties = {
+  width: "100%",
+  height: 48,
+  marginTop: 12,
+  borderRadius: 12,
+  border: "1px solid #3a3357",
+  background: "transparent",
+  color: "#cabfff",
+  fontSize: 14.5,
+  fontWeight: 700,
+  cursor: "pointer",
+};
 
 const primaryBtn: React.CSSProperties = {
   width: "100%",

@@ -120,7 +120,7 @@ export default function Home() {
         <p className="gl-foot">One tap to play · sign in with email to save · no wallet needed · Solana mainnet</p>
       </div>
 
-      <EmailLoginModal open={showLogin} onClose={() => { setShowLogin(false); void refresh(); }} title="Sign in to Gamerplex" subtitle="Enter your email — we'll send a one-tap sign-in link. No password, no wallet." />
+      <EmailLoginModal open={showLogin} onClose={() => { setShowLogin(false); void refresh(); }} title="Sign in to Gamerplex" subtitle="Flipcash is the fastest way in — no password, no wallet." />
     </div>
   );
 }
