@@ -35,8 +35,15 @@ import idlJson from "./idl.json";
 // Network selector: "mainnet" | "devnet". Defaults to MAINNET (production) so a
 // forgotten env var can't accidentally leave prod on devnet. Set
 // NEXT_PUBLIC_SOLANA_NETWORK=devnet for local/dev testing.
-export const ARCADE_NETWORK =
-  (process.env.NEXT_PUBLIC_SOLANA_NETWORK as "mainnet" | "devnet") || "mainnet";
+// MAINNET-ONLY. Prod once shipped the DEVNET program id against the MAINNET RPC
+// (2026-08-03) and every save died on a cryptic AccountNotFound, because the two
+// clusters are selected by separate env vars that silently disagreed. Devnet now
+// needs a deliberate opt-in, so a stray value can never flip a deployment again.
+export const ARCADE_NETWORK: "mainnet" | "devnet" =
+  process.env.NEXT_PUBLIC_SOLANA_NETWORK === "devnet" &&
+  process.env.NEXT_PUBLIC_ALLOW_DEVNET === "1"
+    ? "devnet"
+    : "mainnet";
 
 // Per-network program IDs (mainnet ≠ devnet). NEXT_PUBLIC_ARCADE_PROGRAM_ID
 // overrides; otherwise selected by network, defaulting to devnet.

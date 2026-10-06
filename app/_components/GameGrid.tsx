@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 
 import { GAMES } from "../_data/games";
 
-// Games grid ordered by recent play volume, with live play counts (PostHog, cached).
+// Games grid ordered by all-time play volume, with cumulative play counts (PostHog, cached).
 export default function GameGrid() {
   const [ordered, setOrdered] = useState(GAMES);
   const [plays, setPlays] = useState<Record<string, number>>({});

@@ -26,7 +26,7 @@ import ClaimHandleModal from "../../../../components/arcade/ClaimHandleModal";
 import EmailLoginModal from "../../../../components/arcade/EmailLoginModal";
 import { sfxRung, sfxInvalid, sfxMilestone, sfxGameOver, haptic, isMuted, setMuted, prefersReducedMotion } from "../../../../lib/arcade/juice";
 import { track, identifyWallet } from "../../../../lib/analytics";
-import { getIdentity, getCredits, earnCredits, claimReferral, type IdentityUser } from "../../../../lib/identity/client";
+import { fetchIdentity, getCredits, earnCredits, claimReferral, type IdentityUser } from "../../../../lib/identity/client";
 import { buildShareUrl, getStoredReferralCode } from "../../../../lib/arcade/referral";
 import { buildChallengeUrl } from "../../../../lib/arcade/challenge";
 import { GLASS_CSS, glassPanel, GREEN } from "../../../../components/glass";
@@ -145,7 +145,11 @@ export default function NetherlevelMode() {
   }, []);
 
   const refreshIdentity = useCallback(async () => {
-    const u = await getIdentity();
+    // An unreachable backend is not a logout. Blanking identity here mid-session
+    // hides a player's Credits and offers them a sign-in they do not need.
+    const s = await fetchIdentity();
+    if (s.status === 'offline') return;
+    const u = s.status === 'in' ? s.user : null;
     setMe(u);
     meRef.current = u;
     if (u) {

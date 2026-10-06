@@ -4,6 +4,7 @@ import ReferralCapture from "../components/arcade/ReferralCapture";
 import PostHogProvider from "../components/PostHogProvider";
 import WalletBoot from "../components/WalletBoot";
 import AppBanner from "../components/AppBanner";
+import BackendStatusBanner from "../components/BackendStatusBanner";
 import ThemeApplier from "../components/ThemeApplier";
 
 export const metadata: Metadata = {
@@ -83,6 +84,9 @@ export default function RootLayout({
         <PostHogProvider>
         <WalletBoot>
         <ReferralCapture />
+        {/* Above the content: an outage must be visible before someone concludes
+            their account is gone and tries to buy it back. */}
+        <BackendStatusBanner />
         <main id="content" tabIndex={-1}>{children}</main>
         <AppBanner />
         <script

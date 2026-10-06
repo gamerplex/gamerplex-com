@@ -455,17 +455,51 @@ export async function claimReferral(referrer: string): Promise<boolean> {
 }
 
 // "Who am I?" — returns null when anonymous (never throws on 401).
-export async function getIdentity(): Promise<IdentityUser | null> {
+/**
+ * Three outcomes, not two. "Signed out" and "we could not ask" are different
+ * facts, and collapsing them is what makes an outage look like a logout: the UI
+ * shows Sign in, purchased items disappear, and people try to buy again. That
+ * happened for real on 2026-10-06 when auth.gamerplex.com stopped resolving.
+ *
+ *   in      - the server answered and there is a session
+ *   out     - the server answered and there is none (the only time to sign out)
+ *   offline - unreachable, timed out, or 5xx. Says NOTHING about the session.
+ *
+ * 4xx counts as `out` because the server did reply about this request; 5xx does
+ * not, because the server is broken rather than the session being absent.
+ */
+export type IdentityState =
+  | { status: 'in'; user: IdentityUser }
+  | { status: 'out' }
+  | { status: 'offline' };
+
+export async function fetchIdentity(): Promise<IdentityState> {
+  let r: Response;
   try {
-    const r = await fetch(`${IDENTITY_URL}/api/auth/me`, {
+    r = await fetch(`${IDENTITY_URL}/api/auth/me`, {
       credentials: 'include',
+      // Without this a dead backend hangs the UI in "loading" forever, which
+      // reads as broken just as much as a false logout does.
+      signal: AbortSignal.timeout(10_000),
     });
-    if (!r.ok) return null;
-    const { user } = await r.json();
-    return user ?? null;
   } catch {
-    return null;
+    return { status: 'offline' };
   }
+  if (r.status >= 500 || r.status === 0) return { status: 'offline' };
+  if (!r.ok) return { status: 'out' };
+  try {
+    const { user } = await r.json();
+    return user ? { status: 'in', user } : { status: 'out' };
+  } catch {
+    // A 200 we cannot parse is a broken backend, not an absent session.
+    return { status: 'offline' };
+  }
+}
+
+/** Back-compat for callers that only care whether there is a user. */
+export async function getIdentity(): Promise<IdentityUser | null> {
+  const s = await fetchIdentity();
+  return s.status === 'in' ? s.user : null;
 }
 
 // $GAME balance of a wallet (same-origin API; 0 when no ATA / no wallet).

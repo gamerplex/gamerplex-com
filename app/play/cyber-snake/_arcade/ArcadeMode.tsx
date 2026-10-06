@@ -45,7 +45,7 @@ import { buildChallengeUrl } from "../../../../lib/arcade/challenge";
 import { submitReplay } from "@gamerplex/sdk/arcade";
 import { track, identifyWallet } from "../../../../lib/analytics";
 import { EconomyConsentModal, hasEconomyConsent } from "../../../../lib/arcade/economy-gate";
-import { earnCredits, getIdentity, getCredits, claimReferral, type IdentityUser } from "../../../../lib/identity/client";
+import { earnCredits, fetchIdentity, getCredits, claimReferral, type IdentityUser } from "../../../../lib/identity/client";
 import EmailLoginModal from "../../../../components/arcade/EmailLoginModal";
 import GoPlusModal from "../../../../components/arcade/GoPlusModal";
 import ShareSheet from "../../../../components/arcade/ShareSheet";
@@ -410,7 +410,11 @@ export default function CyberSnakeSolo() {
   const [showLogin, setShowLogin] = useState(false);
   const [showPlus, setShowPlus] = useState(false);
   const refreshIdentity = useCallback(async () => {
-    const u = await getIdentity();
+    // An unreachable backend is not a logout. Blanking identity here mid-session
+    // hides a player's Credits and offers them a sign-in they do not need.
+    const s = await fetchIdentity();
+    if (s.status === 'offline') return;
+    const u = s.status === 'in' ? s.user : null;
     setMe(u);
     meRef.current = u;
     if (u) {

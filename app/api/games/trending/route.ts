@@ -1,41 +1,31 @@
-// GET /api/games/trending — recent play volume per game ("trending" + live counts).
-// Source = PostHog play events (play_started/game_started), the only complete play
-// signal (game_scores undercounts: saved runs only). Queried via HogQL through a
-// server-side personal key (never exposed to the browser) and cached 1h so the grid
-// never blocks on analytics. Test traffic excluded. Returns
+// GET /api/games/trending — all-time cumulative play count per game (+ order).
+//
+// Source = identity-service's analytics_events (play_started/game_started), which
+// replaced PostHog when ph001 was deleted 2026-09-15. game_scores is NOT the source:
+// it only counts SAVED runs and therefore undercounts plays.
+//
+// The historical PostHog data (14,196 events, 2026-06-12 → 2026-09-12) was imported
+// into that table, so counts are continuous across the migration.
+//
+// Cached 1h so the grid never blocks on analytics. Returns
 // { order: string[], plays: Record<slug, count> }; empty on any failure so the grid
 // falls back to its static order with no counts.
 
 import { NextResponse } from 'next/server';
 
-const PH_HOST = process.env.POSTHOG_HOST || 'https://ph001.gamerplex.com';
-const PH_KEY = process.env.POSTHOG_PERSONAL_KEY;
-const PROJECT = process.env.POSTHOG_PROJECT_ID || '1';
-
-const HOGQL = `SELECT properties.game AS game, count() AS plays
-  FROM events
-  WHERE event IN ('play_started','game_started')
-    AND timestamp > now() - INTERVAL 14 DAY
-    AND ifNull(properties.test_traffic, false) = false
-  GROUP BY game ORDER BY plays DESC`;
+const IDENTITY_URL =
+  process.env.NEXT_PUBLIC_IDENTITY_URL || 'https://auth.gamerplex.com';
 
 export async function GET() {
-  if (!PH_KEY) return NextResponse.json({ order: [], plays: {} });
   try {
-    const r = await fetch(`${PH_HOST}/api/projects/${PROJECT}/query/`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${PH_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: { kind: 'HogQLQuery', query: HOGQL } }),
+    const r = await fetch(`${IDENTITY_URL}/api/v1/analytics/trending`, {
       next: { revalidate: 3600 }, // cache the analytics query for an hour
     });
     if (!r.ok) return NextResponse.json({ order: [], plays: {} });
-    const d = await r.json();
-    const rows = (Array.isArray(d.results) ? d.results : []).filter(
-      (row: [string, number]) => typeof row?.[0] === 'string' && row[0].length > 0,
-    );
-    const order = rows.map((row: [string, number]) => row[0]);
-    const plays: Record<string, number> = {};
-    for (const [game, count] of rows) plays[game] = Number(count) || 0;
+    const d = (await r.json()) as { order?: unknown; plays?: unknown };
+    const order = Array.isArray(d.order) ? (d.order as string[]) : [];
+    const plays =
+      d.plays && typeof d.plays === 'object' ? (d.plays as Record<string, number>) : {};
     return NextResponse.json({ order, plays });
   } catch {
     return NextResponse.json({ order: [], plays: {} });
