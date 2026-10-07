@@ -252,7 +252,15 @@ export default function EmailLoginModal({
                 </button>
               </>
             ) : (
-              <AuthPanel onEmail={() => setEmailStep(true)} busy={state === "sending"} />
+              <>
+                {/* Email is NOT offered at the front door. It cannot be delivered -- the
+                    sending domain is unverified and own1 currently fails DNS on the SMTP
+                    host -- so showing it here sends people down a path that silently ends.
+                    It survives as an OPTIONAL recovery address in Profile, where someone
+                    already signed in can add one and the page can be honest about whether
+                    the mail actually went. */}
+                <AuthPanel onEmail={null} busy={state === "sending"} />
+              </>
             )}
           </>
         )}

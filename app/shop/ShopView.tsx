@@ -68,8 +68,8 @@ type Filter = "all" | "power" | "cosmetic" | "owned";
  * through Flipcash. A $GAME-only price has NO checkout here, so showing it priced and
  * tappable advertised something nobody could buy.
  */
-function payable(i: Item): boolean {
-  return i.cr != null || i.usd != null;
+function payable(i: Item, fcPrice?: number | null): boolean {
+  return i.cr != null || i.usd != null || (fcPrice != null && fcPrice > 0);
 }
 
 /** A balance we could not read is "—". Never 0 — that reads as "you are broke". */
@@ -83,6 +83,13 @@ export default function ShopView() {
   // linked, or the read failed) and must render as "—", never as 0: the whole reason
   // this exists is that a confident 0 was shown to someone holding 841M $GAME.
   const [fc, setFc] = useState<{ linked: boolean; game: number | null; usdf: number | null } | null>(null);
+  // Shelf prices, from the server. The shop never keeps its own copy of a price --
+  // the first person to notice a mismatch would be a paying customer.
+  const [fcPrices, setFcPrices] = useState<Record<string, { usd: number; usdInGame: number }>>({});
+  // The Flipcash leg of a purchase: which asset, and the order once created.
+  const [fcMint, setFcMint] = useState<"game" | "usdf">("game");
+  const [order, setOrder] = useState<{ usd: number; itemId: string; mint: string } | null>(null);
+  const [ordering, setOrdering] = useState(false);
   // Real ownership from the server. This was hardcoded to ["pixel"], so every
   // visitor saw Pixel Trail as owned and nothing they bought survived a reload.
   const [owned, setOwned] = useState<Set<string>>(new Set());
@@ -93,6 +100,10 @@ export default function ShopView() {
   const [usdPerGame, setUsdPerGame] = useState<number | null>(null);
 
   useEffect(() => {
+    void fetch("/api/flipcash/prices", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => setFcPrices((j?.items ?? {}) as Record<string, { usd: number; usdInGame: number }>))
+      .catch(() => setFcPrices({}));
     void fetch("/api/flipcash/balances", { credentials: "include", cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then(setFc)
@@ -118,11 +129,11 @@ export default function ShopView() {
 
   const items = useMemo(() => {
     if (filter === "owned") return CATALOG.filter((i) => owned.has(i.id));
-    if (filter === "power" || filter === "cosmetic") return CATALOG.filter((i) => i.cat === filter && !i.featured && !i.starter && payable(i));
-    return CATALOG.filter((i) => !i.featured && !i.starter && payable(i));
+    if (filter === "power" || filter === "cosmetic") return CATALOG.filter((i) => i.cat === filter && !i.featured && !i.starter && payable(i, fcPrices[i.id]?.usd));
+    return CATALOG.filter((i) => !i.featured && !i.starter && payable(i, fcPrices[i.id]?.usd));
   }, [filter, owned]);
 
-  const featured = CATALOG.find((i) => i.featured && payable(i));
+  const featured = CATALOG.find((i) => i.featured && payable(i, fcPrices[i.id]?.usd));
 
   function openSheet(item: Item, cur?: "cr" | "gm") {
     if (owned.has(item.id)) return;
@@ -261,6 +272,13 @@ export default function ShopView() {
                       </div>
                     );
                   })()}
+                  {fcPrices[sheet.item.id] && (
+                    <button className={`cur gm ${sheet.cur === "gm" ? "on" : ""}`} onClick={() => setSheet({ ...sheet, cur: "gm" })}>
+                      <span className="cur-tag">20% OFF IN $GAME</span>
+                      <span className="cur-p">{formatUsd(fcPrices[sheet.item.id].usdInGame)}</span>
+                      <span className="cur-h">pay with Flipcash</span>
+                    </button>
+                  )}
                   {sheet.item.cr != null && (
                     <button className={`cur cr ${sheet.cur === "cr" ? "on" : ""}`} onClick={() => setSheet({ ...sheet, cur: "cr" })}>
                       <span className="cur-tag">EARNED FREE</span><span className="cur-p">⬡ {sheet.item.cr.toLocaleString()}</span><span className="cur-h">You have {credits ?? "—"}</span>
@@ -273,26 +291,69 @@ export default function ShopView() {
                     <a className="cta" href="/#featured">Earn Credits — play a run</a>
                   </>
                 ) : sheet.cur === "gm" ? (
-                  /* Every catalog item carries a $GAME price and the sheet defaults to it,
-                     so this was the DEFAULT path for the whole shop — and it rendered a
-                     "Confirm" button that did nothing for anyone holding enough $GAME.
-                     Say so, and offer what actually works. */
-                  <>
-                    <div className="warn">$GAME checkout is coming to the web.</div>
-                    {sheet.item.cr != null ? (
-                      <>
-                        <button className="cta" onClick={() => setSheet({ ...sheet, cur: "cr" })}>
-                          Pay {sheet.item.cr.toLocaleString()} Credits instead
-                        </button>
-                        <div className="hint">Credits are earned free by playing.</div>
-                      </>
-                    ) : (
+                  order && order.itemId === sheet.item.id ? (
+                    <>
+                      {/* The amount is FIAT on purpose: a Flipcash buyer types an amount
+                          their client converts through the bonding curve, so a $GAME
+                          quantity is an instruction nobody can follow. */}
+                      <div className="fc-amt">Send <b>{formatUsd(order.usd)}</b> in {order.mint === "game" ? "$GAME" : "Dollars"}</div>
+                      <a
+                        className="cta gx-transfer"
+                        href={FLIPCASH_GAME}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={() => track("flipcash_handoff_start", { item: sheet.item.id, priceUsd: order.usd })}
+                      >
+                        Open @gamerplex and pay
+                      </a>
                       <div className="hint">
-                        This one is $GAME-exclusive, so it isn&apos;t purchasable on the web yet.
-                        You can still <a className="lnk" href={FLIPCASH_GAME} target="_blank" rel="noopener noreferrer">hold $GAME on Flipcash</a>.
+                        We will confirm in the chat the moment it lands, and your item unlocks here.
+                        Opening the chat for the first time costs Flipcash&apos;s $1 minimum.
                       </div>
-                    )}
-                  </>
+                    </>
+                  ) : (
+                    <>
+                      <div className="fc-pick">
+                        <button className={`fc-opt ${fcMint === "game" ? "on" : ""}`} onClick={() => setFcMint("game")}>
+                          $GAME <span>{formatUsd(fcPrices[sheet.item.id]?.usdInGame ?? 0)}</span>
+                        </button>
+                        <button className={`fc-opt ${fcMint === "usdf" ? "on" : ""}`} onClick={() => setFcMint("usdf")}>
+                          Dollars <span>{formatUsd(fcPrices[sheet.item.id]?.usd ?? 0)}</span>
+                        </button>
+                      </div>
+                      <button
+                        className="cta"
+                        disabled={ordering}
+                        onClick={async () => {
+                          setOrdering(true);
+                          setBuyError(null);
+                          const r = await fetch("/api/flipcash/order", {
+                            method: "POST",
+                            credentials: "include",
+                            headers: { "content-type": "application/json" },
+                            body: JSON.stringify({ itemId: sheet.item.id, mint: fcMint }),
+                          }).then((x) => x.json()).catch(() => ({ error: "network" }));
+                          setOrdering(false);
+                          if (r?.error) {
+                            // A rate we cannot read is not a reason to quote a guess.
+                            setBuyError(
+                              r.error === "rate_unavailable"
+                                ? "Can't price $GAME right now — pay in Dollars instead."
+                                : r.error === "not_signed_in" ? "Sign in first."
+                                : "Couldn't start that purchase.",
+                            );
+                            if (r.payInUsdfInstead) setFcMint("usdf");
+                            return;
+                          }
+                          setOrder({ usd: r.usd, itemId: r.itemId, mint: r.mint });
+                          track("flipcash_order_created", { item: sheet.item.id, mint: fcMint, priceUsd: r.usd });
+                        }}
+                      >
+                        {ordering ? "Starting…" : "Pay with Flipcash"}
+                      </button>
+                      {buyError && <div className="warn" style={{ marginTop: 10 }}>{buyError}</div>}
+                    </>
+                  )
                 ) : (
                   <>
                     <button className="cta" onClick={confirm} disabled={status === "confirming"}>
@@ -348,6 +409,15 @@ const CSS = `
 .pill.cr{color:var(--cr);border:1px solid rgba(20,241,149,.4);background:rgba(20,241,149,.08);}
 .pill.gm{color:#fff;background:var(--gm);box-shadow:0 0 16px rgba(153,69,255,.5);}
 /* Dollars held in Flipcash. Its own colour so it is not read as Credits. */
+.fc-amt{margin:4px 0 10px;font-size:15px;color:#f4f2fb;text-align:center;font-variant-numeric:tabular-nums;}
+.fc-pick{display:flex;gap:8px;margin:2px 0 12px;}
+.fc-opt{flex:1;min-height:52px;border-radius:12px;border:1px solid var(--gb);background:var(--glass);
+  color:#cfc7e8;font-size:13px;font-weight:700;display:flex;flex-direction:column;gap:2px;
+  align-items:center;justify-content:center;cursor:pointer;touch-action:manipulation;}
+.fc-opt span{font-size:15px;color:#fff;font-variant-numeric:tabular-nums;}
+.fc-opt.on{border-color:var(--gm);box-shadow:0 0 0 1px var(--gm) inset;}
+@media (hover:hover) and (pointer:fine){ .fc-opt:hover{border-color:var(--gm);} }
+.fc-opt:active{transform:translateY(1px);}
 .pill.usdf{color:#dff7e9;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.07);}
 .sh-bal .pill{font-variant-numeric:tabular-nums;}
 .sh-filters{display:flex;gap:8px;overflow-x:auto;padding:4px 0 12px;scrollbar-width:none;}
