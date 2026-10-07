@@ -22,8 +22,10 @@ async function styles(page: Page) {
     const html = getComputedStyle(document.documentElement);
     const body = getComputedStyle(document.body);
     return {
-      tapHighlight: html.webkitTapHighlightColor,
-      textSizeAdjust: html.webkitTextSizeAdjust,
+      // getPropertyValue, not the camelCase alias: the vendor-prefixed properties are
+      // not on CSSStyleDeclaration's type, and the alias is not implemented everywhere.
+      tapHighlight: html.getPropertyValue('-webkit-tap-highlight-color'),
+      textSizeAdjust: html.getPropertyValue('-webkit-text-size-adjust'),
       overscrollY: html.overscrollBehaviorY,
       caretColor: html.caretColor,
       accentColor: html.accentColor,
