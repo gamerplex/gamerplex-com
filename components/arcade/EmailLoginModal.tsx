@@ -8,7 +8,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import FlipcashLinkPaste from "./FlipcashLinkPaste";
+import AuthPanel from "../identity/AuthPanel";
 import { emailSignup, isNativeApp, requestEmailOtp, verifyEmailOtp } from "../../lib/identity/client";
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
@@ -29,6 +29,7 @@ export default function EmailLoginModal({
   const [code, setCode] = useState("");
   // "code"/"verifying" are the native-app OTP path; "sent" is the web magic-link path.
   const [state, setState] = useState<"idle" | "sending" | "sent" | "code" | "verifying" | "error">("idle");
+  const [emailStep, setEmailStep] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [native, setNative] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -217,55 +218,42 @@ export default function EmailLoginModal({
         ) : (
           <>
             <div style={{ fontSize: 18, fontWeight: 800, color: "#f4f2fb", marginBottom: 6, paddingRight: 28 }}>{hinted ? "Welcome back 👋" : title}</div>
-            <div style={{ fontSize: 13, color: "#9a92b5", lineHeight: 1.5, marginBottom: 14 }}>
-              {hinted
-                ? "Continue with your Gamerplex account."
-                : "Flipcash is the fastest way in — no password, no wallet, nothing to wait for."}
-            </div>
 
-            {/* FLIPCASH FIRST, everywhere. Email is still offered below, but it
-                cannot lead: the mail provider has been unable to deliver to any
-                new address, so leading with it sends people to wait for a message
-                that never arrives. Inside the native WebView this is also the only
-                path that puts the session in the jar the app actually reads. */}
-            <FlipcashLinkPaste />
-
-            <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "18px 0 14px" }}>
-              <span style={{ flex: 1, height: 1, background: "#2a2440" }} />
-              <span style={{ fontSize: 11, color: "#6a6385", letterSpacing: ".08em" }}>OR EMAIL</span>
-              <span style={{ flex: 1, height: 1, background: "#2a2440" }} />
-            </div>
-
-            <input
-              ref={inputRef}
-              type="email"
-              inputMode="email"
-              autoComplete="email"
-              placeholder="you@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && submit()}
-              disabled={state === "sending"}
-              style={{
-                width: "100%",
-                height: 48,
-                padding: "0 14px",
-                borderRadius: 12,
-                border: `1px solid ${err ? "#ff5a6a" : "#332d4a"}`,
-                background: "#0e0b17",
-                color: "#f4f2fb",
-                fontSize: 16,
-                outline: "none",
-                boxSizing: "border-box",
-              }}
-            />
-            {err && <div style={{ color: "#ff7a86", fontSize: 12, marginTop: 8 }}>{err}</div>}
-            <button onClick={submit} disabled={state === "sending"} style={{ ...secondaryBtn, opacity: state === "sending" ? 0.7 : 1 }}>
-              {state === "sending" ? "Sending…" : hinted ? "Continue →" : native ? "Email me a code" : "Email me a sign-in link"}
-            </button>
-            <div style={{ fontSize: 11, color: "#6a6385", textAlign: "center", marginTop: 12 }}>
-              Free · no password · your score saves the moment you tap the link
-            </div>
+            {emailStep ? (
+              <>
+                <div style={{ fontSize: 13, color: "#9a92b5", lineHeight: 1.5, margin: "0 0 14px" }}>
+                  {native ? "We'll send a 6-digit code." : "We'll send a one-tap sign-in link."}
+                </div>
+                <input
+                  ref={inputRef}
+                  type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                  placeholder="you@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && submit()}
+                  disabled={state === "sending"}
+                  style={{
+                    width: "100%", height: 48, padding: "0 14px", borderRadius: 12,
+                    border: `1px solid ${err ? "#ff5a6a" : "#332d4a"}`, background: "#0e0b17",
+                    color: "#f4f2fb", fontSize: 16, outline: "none", boxSizing: "border-box",
+                  }}
+                />
+                {err && <div style={{ color: "#ff7a86", fontSize: 12, marginTop: 8 }}>{err}</div>}
+                <button onClick={submit} disabled={state === "sending"} style={{ ...primaryBtn, opacity: state === "sending" ? 0.7 : 1 }}>
+                  {state === "sending" ? "Sending…" : native ? "Email me a code" : "Email me a sign-in link"}
+                </button>
+                <button
+                  onClick={() => { setEmailStep(false); setErr(null); }}
+                  style={{ width: "100%", marginTop: 10, background: "transparent", border: "none", color: "#8a83a5", fontSize: 12.5, cursor: "pointer" }}
+                >
+                  ← Back
+                </button>
+              </>
+            ) : (
+              <AuthPanel onEmail={() => setEmailStep(true)} busy={state === "sending"} />
+            )}
           </>
         )}
       </div>

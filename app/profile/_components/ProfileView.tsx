@@ -247,12 +247,12 @@ export function ProfileView({
       return (
         <div style={{ maxWidth: 520, margin: "72px auto", padding: 24, textAlign: "center" }}>
           <div style={{ fontSize: 40, marginBottom: 16 }}>👤</div>
-          <h1 style={{ fontSize: 22, marginBottom: 8, color: "#e8e8f0" }}>Sign in to start your profile</h1>
+          <h1 style={{ fontSize: 22, marginBottom: 8, color: "#e8e8f0" }}>Your profile lives here</h1>
           <p style={{ color: "#8a8aa0", fontSize: 14, marginBottom: 20, lineHeight: 1.5 }}>
             Just your email — keep your scores, rank, and Credits across every game. No wallet needed.
           </p>
           <button onClick={() => setShowLogin(true)} style={{ display: "inline-block", padding: "12px 22px", borderRadius: 10, background: "linear-gradient(90deg,#9945FF,#14F195)", color: "#00110a", fontWeight: 800, fontSize: 15, border: "none", cursor: "pointer" }}>
-            Sign in with email
+            Sign in
           </button>
           {/* Ecosystem standard: email is the primary (walletless) entry point;
               wallet is the optional web3 upgrade — never framed as an equal alternative. */}

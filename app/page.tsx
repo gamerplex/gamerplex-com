@@ -77,9 +77,8 @@ export default function Home() {
             ) : (
               <>
                 <div className="gl-sc-title">Save your scores</div>
-                <div className="gl-sc-sub">Play free right now — sign in with <b>email</b> to keep your rank. No password, no wallet.</div>
-                <button onClick={() => setShowLogin(true)} className="gl-cta" style={{ marginTop: 14 }}><span>✉️ Sign in with email</span><span className="gl-cta-arrow">↗</span></button>
-                <div className="gl-sc-note">You can play without signing in — we only ask when you want to save.</div>
+                <div className="gl-sc-sub">Play free right now. Sign in when you want to keep your rank — the button is top right.</div>
+                <button onClick={playLucky} className="gl-cta" style={{ marginTop: 14 }}><span>Play a game</span><span className="gl-cta-arrow">↗</span></button>
               </>
             )}
           </aside>
@@ -99,7 +98,6 @@ export default function Home() {
         <div className="gl-lb glass"><ShellLeaderboard gameId="blockwords" games={LB_GAMES} highlightUserId={user?.id} limit={8} defaultWindow="all" /></div>
         <div style={{ display: "flex", gap: 14, justifyContent: "center", alignItems: "center", flexWrap: "wrap", margin: "18px 0 40px" }}>
           <Link href="/play/blockwords" className="gl-cta" style={{ width: "auto" }}><span>▶ Play Blockwords</span><span className="gl-cta-arrow">↗</span></Link>
-          {!isSignedIn && <button onClick={() => setShowLogin(true)} className="gl-signin">Sign in to save your rank</button>}
           <Link href="/leaderboard" className="gl-sc-link" style={{ margin: 0 }}>Full rankings →</Link>
         </div>
 
@@ -117,7 +115,7 @@ export default function Home() {
 
         <div style={{ marginTop: 30 }}><CommunityLinks tone="light" /></div>
         <div style={{ textAlign: "center", marginTop: 12 }}><Link href="/download" style={{ color: "#b388ff", fontWeight: 700, fontSize: 13.5 }}>▶ Get the Gamerplex app →</Link></div>
-        <p className="gl-foot">One tap to play · sign in with email to save · no wallet needed · Solana mainnet</p>
+        <p className="gl-foot">One tap to play · sign in to save · no wallet needed · Solana mainnet</p>
       </div>
 
       <EmailLoginModal open={showLogin} onClose={() => { setShowLogin(false); void refresh(); }} title="Sign in to Gamerplex" subtitle="Flipcash is the fastest way in — no password, no wallet." />

@@ -39,7 +39,8 @@ export default function AppOnboard() {
   }, [user, isSignedIn]);
 
   const steps = [
-    { done: isSignedIn, icon: "✉️", label: "Sign in to save", action: !isSignedIn },
+    // No action: sign-in lives top right only, so this is a status row.
+    { done: isSignedIn, icon: "✉️", label: "Sign in to save", action: false },
     { done: flags.played, icon: "🎮", label: "Play a game", hint: "tap one below ↓" },
     ...(flags.native ? [{ done: flags.notif, icon: "🔔", label: "Turn on reminders", hint: "in Settings" }] : []),
     { done: flags.streak, icon: "🔥", label: "Start a daily streak", hint: "play daily" },

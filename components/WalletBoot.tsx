@@ -50,7 +50,10 @@ export default function WalletBoot({ children }: { children: React.ReactNode }) 
 
   return (
     <ConnectionProvider endpoint={RPC_ENDPOINT}>
-      <WalletProvider wallets={wallets} autoConnect>
+      {/* NOT autoConnect: it launched Phantom the moment the Profile tab
+          mounted, so opening a tab looked like the app demanding a wallet.
+          A wallet is linked deliberately, from the account panel. */}
+      <WalletProvider wallets={wallets}>
         <WalletModalProvider>
           <WalletConnectTracker />
           {children}
