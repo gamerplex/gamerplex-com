@@ -3,13 +3,20 @@
 // The ONE account affordance — a fixed top-right chip on every app-shell page
 // (Play / Shop / Ranks / Profile). Shows login state at a glance: signed-out → "Sign
 // in"; signed-in → avatar + handle + Credits (+ a ◆ dot when a wallet is linked).
-// Tapping always opens the Profile tab — in the native app via a bridge message
-// (the native Profile tab owns wallet/$GAME via MWA); on web it routes to /app/profile.
+// Tapping depends on state, and that distinction is the whole point:
+//   signed IN  → open the Profile tab (bridge message in the app, route on web)
+//   signed OUT → open the SHARED sign-in modal, right here
+//
+// It used to open Profile in both cases. Tapping "Sign in" therefore threw you
+// into the Profile tab, which asked for a wallet — so the one affordance meant to
+// start a login instead started something else entirely. Traced on device
+// 2026-10-07: click "Sign in" on /app/play, land on /app/profile.
 // Standardized so the same chip is dropped into Sledgit + PLG headers too.
 
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useEffect, useState } from 'react';
 
+import EmailLoginModal from '../arcade/EmailLoginModal';
 import { useIdentity } from '../../lib/identity/useIdentity';
 import { getCredits, getGameBalance } from '../../lib/identity/client';
 
@@ -18,10 +25,17 @@ function isNative(): boolean {
 }
 
 function openProfile() {
+  // The bridge is present but not always a usable object — observed on device as
+  // "e?.postMessage is not a function", thrown on every tap. A failed bridge must
+  // fall through to the web route, not take the page down with it.
   if (isNative()) {
-    const rn = (window as { ReactNativeWebView?: { postMessage: (m: string) => void } }).ReactNativeWebView;
-    rn?.postMessage(JSON.stringify({ type: 'gpx-open-profile' }));
-    return;
+    try {
+      const rn = (window as { ReactNativeWebView?: { postMessage?: (m: string) => void } }).ReactNativeWebView;
+      if (typeof rn?.postMessage === 'function') {
+        rn.postMessage(JSON.stringify({ type: 'gpx-open-profile' }));
+        return;
+      }
+    } catch { /* fall through to the route below */ }
   }
   window.location.href = '/app/profile';
 }
@@ -32,7 +46,8 @@ function initials(user: { handle: string | null; email: string | null }): string
 }
 
 export function AccountChip() {
-  const { user, isSignedIn } = useIdentity();
+  const { user, isSignedIn, refresh, loading, backendOffline } = useIdentity();
+  const [showLogin, setShowLogin] = useState(false);
   const { publicKey } = useWallet();
   const [credits, setCredits] = useState<number | null>(null);
   const [game, setGame] = useState<number | null>(null);
@@ -52,11 +67,32 @@ export function AccountChip() {
     void getGameBalance(addr).then(setGame);
   }, [user?.walletAddress, publicKey]);
 
+  // Until the first identity reply lands, "Sign in" would be a claim we cannot
+  // support — and it flashed on every page load for someone already signed in.
+  // A neutral placeholder keeps the chip in place without asserting a state.
+  if (loading && !user) {
+    return <span style={{ ...signedOut, background: 'rgba(20,6,40,0.86)', border: '1px solid rgba(153,69,255,0.4)', color: '#9a92b5' }} aria-busy="true">…</span>;
+  }
+
+  // An unreachable backend is not a logout: saying "Sign in" would invite someone
+  // to re-enter a session they already have.
+  if (backendOffline && !user) {
+    return <span style={{ ...signedOut, background: 'rgba(60,20,20,0.86)', border: '1px solid rgba(255,120,120,0.4)', color: '#ffb4b4' }}>offline</span>;
+  }
+
   if (!isSignedIn || !user) {
     return (
-      <button onClick={openProfile} style={signedOut} aria-label="Sign in">
-        Sign in
-      </button>
+      <>
+        <button onClick={() => setShowLogin(true)} style={signedOut} aria-label="Sign in">
+          Sign in
+        </button>
+        <EmailLoginModal
+          open={showLogin}
+          onClose={() => { setShowLogin(false); void refresh(); }}
+          title="Sign in to Gamerplex"
+          subtitle="Flipcash is the fastest way in — no password, no wallet."
+        />
+      </>
     );
   }
 
