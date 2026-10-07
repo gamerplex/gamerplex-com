@@ -9,8 +9,8 @@ import { useEffect, useState } from "react";
 
 const APK_URL =
   "https://github.com/gamerplex/gamerplex-downloads/releases/latest/download/Gamerplex.apk";
-const VERSION = "1.0.16";
-const FILE_SHA = "c4abce23c6e34c6606436ea5c14e1ba4ff98b078151c0baf7a6c4a31c5634c3a";
+const VERSION = "1.0.19";
+const FILE_SHA = "292eae9f3757c8ae7f09acfdca2f2eca0f8bb6cfdb1c0253682ffef4f35197e5";
 const CERT_SHA =
   "58:0F:82:51:11:E7:A5:62:A2:A7:C9:93:4D:EF:4C:ED:6D:F7:9D:A1:04:27:4D:98:00:C4:BD:54:F7:08:79:01";
 
@@ -78,7 +78,7 @@ export default function DownloadView() {
           <li>the <b>Solana dApp Store</b> (once live)</li>
         </ul>
         <div className="dl-fp">
-          <div><span>Version</span><code>{VERSION} · Android arm64</code></div>
+          <div><span>Version</span><code>{VERSION} · Android, all ABIs</code></div>
           <div><span>File SHA-256</span><code>{FILE_SHA}</code></div>
           <div><span>Signing cert SHA-256</span><code>{CERT_SHA}</code></div>
         </div>
@@ -101,7 +101,7 @@ function AndroidCard() {
   return (
     <Card title="Android / Solana Seeker" tag="Install the app">
       <a className="dl-cta dl-cta-primary" href={APK_URL} rel="noopener">⬇ Download Gamerplex {VERSION} (APK)</a>
-      <p className="dl-note">58 MB · Android 8+ · arm64. Signed by Gamerplex (verify below).</p>
+      <p className="dl-note">147 MB · Android 8+ · all ABIs (universal). Signed by Gamerplex (verify below).</p>
       <ol className="dl-steps">
         <li>Tap <b>Download</b> above, then open the file.</li>
         <li>If prompted, allow <b>Install unknown apps</b> for your browser (Android asks once).</li>
