@@ -28,16 +28,36 @@ import { Connection, PublicKey } from "@solana/web3.js";
 
 const VM_PROGRAM = new PublicKey("vmZ1WUq8SxjBWcaeTCvgJRZbS84R61uniFsQy5YMRTJ");
 
+export type MintKey = "game" | "usdf";
+
 const HEADER = 80;
 const OWNER_AT = 1;      // within an item
 const BALANCE_AT = 68;   // within an item
 const VARIANT_TIMELOCK = 1;
 const STATE_USED = 1;
 
-/** Both mints are 6dp — usdf/usdf.go Decimals, and $GAME matches. */
-const QUARKS_PER_UNIT = 1_000_000;
+// Decimals DIFFER per mint and must never be assumed: USDF is 6dp, $GAME is 10dp.
+// Reading both as 6dp reported 841,029,906 $GAME for a balance that is 84,102.99 --
+// off by 10,000x. Read it from the mint and cache it; decimals are immutable.
+const MINT: Record<MintKey, string> = {
+  game: "7TTBUfDomCKBMemv7FF37Tg3y52cRkAxn8vJnvKD4rsE",
+  usdf: "5AMAA9JV9H97YYVxx8F6FsCMmTwXSuTTQneiup4RYAUQ",
+};
+const decimalsCache = new Map<MintKey, number>();
 
-export type MintKey = "game" | "usdf";
+async function decimalsOf(c: Connection, mint: MintKey): Promise<number> {
+  const hit = decimalsCache.get(mint);
+  if (hit != null) return hit;
+  const info = await c.getParsedAccountInfo(new PublicKey(MINT[mint]));
+  const parsed = info.value?.data;
+  const d =
+    parsed && typeof parsed === "object" && "parsed" in parsed
+      ? (parsed.parsed as { info?: { decimals?: number } })?.info?.decimals
+      : undefined;
+  if (typeof d !== "number") throw new Error(`could not read decimals for ${mint}`);
+  decimalsCache.set(mint, d);
+  return d;
+}
 
 // VMs are per mint and fixed. USDF's is hardcoded in ocp-server config.go; $GAME's
 // was found by scanning CodeVmAccount.mint and is stable for the life of the mint.
@@ -147,15 +167,18 @@ export async function getVmBalance(owner: string, mint: MintKey): Promise<bigint
   return null;
 }
 
-export function toUnits(quarks: bigint | null): number | null {
-  return quarks == null ? null : Number(quarks) / QUARKS_PER_UNIT;
+/** Quarks to whole units, using the mint's OWN decimals. */
+export async function toUnits(quarks: bigint | null, mint: MintKey): Promise<number | null> {
+  if (quarks == null) return null;
+  const d = await decimalsOf(rpc(), mint);
+  return Number(quarks) / 10 ** d;
 }
 
 /** Both balances for one owner. Either may be null, meaning "no account", not zero. */
 export async function getFlipcashBalances(owner: string): Promise<{ game: number | null; usdf: number | null }> {
   const [game, usdf] = await Promise.all([
-    getVmBalance(owner, "game").catch(() => null),
-    getVmBalance(owner, "usdf").catch(() => null),
+    getVmBalance(owner, "game").then((q) => toUnits(q, "game")).catch(() => null),
+    getVmBalance(owner, "usdf").then((q) => toUnits(q, "usdf")).catch(() => null),
   ]);
-  return { game: toUnits(game), usdf: toUnits(usdf) };
+  return { game, usdf };
 }
