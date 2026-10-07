@@ -20,7 +20,13 @@ export default function ProfileLayout({ children }: { children: React.ReactNode 
   const wallets = useMemo(() => [new PhantomWalletAdapter()], []);
   return (
     <ConnectionProvider endpoint={RPC_URL}>
-      <WalletProvider wallets={wallets} autoConnect>
+      {/* NOT autoConnect. Once Phantom is authorised on this origin it reconnects
+          on EVERY page load, so the extension or app pops up before anyone has
+          asked for a wallet -- including while tapping "Sign in", which made a
+          password-free login look like it demanded a wallet. Linking is a
+          deliberate action from the account menu.
+          There are several providers in this app: change them together. */}
+      <WalletProvider wallets={wallets}>
         <WalletModalProvider>{children}</WalletModalProvider>
       </WalletProvider>
     </ConnectionProvider>
