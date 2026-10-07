@@ -10,8 +10,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import StarterPackOffer from "../../components/shop/StarterPackOffer";
-import { useWallet } from "@solana/wallet-adapter-react";
-import { getCredits, getIdentity, getGameBalance } from "../../lib/identity/client";
+import { getCredits } from "../../lib/identity/client";
 import { track } from "../../lib/analytics";
 import { quote, formatGame, formatUsd } from "../../lib/arcade/pricing";
 
@@ -39,7 +38,7 @@ interface Item {
 }
 
 const CATALOG: Item[] = [
-  { id: "solstice", cat: "cosmetic", name: "Solstice Set", emoji: "🌅", desc: "Season One trail + frame + board skin.", gm: 18, exclusive: true, badge: "SEASONAL", featured: true, accent: "#ffaa00" },
+  { id: "solstice", cat: "cosmetic", name: "Solstice Set", emoji: "🌅", desc: "Season One trail + frame + board skin.", gm: 18, exclusive: true, badge: "SEASONAL", accent: "#ffaa00" },
   { id: "starter", cat: "power", name: "Starter Pack", emoji: "🎁", desc: "5 continues + a board skin. One per player.", gm: 4, badge: "BEST VALUE", starter: true, accent: "#14F195" },
   { id: "continue", cat: "power", name: "Continue", emoji: "▶", qty: 1, desc: "Resume a run right where you died.", cr: 400, gm: 3, accent: "#14F195" },
   { id: "continue5", cat: "power", name: "Continues", emoji: "⏩", qty: 5, desc: "Five continues, banked for later.", cr: 1800, gm: 12, badge: "5 FOR 4", accent: "#14F195" },
@@ -49,7 +48,7 @@ const CATALOG: Item[] = [
   { id: "void", cat: "cosmetic", name: "Void Chrome", emoji: "🖤", desc: "Liquid-metal board skin. Goes further in $GAME.", cr: 3200, gm: 18, accent: "#9945FF" },
   { id: "founder", cat: "cosmetic", name: "Founder Frame", emoji: "👑", desc: "Profile frame — $GAME-exclusive, this season only.", gm: 22, exclusive: true, badge: "$GAME EXCLUSIVE", accent: "#ffaa00" },
   { id: "pixel", cat: "cosmetic", name: "Pixel Trail", emoji: "🟩", desc: "Retro 8-bit particle trail.", cr: 1200, gm: 8, accent: "#14F195" },
-  { id: "theme-neon-grid", cat: "cosmetic", name: "Neon Grid", emoji: "📺", desc: "Site theme — plum-black CRT, magenta/cyan split, scanlines and a horizon grid. Applies everywhere.", usd: 1.5, exclusive: true, badge: "SITE THEME", accent: "#ff2e88" },
+  { id: "theme-neon-grid", cat: "cosmetic", name: "Neon Grid", emoji: "📺", desc: "Site theme — plum-black CRT, magenta/cyan split, scanlines and a horizon grid. Applies everywhere.", usd: 1.5, exclusive: true, badge: "SITE THEME", featured: true, accent: "#ff2e88" },
 ];
 
 // Human label for an item id, taken from CATALOG so the Flipcash pack cannot
@@ -64,10 +63,26 @@ function nameFor(id: string): string {
 
 type Filter = "all" | "power" | "cosmetic" | "owned";
 
+/**
+ * Can this be bought on the web at all? Credits spend server-side; a USD price goes
+ * through Flipcash. A $GAME-only price has NO checkout here, so showing it priced and
+ * tappable advertised something nobody could buy.
+ */
+function payable(i: Item): boolean {
+  return i.cr != null || i.usd != null;
+}
+
+/** A balance we could not read is "—". Never 0 — that reads as "you are broke". */
+function fmtBal(v: number | null | undefined, dp: number): string {
+  return v == null ? "—" : v.toLocaleString(undefined, { minimumFractionDigits: dp, maximumFractionDigits: dp });
+}
+
 export default function ShopView() {
   const [credits, setCredits] = useState<number | null>(null);
-  const [game, setGame] = useState<number>(0); // $GAME balance of the wallet you pay from
-  const { publicKey } = useWallet();
+  // Real Flipcash holdings, read from the Code VM server-side. null = UNKNOWN (not
+  // linked, or the read failed) and must render as "—", never as 0: the whole reason
+  // this exists is that a confident 0 was shown to someone holding 841M $GAME.
+  const [fc, setFc] = useState<{ linked: boolean; game: number | null; usdf: number | null } | null>(null);
   // Real ownership from the server. This was hardcoded to ["pixel"], so every
   // visitor saw Pixel Trail as owned and nothing they bought survived a reload.
   const [owned, setOwned] = useState<Set<string>>(new Set());
@@ -78,16 +93,10 @@ export default function ShopView() {
   const [usdPerGame, setUsdPerGame] = useState<number | null>(null);
 
   useEffect(() => {
-    // Prefer the CONNECTED wallet — that is what a purchase spends from, and it is
-    // what PaymentMethodPicker reads. identity.walletAddress only fills in after a
-    // SIWS link, which nothing outside /arcade performs, so relying on it alone
-    // showed 0 $GAME to anyone who had merely connected Phantom.
-    const connected = publicKey?.toBase58();
-    if (connected) {
-      void getGameBalance(connected).then(setGame);
-    } else {
-      void getIdentity().then((id) => getGameBalance(id?.walletAddress).then(setGame));
-    }
+    void fetch("/api/flipcash/balances", { credentials: "include", cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then(setFc)
+      .catch(() => setFc(null));
     void getCredits().then((c) => setCredits(c?.perApp.find((a) => a.app === "gamerplex")?.balance ?? c?.total ?? 0));
     // Durable ownership, so "Owned" survives a reload and a different device.
     void fetch("/api/inventory", { credentials: "include", cache: "no-store" })
@@ -105,15 +114,15 @@ export default function ShopView() {
       })
       .catch(() => { /* USD price still renders */ });
     track("shop_view", {});
-  }, [publicKey]);
+  }, []);
 
   const items = useMemo(() => {
     if (filter === "owned") return CATALOG.filter((i) => owned.has(i.id));
-    if (filter === "power" || filter === "cosmetic") return CATALOG.filter((i) => i.cat === filter && !i.featured && !i.starter);
-    return CATALOG.filter((i) => !i.featured && !i.starter);
+    if (filter === "power" || filter === "cosmetic") return CATALOG.filter((i) => i.cat === filter && !i.featured && !i.starter && payable(i));
+    return CATALOG.filter((i) => !i.featured && !i.starter && payable(i));
   }, [filter, owned]);
 
-  const featured = CATALOG.find((i) => i.featured);
+  const featured = CATALOG.find((i) => i.featured && payable(i));
 
   function openSheet(item: Item, cur?: "cr" | "gm") {
     if (owned.has(item.id)) return;
@@ -168,8 +177,6 @@ export default function ShopView() {
     setStatus("done");
   }
 
-  const short = sheet && sheet.cur === "gm" && sheet.item.gm != null && game < sheet.item.gm;
-  const gap = short ? sheet!.item.gm! - game : 0;
 
   return (
     <div className="shop">
@@ -178,8 +185,13 @@ export default function ShopView() {
       <header className="sh-head">
         <h1 className="sh-title">Shop</h1>
         <div className="sh-bal">
-          <span className="pill cr">⬡ {credits == null ? "—" : credits.toLocaleString()}</span>
-          <a className="pill gm gx-transfer" href={FLIPCASH_GAME} target="_blank" rel="noopener noreferrer">◆ {game}</a>
+          <span className="pill cr" title="Credits — earned by playing">⬡ {credits == null ? "—" : credits.toLocaleString()}</span>
+          <a className="pill usdf gx-transfer" href={FLIPCASH_GAME} target="_blank" rel="noopener noreferrer" title="Dollars held in Flipcash">
+            $ {fmtBal(fc?.usdf, 2)}
+          </a>
+          <a className="pill gm gx-transfer" href={FLIPCASH_GAME} target="_blank" rel="noopener noreferrer" title="$GAME held in Flipcash">
+            ◆ {fmtBal(fc?.game, 0)}
+          </a>
         </div>
       </header>
 
@@ -197,7 +209,7 @@ export default function ShopView() {
           <span className="feat-emoji">{featured.emoji}</span>
           <span className="feat-name">{featured.name}</span>
           <span className="feat-desc">{featured.desc}</span>
-          <span className="feat-price"><span className="pg">◆ {featured.gm}</span> · $GAME exclusive</span>
+          <span className="feat-price"><span className="pg">{featured.usd != null ? formatUsd(featured.usd) : `⬡ ${featured.cr?.toLocaleString()}`}</span>{featured.usd != null ? " · pay with Flipcash" : " · Credits"}</span>
         </button>
       )}
 
@@ -249,24 +261,13 @@ export default function ShopView() {
                       </div>
                     );
                   })()}
-                  {sheet.item.usd == null && sheet.item.gm != null && (
-                    <button className={`cur gm ${sheet.cur === "gm" ? "on" : ""}`} onClick={() => setSheet({ ...sheet, cur: "gm" })}>
-                      <span className="cur-tag">GOES FURTHER</span><span className="cur-p">◆ {sheet.item.gm}</span><span className="cur-h">You have {game}</span>
-                    </button>
-                  )}
                   {sheet.item.cr != null && (
                     <button className={`cur cr ${sheet.cur === "cr" ? "on" : ""}`} onClick={() => setSheet({ ...sheet, cur: "cr" })}>
                       <span className="cur-tag">EARNED FREE</span><span className="cur-p">⬡ {sheet.item.cr.toLocaleString()}</span><span className="cur-h">You have {credits ?? "—"}</span>
                     </button>
                   )}
                 </div>
-                {short ? (
-                  <>
-                    <div className="warn">You&apos;re {gap} $GAME short.</div>
-                    <a className="cta topup gx-transfer" href={FLIPCASH_GAME} target="_blank" rel="noopener noreferrer" onClick={() => track("flipcash_handoff_start", { item: sheet.item.id, gap })}>Top up with Flipcash</a>
-                    <div className="hint">You&apos;ll land right back here — your pick is saved.{sheet.item.cr != null && <> Or <button className="lnk" onClick={() => setSheet({ ...sheet, cur: "cr" })}>pay {sheet.item.cr.toLocaleString()} Credits</button>.</>}</div>
-                  </>
-                ) : sheet.cur === "cr" && sheet.item.cr != null && credits != null && credits < sheet.item.cr ? (
+                {sheet.cur === "cr" && sheet.item.cr != null && credits != null && credits < sheet.item.cr ? (
                   <>
                     <div className="warn">Not enough Credits yet.</div>
                     <a className="cta" href="/#featured">Earn Credits — play a run</a>
@@ -346,6 +347,9 @@ const CSS = `
 .pill{font-size:13px;font-weight:800;padding:6px 12px;border-radius:999px;text-decoration:none;letter-spacing:.3px;}
 .pill.cr{color:var(--cr);border:1px solid rgba(20,241,149,.4);background:rgba(20,241,149,.08);}
 .pill.gm{color:#fff;background:var(--gm);box-shadow:0 0 16px rgba(153,69,255,.5);}
+/* Dollars held in Flipcash. Its own colour so it is not read as Credits. */
+.pill.usdf{color:#dff7e9;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.07);}
+.sh-bal .pill{font-variant-numeric:tabular-nums;}
 .sh-filters{display:flex;gap:8px;overflow-x:auto;padding:4px 0 12px;scrollbar-width:none;}
 .sh-filters::-webkit-scrollbar{display:none;}
 .fchip{flex:0 0 auto;font-size:13px;font-weight:700;padding:8px 14px;border-radius:999px;border:1px solid var(--gb);background:var(--glass);color:#b0b0c8;cursor:pointer;}
