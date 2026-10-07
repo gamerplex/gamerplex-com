@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
   let owner: string | null = null;
   try {
     const r = await fetch(`${IDENTITY_URL}/api/apps/flipcash-owner`, {
-      headers: { cookie, 'x-api-key': apiKey },
+      headers: { cookie, 'x-identity-api-key': apiKey },
       cache: 'no-store',
     });
     if (r.ok) owner = (await r.json())?.owner ?? null;
