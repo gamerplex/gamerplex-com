@@ -9,6 +9,7 @@ export default function AppRanks() {
   const { user } = useIdentity();
   return (
     <div style={{ maxWidth: 640, margin: "0 auto", padding: "8px 14px 44px" }}>
+      <h1 style={{ fontSize: 20, fontWeight: 800, color: "#fff", margin: "0 0 14px" }}>Ranks</h1>
       {/* Global cross-game board — ranks players by Credits earned across EVERY game
           (the only metric comparable across games), so "most active overall" is visible. */}
       <h2 style={{ fontSize: 15, fontWeight: 900, color: "#fff", margin: "0 0 10px", display: "flex", alignItems: "center", gap: 8 }}>

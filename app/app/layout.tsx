@@ -9,7 +9,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <div style={{ minHeight: "100dvh", background: "#0d001a", color: "#ece7ff" }}>
       <style>{GLASS_CSS}</style>
       <AccountChip />
-      {/* reserve space for the fixed chip so it never overlaps page content */}
+      {/* A plain div, NOT a second <main>: the root layout already provides the
+          one landmark, and nesting another made every /app/* route ship two.
+          What these routes genuinely lacked was an <h1>, which each page now has.
+          Reserves space for the fixed chip so it never overlaps content. */}
       <div style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 54px)" }}>{children}</div>
     </div>
   );
