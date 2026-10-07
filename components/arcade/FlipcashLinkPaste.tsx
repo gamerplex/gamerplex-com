@@ -46,6 +46,10 @@ export default function FlipcashLinkPaste() {
   useEffect(() => { track("flipcash_signin_shown"); }, []);
 
   const go = () => {
+    // An empty box is not a bad paste. Telling someone their nothing "does not
+    // look like a sign-in link" reads as a rejection of something they have not
+    // done yet, which is how the panel greeted people in red before they typed.
+    if (!raw.trim()) return;
     const token = tokenFromPaste(raw);
     if (!token) {
       setBad(true);
