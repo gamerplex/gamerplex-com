@@ -306,6 +306,9 @@ export default function ShopView() {
                       >
                         Open @gamerplex and pay
                       </a>
+                      <a className="ps-link" href={`/shop/success?item=${encodeURIComponent(sheet.item.id)}`}>
+                        Track this purchase →
+                      </a>
                       <div className="hint">
                         We will confirm in the chat the moment it lands, and your item unlocks here.
                         Opening the chat for the first time costs Flipcash&apos;s $1 minimum.
@@ -409,6 +412,7 @@ const CSS = `
 .pill.cr{color:var(--cr);border:1px solid rgba(20,241,149,.4);background:rgba(20,241,149,.08);}
 .pill.gm{color:#fff;background:var(--gm);box-shadow:0 0 16px rgba(153,69,255,.5);}
 /* Dollars held in Flipcash. Its own colour so it is not read as Credits. */
+.ps-link{display:block;text-align:center;margin:10px 0 2px;font-size:13px;color:#cfc7e8;}
 .fc-amt{margin:4px 0 10px;font-size:15px;color:#f4f2fb;text-align:center;font-variant-numeric:tabular-nums;}
 .fc-pick{display:flex;gap:8px;margin:2px 0 12px;}
 .fc-opt{flex:1;min-height:52px;border-radius:12px;border:1px solid var(--gb);background:var(--glass);
