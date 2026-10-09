@@ -115,10 +115,10 @@ export default function Home() {
 
         <div style={{ marginTop: 30 }}><CommunityLinks tone="light" /></div>
         <div style={{ textAlign: "center", marginTop: 12 }}><Link href="/download" style={{ color: "#b388ff", fontWeight: 700, fontSize: 13.5 }}>▶ Get the Gamerplex app →</Link></div>
-        <p className="gl-foot">One tap to play · sign in to save · no wallet needed · Solana mainnet</p>
+        <p className="gl-foot">One tap to play · free, no sign-in · sign in with Flipcash to save · Solana mainnet</p>
       </div>
 
-      <EmailLoginModal open={showLogin} onClose={() => { setShowLogin(false); void refresh(); }} title="Sign in to Gamerplex" subtitle="Flipcash is the fastest way in — no password, no wallet." />
+      <EmailLoginModal open={showLogin} onClose={() => { setShowLogin(false); void refresh(); }} title="Sign in to Gamerplex" subtitle="Flipcash is the fastest way in — no password, nothing to install." />
     </div>
   );
 }

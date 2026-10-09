@@ -17,7 +17,7 @@ export default function EmailLoginModal({
   open,
   onClose,
   title = "Save your score & streak",
-  subtitle = "Flipcash is the fastest way in — no password, no wallet.",
+  subtitle = "Flipcash is the fastest way in — no password, nothing to install.",
 }: {
   open: boolean;
   onClose: () => void;

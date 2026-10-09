@@ -61,7 +61,7 @@ export default function AuthPanel({
     <div style={wrap}>
       <p style={lede}>
         <b style={{ color: "#f4f2fb" }}>Flipcash</b> is the fastest way in — no password,
-        no wallet, nothing to wait for.
+        nothing to install, nothing to wait for.
       </p>
 
       {/* Step 1: the thing that actually produces a sign-in link. */}

@@ -90,7 +90,7 @@ export default function SignInMethods({
           detail={
             linked.flipcash
               ? "Pay in chat · receipts arrive there"
-              : "One tap payments, no wallet needed"
+              : "One tap payments, nothing to install"
           }
           action={
             linked.flipcash

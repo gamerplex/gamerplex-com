@@ -71,7 +71,7 @@ export default function GlassShell({
         open={showLogin}
         onClose={() => { setShowLogin(false); void refresh(); }}
         title="Sign in to Gamerplex"
-        subtitle="Flipcash is the fastest way in — no password, no wallet."
+        subtitle="Flipcash is the fastest way in — no password, nothing to install."
       />
     </div>
   );
