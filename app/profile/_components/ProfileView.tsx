@@ -221,9 +221,9 @@ export function ProfileView({
     return Array.from(byPda.values()).sort((a, b) => b.mintedAt - a.mintedAt);
   }, [receiptsOwned, receiptsOriginal]);
 
-  // No wallet connected. Web2-first: your profile is your email identity —
-  // handle, Credits, and free-board scores — with wallet offered as an OPTIONAL
-  // upgrade. Only /profile/[wallet] (public, on-chain) still needs a pubkey.
+  // No Solana wallet connected. Your profile is your Gamerplex identity — handle,
+  // Credits, free-board scores — signed in with Flipcash. A Solana wallet is an
+  // OPTIONAL upgrade. Only /profile/[wallet] (public, on-chain) needs a pubkey.
   if (!walletPubkey) {
     if (!isOwnProfile) {
       return (
@@ -249,15 +249,17 @@ export function ProfileView({
           <div style={{ fontSize: 40, marginBottom: 16 }}>👤</div>
           <h1 style={{ fontSize: 22, marginBottom: 8, color: "#e8e8f0" }}>Your profile lives here</h1>
           <p style={{ color: "#8a8aa0", fontSize: 14, marginBottom: 20, lineHeight: 1.5 }}>
-            Just your email — keep your scores, rank, and Credits across every game. No wallet needed.
+            Sign in with Flipcash — keep your scores, rank and Credits across every game.
           </p>
           <button onClick={() => setShowLogin(true)} style={{ display: "inline-block", padding: "12px 22px", borderRadius: 10, background: "linear-gradient(90deg,#9945FF,#14F195)", color: "#00110a", fontWeight: 800, fontSize: 15, border: "none", cursor: "pointer" }}>
             Sign in
           </button>
-          {/* Ecosystem standard: email is the primary (walletless) entry point;
-              wallet is the optional web3 upgrade — never framed as an equal alternative. */}
+          {/* Flipcash is the entry point, not email: email cannot currently be
+              delivered, so promising it strands people. A SOLANA wallet stays the
+              optional upgrade — named explicitly, because Flipcash is a wallet too and
+              "add a wallet later" reads as nonsense right after signing in with one. */}
           <div className="gx-web-only" style={{ marginTop: 22, paddingTop: 16, borderTop: "1px solid rgba(255,255,255,0.08)", color: "#6a6385", fontSize: 12, lineHeight: 1.6 }}>
-            <div style={{ color: "#8a8aa0", fontWeight: 700 }}>🔒 Optional · add a wallet later</div>
+            <div style={{ color: "#8a8aa0", fontWeight: 700 }}>🔒 Optional · connect a Solana wallet</div>
             <div>Keep your best runs <span style={{ color: "#8a8aa0" }}>on-chain forever</span> · pay with $GAME and <span style={{ color: "#14F195", fontWeight: 700 }}>save 20%</span></div>
           </div>
           <div className="gx-web-only" style={{ marginTop: 10, opacity: 0.8 }}><WalletMultiButton /></div>
@@ -419,7 +421,7 @@ export function ProfileView({
             </ul>
             <WalletMultiButton />
             <div style={{ marginTop: 12 }}><LinkWalletButton /></div>
-            <div style={{ fontSize: 11, color: "#666", marginTop: 10 }}>Your email scores stay yours either way — connecting just adds the on-chain layer.</div>
+            <div style={{ fontSize: 11, color: "#666", marginTop: 10 }}>Your scores stay yours either way — connecting just adds the on-chain layer.</div>
           </div>
         </Section>
 
@@ -431,6 +433,7 @@ export function ProfileView({
           onClose={() => { setShowLogin(false); void refreshIdentity(); }}
           title="Add your email"
           subtitle="Keeps your scores and items if you change device."
+          allowEmail
         />
       </div>
     );

@@ -18,11 +18,18 @@ export default function EmailLoginModal({
   onClose,
   title = "Save your score & streak",
   subtitle = "Flipcash is the fastest way in — no password, nothing to install.",
+  allowEmail = false,
 }: {
   open: boolean;
   onClose: () => void;
   title?: string;
   subtitle?: string;
+  /**
+   * Offer the email step. OFF by default: email cannot currently be delivered, so the
+   * front door must not send anyone down it. Profile's "Add your email" sets it —
+   * there it is a RECOVERY address someone deliberately attaches, not a way in.
+   */
+  allowEmail?: boolean;
 }) {
   const [email, setEmail] = useState("");
   const [hinted, setHinted] = useState(false);
@@ -259,7 +266,7 @@ export default function EmailLoginModal({
                     It survives as an OPTIONAL recovery address in Profile, where someone
                     already signed in can add one and the page can be honest about whether
                     the mail actually went. */}
-                <AuthPanel onEmail={null} busy={state === "sending"} />
+                <AuthPanel onEmail={allowEmail ? () => setEmailStep(true) : null} busy={state === "sending"} />
               </>
             )}
           </>
