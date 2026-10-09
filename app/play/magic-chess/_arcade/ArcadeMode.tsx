@@ -683,11 +683,21 @@ export default function ArcadeMode() {
 
           <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", height: "100%", pointerEvents: "none" }}>
 
+            {/* Last five seconds, over the board. `key={timer}` remounts the node
+                each second so the pulse replays as a per-second tick. */}
+            {phase === "playing" && timer <= 5 && timer > 0 && (
+              <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", pointerEvents: "none", zIndex: 5 }}>
+                <div key={timer} className="magic-chess-countdown" data-testid="chess-countdown" aria-live="assertive">
+                  {timer}
+                </div>
+              </div>
+            )}
+
             {/* Status bar */}
             <div style={{ pointerEvents: "auto", display: "flex", justifyContent: "center", padding: "8px 12px" }}>
               <div className="magic-chess-status" style={{ display: "flex", gap: 16, padding: "6px 14px", borderRadius: 8, fontSize: 12 }}>
                 <span style={{ fontWeight: 700 }}>{wTurn ? "⚪" : "⚫"} {status || "Your turn"}</span>
-                <span style={{ fontFamily: "monospace", fontWeight: 700, color: timer < 30 ? "#ff1744" : timer < 60 ? "#ffd740" : "#888" }}>{tm}:{ts}</span>
+                <span style={{ fontFamily: "monospace", fontWeight: 700, color: timer <= 5 ? "#ff1744" : timer <= 10 ? "#ffd740" : "#888" }}>{tm}:{ts}</span>
                 <span style={{ color: "#9945FF" }}>Move {mc}</span>
                 <span style={{ color: "#888", fontSize: 10 }}>vs {bot?.icon} {bot?.label}</span>
               </div>

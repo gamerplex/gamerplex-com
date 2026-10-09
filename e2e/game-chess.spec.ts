@@ -63,11 +63,16 @@ test('magic chess: start → play a move → resign → game-over + leaderboard 
   await page.locator('button', { hasText: 'Resign' }).first().click();
 
   // 7) SAVE-SCORE SCREEN: the game-over panel shows the result, and the shared
-  // Arcade-Shell web2 leaderboard (heading "🏆 Leaderboard" + "Verified only"
-  // filter) renders for everyone — that IS the save-score screen.
+  // Arcade-Shell web2 leaderboard (heading + "Verified" filter) renders for
+  // everyone — that IS the save-score screen.
+  //
+  // Both assertions below were stale and had been failing before this change:
+  // ShellLeaderboard renders 🏆 in its own <span> with "Leaderboard" as a sibling
+  // text node, so no single element reads "🏆 Leaderboard"; and the filter label
+  // is "Verified", never "Verified only". Matched to the real DOM, not weakened.
   await expect(page.getByText(/DEFEATED/i)).toBeVisible({ timeout: 10_000 });
-  await expect(page.getByText('🏆 Leaderboard')).toBeVisible({ timeout: 10_000 });
-  await expect(page.getByText('Verified only')).toBeVisible();
+  await expect(page.getByText('Leaderboard', { exact: false }).first()).toBeVisible({ timeout: 10_000 });
+  await expect(page.locator('label', { hasText: /^Verified$/ })).toBeVisible();
   // Resign hidden once we're in game-over (phase !== "playing").
   await expect(page.locator('button', { hasText: 'Resign' })).toHaveCount(0);
 
@@ -127,4 +132,62 @@ test('magic chess: idle player turn times out once as a loss — no abrupt end/r
   await expect(page.locator('button', { hasText: 'Resign' })).toHaveCount(0);
 
   expect(errors, `chess page threw: ${errors.join(' | ')}`).toHaveLength(0);
+});
+
+// A live screenshot showed "White timed out · 0:00 · Move 0", score 0: the default
+// was 10s PER MOVE (3rd hardest of five presets), the clock starts the moment the
+// scene mounts, and a loss scores 0 — so a first run was an instant defeat worth
+// nothing. Default is now 30s (Standard), and the last five seconds are shown as a
+// large number over the board instead of only a 12px mono clock in a dense strip.
+test('magic chess: default turn is 30s and does not show the final-seconds countdown', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'mobile', 'timer behaviour verified on desktop viewport');
+
+  await page.goto('/play/magic-chess');
+  await expect(page.getByTestId('start-page-picker')).toBeVisible({ timeout: 15_000 });
+  await page.locator('[data-mode="casual"]').click();
+  await expect(page.getByRole('heading', { name: /MAGIC CHESS/i })).toBeVisible({ timeout: 15_000 });
+
+  // Deliberately pick NO speed preset — this asserts the DEFAULT.
+  await page.locator('button', { hasText: /ELO 600/ }).first().click();
+  const startBtn = page.locator('button', { hasText: 'START' });
+  await expect(startBtn).toBeVisible();
+  await startBtn.click({ force: true });
+
+  await expect(page.getByText(/Move \d+/i)).toBeVisible({ timeout: 15_000 });
+  // 30s default: the clock reads 0:30 / 0:29, never 0:10.
+  await expect(page.locator('.magic-chess-status')).toContainText(/0:(30|29|28)/);
+  // Nowhere near the end, so no countdown yet.
+  await expect(page.getByTestId('chess-countdown')).toHaveCount(0);
+});
+
+test('magic chess: the last five seconds show a large countdown over the board', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'mobile', 'timer behaviour verified on desktop viewport');
+
+  await page.goto('/play/magic-chess');
+  await expect(page.getByTestId('start-page-picker')).toBeVisible({ timeout: 15_000 });
+  await page.locator('[data-mode="casual"]').click();
+  await expect(page.getByRole('heading', { name: /MAGIC CHESS/i })).toBeVisible({ timeout: 15_000 });
+
+  // Blitz = 5s/turn, so the whole turn is inside the final-seconds window. Bullet
+  // (3s) races the 3D scene mount and the turn can be over before the first poll.
+  await page.locator('button', { hasText: 'Blitz' }).first().click();
+  await page.locator('button', { hasText: /ELO 600/ }).first().click();
+  const startBtn = page.locator('button', { hasText: 'START' });
+  await expect(startBtn).toBeVisible();
+  await startBtn.click({ force: true });
+
+  // Confirm play has actually begun before asserting on a 5s window.
+  await expect(page.getByText(/Move \d+/i)).toBeVisible({ timeout: 15_000 });
+
+  const countdown = page.getByTestId('chess-countdown');
+  await expect(countdown).toBeVisible({ timeout: 10_000 });
+
+  const first = Number(await countdown.innerText());
+  expect(first).toBeGreaterThan(0);
+  expect(first).toBeLessThanOrEqual(5);
+
+  // It actually counts down rather than sitting on one number.
+  await expect
+    .poll(async () => (await countdown.count()) ? Number(await countdown.innerText()) : 0, { timeout: 4_000 })
+    .toBeLessThan(first);
 });

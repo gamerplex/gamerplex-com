@@ -10,6 +10,7 @@ const SECTIONS = [
   { id: "sovereign", label: "Sovereign Game Dev", group: "Overview" },
   { id: "vision", label: "Vision", group: "Overview" },
   { id: "why-onchain", label: "Why On-Chain?", group: "Overview" },
+  { id: "saving", label: "Saving Your Score", group: "Overview" },
 
   { id: "architecture", label: "Architecture", group: "Protocol" },
   { id: "programs", label: "Smart Contracts", group: "Protocol" },
@@ -152,6 +153,32 @@ export default function DocsPage() {
             <P>
               MagicBlock&apos;s Ephemeral Rollup gives us the speed (sub-100ms moves) without sacrificing trustlessness.
               Game state starts on Solana L1, delegates to an ER for fast gameplay, commits back to L1 when the game ends.
+            </P>
+          </Section>
+
+          <Section id="saving" title="Saving Your Score">
+            <P>
+              Every game is <strong>free to play with no sign-in</strong>. Saving is the only place the account types differ, so here is exactly what each one does.
+            </P>
+            <Table cols={["What you want to do", "Flipcash", "Solana wallet"]} rows={[
+              ["Play any game", "Yes — free, no sign-in", "Yes"],
+              ["Score on the Gamerplex board", "Yes", "Yes"],
+              ["\u201cVerified\u201d badge on the board", "No", "Yes"],
+              ["Save on-chain (GPX5 memo)", "Not possible", "Required"],
+              ["Buy Credits or shop items", "Yes", "Yes"],
+              ["Pay with $GAME (\u221220%)", "Yes — in the Flipcash app", "Yes — on-chain transfer"],
+            ]} />
+            <P>
+              <strong style={{color:"#14F195"}}>Why the split.</strong> The arcade contract records a score against the player&apos;s own signature — <code>player: Signer</code>. A Solana wallet (Phantom, Solflare, Backpack and other Solana wallets) can produce that signature. A Flipcash balance cannot: it is held inside Flipcash&apos;s own payment network rather than as an ordinary Solana account, so it can pay us but it cannot sign a transaction for you. <strong>Flipcash is the payment rail; a wallet is the signer.</strong> They do different jobs and you can use both.
+            </P>
+            <P>
+              <strong>What an on-chain save proves.</strong> That your key vouched for the result, and that the record is permanent — we cannot purge it and it outlives Gamerplex. It does not by itself prove the run was genuine, because scores are reported by the game client. That is what the verified tiers exist for — see <a href="#rankings" style={{color:"#b388ff"}}>Rankings Protocol</a> and <a href="#fees" style={{color:"#b388ff"}}>Fees &amp; Revenue</a>.
+            </P>
+            <P>
+              <strong>What this looks like on the board.</strong> Everyone who signs in appears on the leaderboard — Flipcash included. Scores that were also saved on-chain carry a <strong>Verified</strong> badge, and the board has a filter to show only those.
+            </P>
+            <P>
+              <strong>Email is optional.</strong> It is used only for account recovery, lives in your profile settings, and is never required to play, save or pay.
             </P>
           </Section>
 

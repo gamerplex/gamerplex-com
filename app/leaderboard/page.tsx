@@ -57,6 +57,10 @@ export default function LeaderboardPage() {
         <h1 className="gl-h2" style={{ fontSize: 26, marginTop: 6 }}>
           Leaderboards <span className="gl-h2-sub">· live, on-chain</span>
         </h1>
+        <p style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", lineHeight: 1.6, margin: "6px 0 0" }}>
+          Sign in with Flipcash and your scores land here. The <strong style={{ color: "rgba(255,255,255,0.75)" }}>Verified</strong> badge
+          means a score was also saved on-chain — that step needs a Solana wallet.
+        </p>
 
         <div className="gl-lb glass">
           <ShellLeaderboard gameId="blockwords" games={GAMES} highlightUserId={user?.id} limit={50} defaultWindow="all" />

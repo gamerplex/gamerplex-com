@@ -161,13 +161,16 @@ export default function ShellResultScreen({
         </button>
       )}
 
-      {/* Logged-out: the email save IS the hero action (web2-first, no wallet) */}
+      {/* Logged-out: sign-in IS the hero action. Flipcash, never email — email
+          delivery is dead for new users (unverified sending workspace, 550 on
+          every recipient) and email is now recovery-only, so advertising it here
+          promised a path that cannot complete. */}
       {saveStatus === "signed_out" && (
         <div style={{ width: "100%", maxWidth: 340, marginTop: 4 }}>
           <button onClick={onSignIn ?? (() => { if (loginHref) window.location.href = loginHref; })} style={{ ...btn, ...t.primary, width: "100%", height: 54 }}>
             💾 Save my score
           </button>
-          <div style={{ fontSize: 12, color: t.sub, textAlign: "center", marginTop: 8 }}>Free · just your email · keep your spot 🏆</div>
+          <div style={{ fontSize: 12, color: t.sub, textAlign: "center", marginTop: 8 }}>Free · sign in with Flipcash · keep your spot 🏆</div>
         </div>
       )}
 

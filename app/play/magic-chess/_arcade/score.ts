@@ -18,12 +18,12 @@ export function botById(id: string | null): typeof ARCADE_BOTS[number] | null {
 export const TIMER_PRESETS = [
   { sec: 3,  label: "Bullet",    icon: "⚡", desc: "hyper-fast" },
   { sec: 5,  label: "Blitz",     icon: "🔥", desc: "fast" },
-  { sec: 10, label: "Rapid",     icon: "⚡", desc: "quick (default)" },
-  { sec: 30, label: "Standard",  icon: "🧠", desc: "normal" },
+  { sec: 10, label: "Rapid",     icon: "⚡", desc: "quick" },
+  { sec: 30, label: "Standard",  icon: "🧠", desc: "normal (default)" },
   { sec: 60, label: "Classical", icon: "🐢", desc: "thoughtful" },
 ] as const;
 
-export const DEFAULT_TIMER_SEC = 10;
+export const DEFAULT_TIMER_SEC = 30;
 
 // The speed class for a per-move time (recorded alongside every score so the board
 // can show/filter Blitz vs Rapid etc.). Mirrors TIMER_PRESETS labels.

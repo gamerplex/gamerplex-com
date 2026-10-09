@@ -191,3 +191,24 @@
   90% { opacity: 0.3; }
   100% { transform: translateY(-20px) scale(1); opacity: 0; }
 }
+
+/* Final-seconds countdown. The per-move clock is small and lives in a dense
+   status strip, so a 10s default used to run out before anyone noticed it was
+   running. One hard pulse per second, impossible to miss, over the board. */
+@keyframes chessCountdown {
+  0%   { transform: scale(1.6); opacity: 0; }
+  25%  { transform: scale(1);   opacity: 1; }
+  100% { transform: scale(0.92); opacity: 0.55; }
+}
+.magic-chess-countdown {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: clamp(72px, 18vmin, 180px);
+  font-weight: 900;
+  line-height: 1;
+  color: #ff1744;
+  text-shadow: 0 0 28px rgba(255, 23, 68, 0.75), 0 2px 10px rgba(0, 0, 0, 0.85);
+  animation: chessCountdown 1s ease-out forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .magic-chess-countdown { animation: none; opacity: 1; transform: none; }
+}
