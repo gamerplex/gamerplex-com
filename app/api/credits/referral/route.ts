@@ -36,7 +36,28 @@ const IDENTITY_URL =
 const ALLOWED_ORIGINS = (process.env.AWARD_ALLOWED_ORIGINS
   ? process.env.AWARD_ALLOWED_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean)
   : ['https://gamerplex.com', 'https://www.gamerplex.com']
-).concat(process.env.NODE_ENV !== 'production' ? ['http://localhost:3000', 'http://127.0.0.1:3000'] : []);
+)
+  // Sister apps on the same parent domain share the `gpx_id` cookie, so they can
+  // reuse this route rather than each duplicating the award logic and the API key.
+  .concat(['https://omega.gamerplex.com'])
+  .concat(process.env.NODE_ENV !== 'production' ? ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:3200'] : []);
+
+/** Echo the origin back only when it is allowlisted; credentialed CORS forbids '*'. */
+function corsHeaders(req: NextRequest): Record<string, string> {
+  const origin = req.headers.get('origin');
+  if (!origin || !ALLOWED_ORIGINS.includes(origin)) return { Vary: 'Origin' };
+  return {
+    'Access-Control-Allow-Origin': origin,
+    'Access-Control-Allow-Credentials': 'true',
+    'Access-Control-Allow-Headers': 'content-type',
+    'Access-Control-Allow-Methods': 'POST,OPTIONS',
+    Vary: 'Origin',
+  };
+}
+
+export async function OPTIONS(req: NextRequest) {
+  return new NextResponse(null, { status: 204, headers: corsHeaders(req) });
+}
 
 function badOrigin(req: NextRequest): boolean {
   let origin = req.headers.get('origin');
@@ -92,18 +113,19 @@ async function award(
 }
 
 export async function POST(req: NextRequest) {
-  if (badOrigin(req)) return NextResponse.json({ error: 'bad_origin' }, { status: 403 });
+  const cors = corsHeaders(req);
+  if (badOrigin(req)) return NextResponse.json({ error: 'bad_origin' }, { status: 403, headers: cors });
 
   // Per-app scoped key (audit C2) — gamerplex namespace only. Also authorizes the
   // read-only by-wallet lookup.
   const apiKey = process.env.IDENTITY_API_KEY_GAMERPLEX || process.env.IDENTITY_API_KEY;
-  if (!apiKey) return NextResponse.json({ error: 'misconfigured' }, { status: 500 });
+  if (!apiKey) return NextResponse.json({ error: 'misconfigured' }, { status: 500, headers: cors });
 
   let body: { referrer?: unknown };
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: 'invalid_json' }, { status: 400 });
+    return NextResponse.json({ error: 'invalid_json' }, { status: 400, headers: cors });
   }
 
   // Referrer code, in priority order: wallet pubkey (web3) · userId UUID (works
@@ -113,19 +135,19 @@ export async function POST(req: NextRequest) {
   const isUuid = !referrerPubkey && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawRef);
   const directUserId = isUuid ? rawRef.toLowerCase() : null;
   const referrerHandle = !referrerPubkey && !isUuid && /^[a-z0-9_]{3,20}$/.test(rawRef.toLowerCase()) ? rawRef.toLowerCase() : null;
-  if (!referrerPubkey && !directUserId && !referrerHandle) return NextResponse.json({ error: 'bad_referrer' }, { status: 400 });
+  if (!referrerPubkey && !directUserId && !referrerHandle) return NextResponse.json({ error: 'bad_referrer' }, { status: 400, headers: cors });
 
   // Resolve the CALLER (the referred user) from their forwarded session cookie.
   const cookie = req.headers.get('cookie') ?? '';
   const meRes = await fetch(`${IDENTITY_URL}/api/auth/me`, { headers: { cookie }, cache: 'no-store' });
   const me = await meRes.json().catch(() => ({}));
   const referredUserId: string | undefined = me?.user?.id;
-  if (!referredUserId) return NextResponse.json({ error: 'not_signed_in' }, { status: 401 });
+  if (!referredUserId) return NextResponse.json({ error: 'not_signed_in' }, { status: 401, headers: cors });
 
   // Best-effort per-instance rate limit (identity-service holds the authoritative cap +
   // the refId idempotency is the real anti-farm).
   if (rateLimited(`referral:${clientKey(referredUserId, req)}`, 20, 60_000)) {
-    return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
+    return NextResponse.json({ error: 'rate_limited' }, { status: 429, headers: cors });
   }
 
   // Resolve the referrer -> referrer userId. A UUID already IS the userId; a
@@ -144,15 +166,15 @@ export async function POST(req: NextRequest) {
   }
   // Unknown referrer wallet (never signed up) — nothing to attribute to. Treat as a no-op
   // success so the client doesn't retry, but skip both grants (can't reward a non-user).
-  if (!referrerUserId) return NextResponse.json({ ok: true, deduped: false, referrerFound: false });
+  if (!referrerUserId) return NextResponse.json({ ok: true, deduped: false, referrerFound: false }, { headers: cors });
 
   // Self-referral guard: a user can't refer themselves.
   if (referrerUserId === referredUserId) {
-    return NextResponse.json({ ok: true, deduped: false, referrerFound: true, selfReferral: true });
+    return NextResponse.json({ ok: true, deduped: false, referrerFound: true, selfReferral: true }, { headers: cors });
   }
 
   // Payout gate (anti-sybil): BOTH sides must show PROOF OF LIFE — a verified
-  // email AND a real saved score. A handle is NOT required (it's vanity/onboarding;
+  // email OR a linked Flipcash account, AND a real saved score. A handle is NOT required (it's vanity/onboarding;
   // requiring it blocked ~100% of referrals since almost no one sets one, and the
   // handle is mutable so it was never a reliable identity anyway). Sybil resistance
   // still holds: email verification + proof-of-play + Credits that are non-cashable
@@ -167,7 +189,10 @@ export async function POST(req: NextRequest) {
         { headers: { 'x-identity-api-key': apiKey }, cache: 'no-store' },
       );
       const j = await r.json().catch(() => ({}));
-      return j?.emailVerified === true && j?.hasScore === true;
+      // `verified` is emailVerified OR a linked Flipcash account. Email alone made
+      // this unreachable for Flipcash users, i.e. for every new player, so the
+      // payout never fired. identity still returns emailVerified for older clients.
+      return (j?.verified === true || j?.emailVerified === true) && j?.hasScore === true;
     } catch {
       return false;
     }
@@ -178,11 +203,11 @@ export async function POST(req: NextRequest) {
   ]);
   if (!referrerComplete) {
     // The inviter hasn't finished onboarding → their link can't pay out yet.
-    return NextResponse.json({ ok: true, referrerFound: true, referrerIncomplete: true });
+    return NextResponse.json({ ok: true, referrerFound: true, referrerIncomplete: true }, { headers: cors });
   }
   if (!referredComplete) {
     // The friend hasn't verified + named + saved a score yet → hold the payout.
-    return NextResponse.json({ ok: true, pending: true });
+    return NextResponse.json({ ok: true, pending: true }, { headers: cors });
   }
 
   // Both grants are idempotent via their deterministic refIds. Run sequentially so a partial
@@ -205,7 +230,7 @@ export async function POST(req: NextRequest) {
   );
 
   if (!welcomeOk || !referrerOk) {
-    return NextResponse.json({ error: 'award_failed' }, { status: 502 });
+    return NextResponse.json({ error: 'award_failed' }, { status: 502, headers: cors });
   }
-  return NextResponse.json({ ok: true, referrerFound: true });
+  return NextResponse.json({ ok: true, referrerFound: true }, { headers: cors });
 }
