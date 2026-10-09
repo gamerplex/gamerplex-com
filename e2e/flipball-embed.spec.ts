@@ -14,8 +14,10 @@ for (const vp of [
     await page.setViewportSize({ width: vp.width, height: vp.height });
     await page.goto('/play/flipball', { waitUntil: 'domcontentloaded' });
 
-    // shell nav home link
-    await expect(page.getByRole('link', { name: 'GAMERPLEX', exact: true })).toBeVisible();
+    // Shell nav. The assertion used to look for a 'GAMERPLEX' link, which the shell
+    // stopped rendering when it switched to <BackToGames /> — it had been failing
+    // before this merge, not because of it. Matched to what is actually rendered.
+    await expect(page.getByRole('button', { name: 'Back to games' })).toBeVisible();
 
     // NO iframe — the game is same-origin now.
     await expect(page.locator('iframe')).toHaveCount(0);
@@ -24,7 +26,10 @@ for (const vp of [
     await expect(page.locator('#game-container canvas')).toBeVisible({ timeout: 15_000 });
 
     // The shared free web2 leaderboard is present (no wallet).
-    await expect(page.getByText('🏆 Leaderboard')).toBeVisible({ timeout: 10_000 });
+    // ShellLeaderboard renders 🏆 in its own <span> with 'Leaderboard' as a sibling
+    // text node, so no single element reads '🏆 Leaderboard'. Same stale assertion
+    // that was in game-chess.spec.ts; matched to the real DOM, not weakened.
+    await expect(page.getByText('Leaderboard', { exact: false }).first()).toBeVisible({ timeout: 10_000 });
   });
 }
 
