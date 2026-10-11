@@ -45,6 +45,27 @@ const WEB2_GAMES = [
 type Web2Best = { id: string; label: string; emoji: string; score: number; verified: boolean };
 type Activity = { gameId: string; score: number; verified: boolean; txSig: string | null; at: string };
 
+// Omega City keeps a persistent war rather than scored runs, so it reports nothing to
+// the web2 score store that "Recent activity" reads. Its record comes from the resolver.
+const RESOLVER = process.env.NEXT_PUBLIC_RESOLVER_URL || "https://resolver.gamerplex.com";
+const OC_FACTION: Record<string, { label: string; emoji: string }> = {
+  sol: { label: "Solhackers", emoji: "☀️" },
+  lib: { label: "Liberati", emoji: "⚜️" },
+  gua: { label: "Guardians", emoji: "🛡️" },
+  bot: { label: "BotNet", emoji: "🤖" },
+};
+type OcEpoch = {
+  epoch: number; faction: string; captures: number; wins: number; orders: number;
+  winner: string | null; endedAt: string | null; endReason: string | null;
+  recordSig: string | null; claimSig: string | null; live: boolean; won: boolean;
+};
+type OcMe = {
+  publicId: string;
+  cluster: string;
+  lifetime: { wars: number; won: number; captures: number; battles: number; prompts: number; loyal: string | null };
+  epochs: OcEpoch[];
+};
+
 const gameMeta = (gameId: string) => WEB2_GAMES.find((g) => g.id === gameId) ?? { emoji: "🎮", label: gameId };
 const relTime = (iso: string) => {
   const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
@@ -91,6 +112,7 @@ export function ProfileView({
   const [credits, setCredits] = useState<number | null>(null);
   const [web2Bests, setWeb2Bests] = useState<Web2Best[] | null>(null);
   const [activity, setActivity] = useState<Activity[] | null>(null);
+  const [oc, setOc] = useState<OcMe | null>(null);
   const [web2Loading, setWeb2Loading] = useState(isOwnProfile);
   const [showClaim, setShowClaim] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -138,6 +160,13 @@ export function ProfileView({
           })
         );
         if (!cancelled) setWeb2Bests(bests.filter((b): b is Web2Best => b !== null));
+        // Cross-subdomain with the shared .gamerplex.com session; 401 simply means
+        // not signed in to the war, which is not an error worth surfacing.
+        fetch(`${RESOLVER}/oc/me`, { credentials: "include", cache: "no-store" })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((d: OcMe | null) => { if (!cancelled && d && (d as unknown as { ok: boolean }).ok) setOc(d); })
+          .catch(() => {});
+
         fetch(`/api/scores/recent?userId=${id.id}&limit=15`)
           .then((r) => (r.ok ? r.json() : { activity: [] }))
           .then((d: { activity?: Activity[] }) => { if (!cancelled) setActivity(d.activity ?? []); })
@@ -352,6 +381,71 @@ export function ProfileView({
             </div>
           )}
         </Section>
+
+        {/* ── Omega City (a persistent war, so not in web2 scores) ──────── */}
+        {oc && oc.lifetime.wars > 0 && (
+          <Section title="Omega City">
+            <div style={{ ...glassPanel, padding: 16, borderRadius: 16, marginBottom: 10 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, textAlign: "center" }}>
+                {[
+                  ["Wars", oc.lifetime.wars],
+                  ["Won", oc.lifetime.won],
+                  ["Districts", oc.lifetime.captures],
+                  ["Battles", oc.lifetime.battles],
+                ].map(([k, v]) => (
+                  <div key={String(k)}>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: "#14F195", fontVariantNumeric: "tabular-nums" }}>{String(v)}</div>
+                    <div style={{ fontSize: 10.5, color: "#8a80b0", letterSpacing: 0.5 }}>{String(k)}</div>
+                  </div>
+                ))}
+              </div>
+              {oc.lifetime.loyal && OC_FACTION[oc.lifetime.loyal] && (
+                <div style={{ fontSize: 12, color: "#c8c8d4", marginTop: 12, textAlign: "center" }}>
+                  Most loyal to {OC_FACTION[oc.lifetime.loyal].emoji} {OC_FACTION[oc.lifetime.loyal].label}
+                </div>
+              )}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {oc.epochs.slice(0, 8).map((e) => {
+                const f = OC_FACTION[e.faction] ?? { label: e.faction, emoji: "🎮" };
+                return (
+                  <div key={e.epoch} style={{ ...glassInset, display: "grid", gridTemplateColumns: "1fr auto auto", gap: 10, padding: "9px 12px", borderRadius: 10, alignItems: "center", fontSize: 12.5 }}>
+                    <div style={{ color: "#e8e8f0", fontWeight: 600 }}>
+                      {f.emoji} Epoch {e.epoch}
+                      <span style={{ color: "#8a80b0", fontWeight: 500 }}>
+                        {" · "}{e.live ? "being fought" : e.won ? "victory" : "served"}
+                        {e.endReason === "conquest" && !e.live ? " · swept" : ""}
+                      </span>
+                    </div>
+                    <div style={{ textAlign: "right", color: "#14F195", fontWeight: 700, fontFamily: "monospace" }}>
+                      {e.captures}/{e.wins}
+                    </div>
+                    {/* A live epoch has nothing on chain yet — never imply it does. */}
+                    <div style={{ textAlign: "right", fontSize: 11, minWidth: 74 }}>
+                      {e.live ? (
+                        <span style={{ color: "#666" }}>in progress</span>
+                      ) : e.claimSig ? (
+                        <a href={`https://solscan.io/tx/${e.claimSig}${oc.cluster === "mainnet" ? "" : `?cluster=${oc.cluster}`}`} target="_blank" rel="noreferrer" style={{ color: "#c9a2ff", textDecoration: "none" }}>
+                          ◆ yours
+                        </a>
+                      ) : e.recordSig ? (
+                        <a href={`https://solscan.io/tx/${e.recordSig}${oc.cluster === "mainnet" ? "" : `?cluster=${oc.cluster}`}`} target="_blank" rel="noreferrer" style={{ color: "#ffd740", textDecoration: "none" }}>
+                          ✓ on-chain
+                        </a>
+                      ) : (
+                        <span style={{ color: "#666" }}>no record</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{ fontSize: 10.5, color: "#6a6a85", marginTop: 8, lineHeight: 1.5 }}>
+              Districts taken / battles won per epoch. ✓ links the record Gamerplex signed for
+              that epoch; ◆ is one you signed yourself.
+            </div>
+          </Section>
+        )}
 
         {/* ── Recent activity (every run, newest first) ────────────────── */}
         {activity && activity.length > 0 && (
