@@ -8,20 +8,13 @@ import Link from "next/link";
 import { useState } from "react";
 import { SiteNav } from "../../components/SiteNav";
 import EmailLoginModal from "../../components/arcade/EmailLoginModal";
-import ShellLeaderboard, { type LbGame } from "../../components/arcade/ShellLeaderboard";
+import ShellLeaderboard from "../../components/arcade/ShellLeaderboard";
 import { useIdentity } from "../../lib/identity/useIdentity";
 import { GLASS_CSS } from "../../components/glass";
+import { LB_GAMES_FULL } from "../_data/games";
+import OmegaCityBoard from "../../components/arcade/OmegaCityBoard";
 
-const GAMES: LbGame[] = [
-  { id: "blockwords", label: "Blockwords", emoji: "🔮" },
-  { id: "cyber-snake", label: "Cyber Snake", emoji: "🐍" },
-  { id: "magic-chess", label: "Magic Chess", emoji: "♟️" },
-  { id: "flipball", label: "Flipball", emoji: "🎱" },
-  { id: "vrfc", label: "VRFC", emoji: "🥊" },
-  { id: "time-gate", label: "Time Gate", emoji: "◇" },
-  { id: "netherlevel", label: "Netherlevel", emoji: "🔥" },
-  { id: "netherlevel-daily", label: "Netherlevel Daily", emoji: "🌒" },
-];
+// Shared list — see app/_data/games.ts for why there is only one.
 
 export default function LeaderboardPage() {
   const { user, isSignedIn, refresh } = useIdentity();
@@ -63,7 +56,13 @@ export default function LeaderboardPage() {
         </p>
 
         <div className="gl-lb glass">
-          <ShellLeaderboard gameId="blockwords" games={GAMES} highlightUserId={user?.id} limit={50} defaultWindow="all" />
+          <ShellLeaderboard gameId="blockwords" games={LB_GAMES_FULL} highlightUserId={user?.id} limit={50} defaultWindow="all" />
+        </div>
+
+        {/* Omega City ranks by conquest, not score, so it gets its own board rather
+            than an empty row in the switcher above. */}
+        <div className="gl-lb glass" style={{ marginTop: 16 }}>
+          <OmegaCityBoard highlightHandle={user?.handle ?? null} limit={20} />
         </div>
       </div>
 

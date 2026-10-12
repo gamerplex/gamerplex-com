@@ -17,6 +17,7 @@ import { DailyGoalWidget } from "../components/identity/DailyGoalWidget";
 import GameGrid from "./_components/GameGrid";
 import LiveTicker from "./_components/LiveTicker";
 import { GAMES, LB_GAMES } from "./_data/games";
+import OmegaCityBoard from "../components/arcade/OmegaCityBoard";
 import { useIdentity } from "../lib/identity/useIdentity";
 import { GLASS_CSS } from "../components/glass";
 
@@ -96,6 +97,9 @@ export default function Home() {
 
         <h2 id="leaderboard" className="gl-h2">Leaderboard <span className="gl-h2-sub">· live, on-chain</span></h2>
         <div className="gl-lb glass"><ShellLeaderboard gameId="blockwords" games={LB_GAMES} highlightUserId={user?.id} limit={8} defaultWindow="all" /></div>
+        {/* Omega City is a persistent war with no per-run score — its own board, not a
+            dead entry in the switcher above. */}
+        <div className="gl-lb glass" style={{ marginTop: 14 }}><OmegaCityBoard highlightHandle={user?.handle ?? null} limit={5} /></div>
         <div style={{ display: "flex", gap: 14, justifyContent: "center", alignItems: "center", flexWrap: "wrap", margin: "18px 0 40px" }}>
           <Link href="/play/blockwords" className="gl-cta" style={{ width: "auto" }}><span>▶ Play Blockwords</span><span className="gl-cta-arrow">↗</span></Link>
           <Link href="/leaderboard" className="gl-sc-link" style={{ margin: 0 }}>Full rankings →</Link>
