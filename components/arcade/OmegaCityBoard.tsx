@@ -27,11 +27,13 @@ const FACTION: Record<string, { label: string; emoji: string }> = {
 };
 
 type Row = { handle: string; faction: string; captures: number; wins: number; orders: number };
+type Hist = { epoch: number; players?: number | null };
 type Board = {
   epoch: number;
   current: number;
   players: Row[];
   record: { sig: string | null; cluster: string } | null;
+  history?: Hist[];
 };
 
 export default function OmegaCityBoard({ highlightHandle, limit = 8 }: { highlightHandle?: string | null; limit?: number }) {
@@ -40,10 +42,31 @@ export default function OmegaCityBoard({ highlightHandle, limit = 8 }: { highlig
 
   useEffect(() => {
     let off = false;
-    fetch(`${RESOLVER}/oc/leaderboard`, { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (!off) (d && d.ok ? setB(d) : setErr(true)); })
-      .catch(() => !off && setErr(true));
+    const get = async (epoch?: number) => {
+      const r = await fetch(`${RESOLVER}/oc/leaderboard${epoch ? `?epoch=${epoch}` : ""}`, { cache: "no-store" });
+      if (!r.ok) throw new Error(String(r.status));
+      const d = await r.json();
+      if (!d?.ok) throw new Error("not ok");
+      return d as Board;
+    };
+    (async () => {
+      try {
+        const live = await get();
+        if (off) return;
+        if (live.players.length > 0) { setB(live); return; }
+        // An epoch runs ~2 days and starts with nobody having moved, so the live board
+        // is empty for long stretches — and epoch 1055 went by with zero players at
+        // all. Showing that renders as a broken leaderboard. Fall back to the most
+        // recent epoch that actually had fighters, labelled as finished, which is also
+        // the one with an on-chain record.
+        const past = (live.history ?? []).find((h) => (h.players ?? 0) > 0);
+        if (!past) { setB(live); return; }
+        const final = await get(past.epoch);
+        if (!off) setB(final);
+      } catch {
+        if (!off) setErr(true);
+      }
+    })();
     return () => { off = true; };
   }, []);
 
@@ -57,7 +80,9 @@ export default function OmegaCityBoard({ highlightHandle, limit = 8 }: { highlig
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
         <div style={{ fontSize: 13, fontWeight: 800, color: "#e8e8f0" }}>
           ⬡ Omega City{b ? ` · epoch ${b.epoch}` : ""}
-          <span style={{ fontWeight: 500, color: "#8a80b0" }}>{b ? (live ? " · being fought" : " · final") : ""}</span>
+          <span style={{ fontWeight: 500, color: "#8a80b0" }}>
+            {b ? (live ? " · being fought" : " · last contested epoch") : ""}
+          </span>
         </div>
         <a href="https://omega.gamerplex.com" target="_blank" rel="noreferrer" style={{ fontSize: 11.5, color: "#8ad", textDecoration: "underline", textUnderlineOffset: 2 }}>
           Open the war room →
@@ -66,7 +91,9 @@ export default function OmegaCityBoard({ highlightHandle, limit = 8 }: { highlig
 
       {!b && <div style={{ fontSize: 12.5, color: "#8a80b0" }}>Reading the war…</div>}
       {b && rows.length === 0 && (
-        <div style={{ fontSize: 12.5, color: "#8a80b0" }}>No orders given this epoch yet. Be first.</div>
+        <div style={{ fontSize: 12.5, color: "#8a80b0" }}>
+          Nobody has fought here yet. Be the first — pick a side and take a district.
+        </div>
       )}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
@@ -96,7 +123,7 @@ export default function OmegaCityBoard({ highlightHandle, limit = 8 }: { highlig
       </div>
 
       <div style={{ fontSize: 10.5, color: "#6a6a85", marginTop: 9, lineHeight: 1.5 }}>
-        Districts taken / battles won this epoch — a war, not a high score.{" "}
+        Districts taken / battles won{live ? " this epoch" : ` in epoch ${b?.epoch}`} — a war, not a high score.{" "}
         {b?.record?.sig ? (
           <>
             This epoch&rsquo;s result is{" "}
