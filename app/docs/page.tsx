@@ -26,7 +26,7 @@ const SECTIONS = [
   { id: "platform-risk", label: "Platform Risk", group: "Decentralization" },
   { id: "web3-identity", label: "Web3 Identity + SNS", group: "Decentralization" },
 
-  { id: "three-games", label: "Ten Games, One Stack", group: "Games" },
+  { id: "three-games", label: "10+ Games, One Stack", group: "Games" },
   { id: "magic-chess", label: "Magic Chess", group: "Games" },
   { id: "blockwords", label: "Blockwords", group: "Games" },
   { id: "agents", label: "Gamerplex Agents", group: "Games" },
@@ -103,7 +103,7 @@ export default function DocsPage() {
             <Stats items={[
               { label: "Programs Deployed", value: "1" },
               { label: "E2E Tests Passing", value: "170+" },
-              { label: "Games Live", value: "10" },
+              { label: "Games Live", value: "10+" },
               { label: "Payment Tokens", value: "5" },
             ]} />
           </Section>
@@ -437,9 +437,9 @@ Pet Legends: GPX1|pla|BEzD...|GYYw...|w|12|8|15|atk,blk,spc,atk,...`}</CodeBlock
           </Section>
 
           {/* Games */}
-          <Section id="three-games" title="Ten Games, One Stack">
+          <Section id="three-games" title="10+ Games, One Stack">
             <P>
-              <strong>Ten games live on gamerplex.com, all registered on the same Gamerplex Arcade contract on Solana mainnet</strong> (11 game IDs: 10 games + 1 reserved). Same stack, same economics, different games.
+              <strong>10+ games live on gamerplex.com, all registered on the same Gamerplex Arcade contract on Solana mainnet</strong> (11 game IDs: 10 games + 1 reserved). Same stack, same economics, different games.
             </P>
             <List items={[
               <><strong>Omega City</strong>: a war for a city, played on a 2D map, with a 3D flagship in Unreal.</>,
