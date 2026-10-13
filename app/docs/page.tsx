@@ -130,7 +130,7 @@ export default function DocsPage() {
             </P>
             <List items={[
               <><strong>Infrastructure:</strong> a NixOS flake you self-host anywhere (or we host), PostgreSQL, FerretDB, Valkey, Nakama, Colyseus, PocketBase, and MagicBlock real-time rollups.</>,
-              <><strong>Monetisation on Solana:</strong> the Gamerplex arcade (pay per play, live on mainnet), Wallet Adapter, Blinks, Squads treasuries, and $GAME payments via Flipcash, with free Credits for players.</>,
+              <><strong>Monetisation on Solana:</strong> the Gamerplex arcade (pay per play, live on mainnet), Wallet Adapter, Gamerplex Challenge Links, Squads treasuries, and $GAME payments via Flipcash, with free Credits for players.</>,
               <><strong>Never in official skills:</strong> per-game tokens, DeFi yield, wagers or marketplaces. Builders are free to wire anything themselves (MIT / CC0).</>,
             ]} />
           </Section>
