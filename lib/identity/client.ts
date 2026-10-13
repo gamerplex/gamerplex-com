@@ -122,7 +122,16 @@ export async function emailSignup(email: string): Promise<EmailSignupResult> {
     });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) return { ok: false, error: r.status === 429 ? 'rate_limited' : j.error || `email_${r.status}` };
-    return { ok: true, status: j.status, throttled: j.throttled === true };
+    // verificationEmailSent MUST be forwarded. Dropping it made the modal's
+    // delivery check read `undefined !== false` — always "delivered" — so a 550 from
+    // the provider still rendered "check your email". Absent stays undefined, which
+    // the modal treats as sent, so an older service never invents a failure.
+    return {
+      ok: true,
+      status: j.status,
+      throttled: j.throttled === true,
+      verificationEmailSent: j.verificationEmailSent,
+    };
   } catch {
     return { ok: false, error: 'network' };
   }
