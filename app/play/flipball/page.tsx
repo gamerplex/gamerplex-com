@@ -10,13 +10,13 @@ export const metadata: Metadata = {
     description: "Free pinball. Rank on the leaderboard with just an email; save on-chain optionally. Built on Gamerplex.",
     type: "website",
     url: "https://gamerplex.com/play/flipball",
-    images: [{ url: "/play/flipball/banner.jpeg", width: 1956, height: 1080, alt: "FLIPBALL — pinball gameplay" }],
+    images: [{ url: "/games/flipball/og.png", width: 1200, height: 630, alt: "FLIPBALL — pinball gameplay" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "FLIPBALL — Pinball on Solana",
     description: "Free pinball, web2 leaderboard, optional on-chain verified scores. Built on Gamerplex.",
-    images: ["/play/flipball/banner.jpeg"],
+    images: ["/games/flipball/og.png"],
   },
 };
 

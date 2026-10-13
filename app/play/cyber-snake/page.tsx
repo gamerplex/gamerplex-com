@@ -46,7 +46,7 @@ export async function generateMetadata({
 
   const ogImage = sig
     ? `${SITE}/api/og/snake-challenge?sig=${encodeURIComponent(sig)}`
-    : `${SITE}/api/og/snake-challenge`;
+    : `${SITE}/games/cyber-snake/og.png`;
 
   if (challengerScore != null && challengerPlayer) {
     const title = `🐍 Beat ${challengerScore.toLocaleString()} on Cyber Snake — gamerplex.com`;
