@@ -64,7 +64,7 @@ export default function AuthPanel({
   return (
     <div style={wrap}>
       <p style={lede}>
-        Three ways in. They all reach the same account — pick whichever you already have.
+        One account. Pick whichever you already have.
       </p>
 
       {/* 1. FLIPCASH. First because it is the only one that works for someone with no
@@ -73,17 +73,13 @@ export default function AuthPanel({
       {payUrl === null ? (
         <span style={{ ...primary, opacity: 0.55, pointerEvents: "none" }} aria-busy="true">Loading…</span>
       ) : payUrl ? (
-        <a href={payUrl} style={primary} data-testid="signin-flipcash">Log in with Flipcash</a>
+        <a href={payUrl} style={primary} data-testid="signin-flipcash">Continue with Flipcash</a>
       ) : (
         <span style={{ ...primary, background: "#2a2440", color: "#9a92b5" }}>
           Flipcash is unavailable right now
         </span>
       )}
-      <p style={note}>
-        New here? Opening the chat is the <b style={{ color: "#9a92b5" }}>$2 Starter Pack</b> and a
-        sign-in link comes straight back.<br />
-        Been before? Send any message — free, and a fresh link comes back.
-      </p>
+      <p style={note}>$2 first time (Starter Pack) · free after · link comes back in chat</p>
 
       {/* 2. WALLET. Free and instant, but only if they have one. */}
       <WalletSignInButton onDone={onDone} />
@@ -94,16 +90,16 @@ export default function AuthPanel({
       {onEmail && (
         <>
           <button type="button" onClick={onEmail} disabled={busy} style={secondary} data-testid="signin-email">
-            {busy ? "Working…" : "Sign in with email"}
+            {busy ? "Working…" : "Continue with email"}
           </button>
-          <p style={note}>A 6-digit code. No password, no wallet.</p>
+          <p style={note}>Free · 6-digit code · no wallet needed</p>
         </>
       )}
 
       {/* The exact confusion a real user hit: they bought $GAME and could not get in. */}
       <p style={{ ...note, marginTop: 12 }}>
-        Already bought <b style={{ color: "#9a92b5" }}>$GAME</b>? That lives in your Flipcash
-        wallet, not an account here — sign in any way above and your balance still works.
+        Already bought <b style={{ color: "#9a92b5" }}>$GAME</b>? It is in your Flipcash wallet,
+        not an account here. Any door above works and your balance is untouched.
       </p>
 
       {/* Returning with a link already in hand. Hidden until asked for, so it is never
