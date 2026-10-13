@@ -10,6 +10,7 @@ export type Asset = {
   generator: string;
   licence: string;
   glb_bytes: number;
+  preview_bytes?: number;
   concept: boolean;
   tris?: number;
   rigged?: boolean;
@@ -24,7 +25,8 @@ export function asset(slug: string): Asset | undefined {
 }
 
 export const files = (slug: string) => ({
-  glb: `/assets/${slug}/model.glb`,
+  preview: `/assets/${slug}/preview.glb`,
+  download: `/api/assets/${slug}/download`,
   thumb: `/assets/${slug}/thumb.webp`,
   concept: `/assets/${slug}/concept.webp`,
   provenance: `/assets/${slug}/provenance.json`,

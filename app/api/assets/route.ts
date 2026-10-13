@@ -10,7 +10,9 @@ export function GET() {
     assets: ASSETS.map((a) => ({
       ...a,
       page: `${base}/assets/${a.slug}`,
-      glb: `${base}${files(a.slug).glb}`,
+      preview_glb: `${base}${files(a.slug).preview}`,
+      download: `${base}${files(a.slug).download}`,
+      download_requires: 'a signed-in Gamerplex account (free)',
       thumbnail: `${base}${files(a.slug).thumb}`,
       provenance: `${base}${files(a.slug).provenance}`,
     })),

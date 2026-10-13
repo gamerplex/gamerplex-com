@@ -34,7 +34,7 @@ export default async function AssetPage({ params }: { params: Promise<{ slug: st
     description: a.description,
     url: `https://gamerplex.com/assets/${a.slug}`,
     image: `https://gamerplex.com${files(a.slug).thumb}`,
-    encoding: { "@type": "MediaObject", contentUrl: `https://gamerplex.com${files(a.slug).glb}`, encodingFormat: "model/gltf-binary" },
+    encoding: { "@type": "MediaObject", contentUrl: `https://gamerplex.com${files(a.slug).preview}`, encodingFormat: "model/gltf-binary" },
     license: "https://creativecommons.org/publicdomain/zero/1.0/",
     isAccessibleForFree: true,
     creator: { "@type": "Organization", name: "Gamerplex", url: "https://gamerplex.com" },

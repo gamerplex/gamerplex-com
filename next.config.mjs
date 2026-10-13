@@ -2,6 +2,8 @@ import { withSentryConfig } from "@sentry/nextjs";
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // full-quality asset files are bundled with the signed-in download route only
+  outputFileTracingIncludes: { '/api/assets/[slug]/download': ['./private-assets/**/*'] },
   reactStrictMode: true,
   transpilePackages: ["@babylonjs/core", "@babylonjs/loaders"],
   productionBrowserSourceMaps: false,
