@@ -21,10 +21,11 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 
 import { useIdentity } from "../../lib/identity/useIdentity";
+import { isNativeApp } from "../../lib/identity/client";
 
 export default function WalletSignInButton({ onDone }: { onDone?: () => void }) {
-  const { connected, signMessage } = useWallet();
-  const { setVisible } = useWalletModal();
+  const { connected, signMessage, wallets } = useWallet();
+  const { setVisible, visible } = useWalletModal();
   const { signIn } = useIdentity();
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -59,6 +60,13 @@ export default function WalletSignInButton({ onDone }: { onDone?: () => void }) 
     }
   }, [connected, doSignIn]);
 
+  // Dismissing the picker without connecting must clear the intent. Otherwise the flag
+  // stays armed and a connection made later, for something else entirely, would fire an
+  // unexpected signature request.
+  useEffect(() => {
+    if (!visible && !connected) pending.current = false;
+  }, [visible, connected]);
+
   const onClick = () => {
     if (!connected) {
       pending.current = true;
@@ -67,6 +75,27 @@ export default function WalletSignInButton({ onDone }: { onDone?: () => void }) 
     }
     void doSignIn();
   };
+
+  // The Expo shell is a WebView with no injected wallet, and its native bridge signs
+  // TRANSACTIONS only (gamerplex:tx-result) — there is no message-signing channel, which
+  // SIWS requires. Offering the door there would open an empty picker, so don't: Flipcash
+  // is the native path until the shell gains a sign-message bridge.
+  if (isNativeApp()) return null;
+
+  // Nothing installed — on a phone browser this is the common case. Say so instead of
+  // opening a picker with no entries in it.
+  const haveWallet = wallets.some((w) => w.readyState === "Installed" || w.readyState === "Loadable");
+  if (!haveWallet) {
+    return (
+      <p style={{ margin: "12px 2px 0", fontSize: 12, lineHeight: 1.5, color: "#8a80b0" }}>
+        No Solana wallet found in this browser.{" "}
+        <a href="https://phantom.app/download" target="_blank" rel="noreferrer" style={{ color: "#8ad" }}>
+          Get Phantom
+        </a>{" "}
+        to sign in free with a wallet.
+      </p>
+    );
+  }
 
   return (
     <>
