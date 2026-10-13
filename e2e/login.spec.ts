@@ -1,18 +1,22 @@
 import { test, expect, type Page } from '@playwright/test';
 
-// MANDATE #2: login must work. The glass home is email-first — a "Sign in with
-// email" CTA opens the email modal (magic link; no password, no wallet). The
-// identity host is cross-origin (only real on gamerplex.com), so we mock the
-// signup endpoint and assert the UI contract: modal opens with an email field,
-// a valid email → "check your email" state, an error → message not a crash.
+// MANDATE #2: login must work. The home page is no longer email-first — one
+// "Sign in" chip opens a modal offering three doors (Flipcash, wallet, email),
+// so reaching the email field is now two clicks, not one. These tests were
+// asserting the old single-CTA shape and had been failing since it changed.
+//
+// The identity host is cross-origin (only real on gamerplex.com), so we mock the
+// signup endpoint and assert the UI contract: the email field appears, a valid
+// address → "check your email", an error → a message rather than a crash.
 
 async function openLoginModal(page: Page) {
   await page.goto('/');
-  await page.getByRole('button', { name: /sign in with email/i }).first().click();
+  await page.getByRole('button', { name: /^sign in$/i }).first().click();
+  await page.getByTestId('signin-email').click();
   await expect(page.locator('input[type="email"]')).toBeVisible({ timeout: 10_000 });
 }
 
-test.describe('login — email-first', () => {
+test.describe('login — three doors, email field reachable', () => {
   test('the email sign-in modal opens with an email field + send button', async ({ page }) => {
     await openLoginModal(page);
     await expect(page.getByRole('button', { name: /email me a sign-in link/i })).toBeVisible();
