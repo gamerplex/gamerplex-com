@@ -31,3 +31,7 @@ test-results/
 .playwright/
 
 .lb-harness-tmp/
+
+# /build route + its assets (generic build/ is ignored above)
+!app/build/
+!public/build/

@@ -117,8 +117,12 @@ export default function DocsPage() {
               <><strong>Output:</strong> a GLB scene (any glTF engine; Unreal builds the same modules natively), a <code>provenance.json</code> with every input&apos;s source, licence and hash, and a <code>LICENSE</code> (CC0 1.0).</>,
               <><strong>Licence gate:</strong> the build refuses any input without a known CC0 origin.</>,
               <><strong>Walk it:</strong> every street opens as a web walkthrough on desktop and phone.</>,
+              <><strong>Or chat with a live preview:</strong> in <a href="https://github.com/gamerplex/gamerplex-dev" style={{color:"#14F195"}}>gamerplex-dev</a> (<code>localhost:42069</code>, any AI brain), type &quot;build a neon cyberpunk street with gamerplex&quot; and the street appears in the preview in about a minute. The kit builds straight into your game folder.</>,
               <><strong>Status:</strong> streets ship today; the full CC0 world kit is about 5% built and growing. Next: buildings, whole districts, and anchoring provenance on Solana as proof of creation.</>,
             ]} />
+            <P>
+              <Link href="/build" style={{color:"#14F195",fontWeight:600}}>Step-by-step guide with the demo: gamerplex.com/build →</Link>
+            </P>
             <P style={{fontSize:13,color:"#888"}}>
               Provenance is not an NFT: nothing is traded. It records where an asset came from and what you may do with it.
             </P>
