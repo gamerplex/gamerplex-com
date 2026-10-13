@@ -7,6 +7,8 @@ import { glassPanel } from "../../components/glass";
 
 const SECTIONS = [
   { id: "intro", label: "What is Gamerplex?", group: "Overview" },
+  { id: "world-kit", label: "Sovereign World Kit", group: "Overview" },
+  { id: "full-stack", label: "Build with Gamerplex", group: "Overview" },
   { id: "sovereign", label: "Sovereign Game Dev", group: "Overview" },
   { id: "vision", label: "Vision", group: "Overview" },
   { id: "why-onchain", label: "Why On-Chain?", group: "Overview" },
@@ -24,7 +26,7 @@ const SECTIONS = [
   { id: "platform-risk", label: "Platform Risk", group: "Decentralization" },
   { id: "web3-identity", label: "Web3 Identity + SNS", group: "Decentralization" },
 
-  { id: "three-games", label: "Four Games, One Stack", group: "Games" },
+  { id: "three-games", label: "Ten Games, One Stack", group: "Games" },
   { id: "magic-chess", label: "Magic Chess", group: "Games" },
   { id: "blockwords", label: "Blockwords", group: "Games" },
   { id: "agents", label: "Gamerplex Agents", group: "Games" },
@@ -101,8 +103,35 @@ export default function DocsPage() {
             <Stats items={[
               { label: "Programs Deployed", value: "1" },
               { label: "E2E Tests Passing", value: "170+" },
-              { label: "Arcade Games Live", value: "4" },
+              { label: "Games Live", value: "10" },
               { label: "Payment Tokens", value: "5" },
+            ]} />
+          </Section>
+
+          <Section id="world-kit" title="Sovereign World Kit">
+            <P>
+              <strong style={{color:"#14F195"}}>Open licences. Full provenance. AI-agent-first game building.</strong> The Sovereign World Kit lets your coding agent (Claude Code, Codex, Cursor) build original 3D worlds from open parts. Every output ships with a licence and a provenance record, and the kit refuses to recreate other people&apos;s games, characters or logos.
+            </P>
+            <List items={[
+              <><strong>Install in Claude Code:</strong> <code>/plugin marketplace add gamerplex/sovereign-world-kit</code>, then <code>/plugin install sovereign-world-kit@gamerplex</code>. Ask: &quot;build a neon street with Gamerplex, 24 bays&quot;.</>,
+              <><strong>Output:</strong> a GLB scene (any glTF engine; Unreal builds the same modules natively), a <code>provenance.json</code> with every input&apos;s source, licence and hash, and a <code>LICENSE</code> (CC0 1.0).</>,
+              <><strong>Licence gate:</strong> the build refuses any input without a known CC0 origin.</>,
+              <><strong>Walk it:</strong> every street opens as a web walkthrough on desktop and phone.</>,
+              <><strong>Status:</strong> streets ship today; the full CC0 world kit is about 5% built and growing. Next: buildings, whole districts, and anchoring provenance on Solana as proof of creation.</>,
+            ]} />
+            <P style={{fontSize:13,color:"#888"}}>
+              Provenance is not an NFT: nothing is traded. It records where an asset came from and what you may do with it.
+            </P>
+          </Section>
+
+          <Section id="full-stack" title="Build with Gamerplex: the full stack, all open source">
+            <P>
+              &quot;Use Gamerplex&quot; means a deployed, monetised game, not just files. Your agent picks integrations from a catalogue; each one is a skill plus a template.
+            </P>
+            <List items={[
+              <><strong>Infrastructure:</strong> a NixOS flake you self-host anywhere (or we host), PostgreSQL, FerretDB, Valkey, Nakama, Colyseus, PocketBase, and MagicBlock real-time rollups.</>,
+              <><strong>Monetisation on Solana:</strong> the Gamerplex arcade (pay per play, live on mainnet), Wallet Adapter, Blinks, Squads treasuries, and $GAME payments via Flipcash, with free Credits for players.</>,
+              <><strong>Never in official skills:</strong> per-game tokens, DeFi yield, wagers or marketplaces. Builders are free to wire anything themselves (MIT / CC0).</>,
             ]} />
           </Section>
 
@@ -408,19 +437,17 @@ Pet Legends: GPX1|pla|BEzD...|GYYw...|w|12|8|15|atk,blk,spc,atk,...`}</CodeBlock
           </Section>
 
           {/* Games */}
-          <Section id="three-games" title="Four Games, One Stack">
+          <Section id="three-games" title="Ten Games, One Stack">
             <P>
-              The launch plan: <strong>four diverse games, all on the same unified Gamerplex Arcade stack</strong>, proving the protocol works across very different game types. Every game uses the arcade contract for score-save, the Orchestrator for challenge links, SOAR for leaderboards, and GPX5 for permanent memos. <strong style={{color:"#14F195"}}>Same stack, same economics, different games.</strong>
+              <strong>Ten games live on gamerplex.com, all registered on the same Gamerplex Arcade contract on Solana mainnet</strong> (11 game IDs: 10 games + 1 reserved). Same stack, same economics, different games.
             </P>
             <List items={[
-              <><strong>Cyber Snake</strong> — Tron-style arcade snake. Live on mainnet.</>,
-              <><strong>Magic Chess</strong> — 3D chess vs AI bots, every move on MagicBlock ER. Live.</>,
-              <><strong>Blockwords</strong> — solo word-ladder race: change one letter at a time to build the longest chain before the timer. Live on mainnet.</>,
-              <><strong>Flipball</strong> — physics arcade with an on-chain leaderboard. Live on mainnet.</>,
+              <><strong>Omega City</strong>: a war for a city, played on a 2D map, with a 3D flagship in Unreal.</>,
+              <><strong>Pet Legends Global</strong>: raise and battle AI pets.</>,
+              <><strong>Blockwords</strong>: a word-ladder race against the clock.</>,
+              <><strong>VRFC</strong>: Muay Thai, the art of eight limbs.</>,
+              <><strong>Cyber Snake</strong>, <strong>Magic Chess Puzzles</strong>, <strong>Flipball</strong>, <strong>Time Gate</strong>, <strong>Netherlevel</strong> and <strong>TCG Quiz</strong>.</>,
             ]} />
-            <P>
-              All four run on one unified stack, live on Solana mainnet. Next: more games from the Forever Games list — Go, Reversi, Four in a Row, Checkers, Backgammon — each plugging into the same stack from day one.
-            </P>
           </Section>
 
           <Section id="magic-chess" title="Magic Chess">
