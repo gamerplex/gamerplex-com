@@ -23,6 +23,13 @@ const nextConfig = {
     }
     return config;
   },
+  async redirects() {
+    return [
+      { source: '/play/omega', destination: 'https://omega.gamerplex.com', permanent: true },
+      { source: '/play/omega-city', destination: 'https://omega.gamerplex.com', permanent: true },
+      { source: '/omega', destination: 'https://omega.gamerplex.com', permanent: true },
+    ];
+  },
   async rewrites() {
     return [
       {

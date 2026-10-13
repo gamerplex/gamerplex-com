@@ -13,6 +13,17 @@ import { fetchChallenge, gameMeta } from "../../../../lib/arcade/challenge";
 // Node runtime — Edge's 1MB bundle ceiling can't fit next/og on Hobby.
 export const runtime = "nodejs";
 
+// A challenge's score never changes, so the CDN can keep the render; X's card fetcher times out on slow cold renders.
+const CACHE_CHALLENGE = "public, max-age=86400, s-maxage=31536000, immutable";
+const CACHE_FALLBACK = "public, max-age=300, s-maxage=3600";
+
+const BANNERS = new Set(["blockwords", "cyber-snake", "flipball", "magic-chess", "netherlevel", "tcg-quiz", "time-gate", "vrfc"]);
+
+function banner(route: string, origin: string): string | null {
+  const slug = route.split("/").filter(Boolean).pop() ?? "";
+  return BANNERS.has(slug) ? `${origin}/games/${slug}/banner.png` : null;
+}
+
 export async function GET(req: Request) {
   const url = new URL(req.url);
   // ?id is the current param; ?sig kept so links already shared keep rendering.
@@ -27,68 +38,53 @@ export async function GET(req: Request) {
     route: g?.route ?? "/arcade",
   };
   const isChallenge = c != null;
-  const score = c?.score ?? null;
-  const who = c?.who ?? null;
+  const art = isChallenge ? banner(meta.route, url.origin) : null;
 
   return new ImageResponse(
     (
-      <div
-        style={{
-          width: "100%",
-          height: "100%",
-          display: "flex",
-          flexDirection: "column",
-          background: "linear-gradient(135deg, #050514 0%, #0a0a28 35%, #1a0830 100%)",
-          color: "#e8e8f0",
-          padding: 80,
-          fontFamily: "system-ui, sans-serif",
-        }}
-      >
-        {/* Top: game brand */}
-        <div style={{ display: "flex", alignItems: "center", gap: 16, fontSize: 32, color: meta.accent, letterSpacing: 4 }}>
-          <span style={{ fontSize: 56 }}>{meta.emoji}</span>
-          <span style={{ fontWeight: 800 }}>{meta.label}</span>
-          <span style={{ marginLeft: "auto", fontSize: 22, color: "#5a5a70", letterSpacing: 2 }}>gamerplex.com</span>
+      <div style={{ width: "100%", height: "100%", display: "flex", position: "relative", background: "#07061a", color: "#f4f2ff", fontFamily: "system-ui, sans-serif" }}>
+        {art && <img src={art} width={1200} height={675} style={{ position: "absolute", left: 0, top: -22, width: 1200, height: 675, objectFit: "cover" }} />}
+        <div style={{ position: "absolute", left: 0, top: 0, width: 1200, height: 630, display: "flex", background: art ? "linear-gradient(90deg, rgba(7,6,26,0.97) 0%, rgba(7,6,26,0.9) 45%, rgba(7,6,26,0.35) 75%, rgba(7,6,26,0.15) 100%)" : "linear-gradient(135deg, #050514 0%, #0a0a28 40%, #1a0830 100%)" }} />
+
+        <div style={{ position: "relative", display: "flex", flexDirection: "column", padding: "64px 72px", width: 760, height: 630 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 14, fontSize: 28, color: meta.accent, letterSpacing: 4, fontWeight: 800 }}>
+            <span style={{ fontSize: 44 }}>{meta.emoji}</span>
+            <span>{meta.label}</span>
+          </div>
+
+          {isChallenge ? (
+            <div style={{ display: "flex", flexDirection: "column", marginTop: 36 }}>
+              <div style={{ fontSize: 64, fontWeight: 900, letterSpacing: 1 }}>Beat this score.</div>
+              <div style={{ display: "flex", fontSize: 168, fontWeight: 900, color: meta.accent, lineHeight: 1, marginTop: 6 }}>
+                {c!.score.toLocaleString()}
+              </div>
+              <div style={{ display: "flex", fontSize: 30, color: "#c9c3ea", marginTop: 14 }}>
+                set by {c!.who}
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", marginTop: 60, gap: 16 }}>
+              <div style={{ fontSize: 72, fontWeight: 900, color: "#14F195" }}>Play free.</div>
+              <div style={{ fontSize: 34, color: "#c9c3ea" }}>10+ skill games. Scores on Solana.</div>
+            </div>
+          )}
+
+          <div style={{ display: "flex", flexGrow: 1 }} />
+          <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+            <div style={{ display: "flex", background: meta.accent, color: "#07061a", fontSize: 26, fontWeight: 900, padding: "12px 26px", borderRadius: 999 }}>
+              {isChallenge ? "Play the same run →" : "Play now →"}
+            </div>
+            <div style={{ display: "flex", fontSize: 24, color: "#9a93c4" }}>
+              {isChallenge ? (c!.kind === "onchain" ? "verified on-chain · pure skill" : "same seed · pure skill") : "gamerplex.com"}
+            </div>
+          </div>
         </div>
 
-        <div style={{ display: "flex", flexGrow: 1 }} />
-
-        {isChallenge ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-            <div style={{ fontSize: 54, fontWeight: 800, color: "#ff9a40", letterSpacing: 2 }}>Beat this score.</div>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 24 }}>
-              <span style={{ fontSize: 28, color: "#8a8aa0" }}>{who}</span>
-              <span style={{ fontSize: 28, color: "#5a5a70" }}>·</span>
-              <span style={{ fontSize: 144, fontWeight: 900, color: meta.accent, lineHeight: 1, fontFamily: "monospace" }}>
-                {score!.toLocaleString()}
-              </span>
-            </div>
-            <div style={{ fontSize: 26, color: "#8a8aa0", marginTop: 12 }}>
-              {c!.kind === "onchain" ? "Verified on-chain · pure skill" : "Same seed · same run · pure skill"}
-            </div>
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <div style={{ fontSize: 64, fontWeight: 800, color: "#14F195", letterSpacing: 2 }}>Save your score.</div>
-            <div style={{ fontSize: 32, color: "#8a8aa0" }}>On-chain leaderboard. Free to play.</div>
-          </div>
-        )}
-
-        <div
-          style={{
-            display: "flex",
-            marginTop: 50,
-            paddingTop: 24,
-            borderTop: "2px solid #252540",
-            fontSize: 22,
-            color: "#5a5a70",
-            letterSpacing: 1,
-          }}
-        >
-          {isChallenge ? `Click to play the same run on ${meta.route}` : meta.route}
+        <div style={{ position: "absolute", right: 40, top: 40, display: "flex", fontSize: 24, fontWeight: 800, color: "#f4f2ff", background: "rgba(7,6,26,0.7)", padding: "10px 20px", borderRadius: 999 }}>
+          gamerplex.com
         </div>
       </div>
     ),
-    { width: 1200, height: 630 }
+    { width: 1200, height: 630, headers: { "Cache-Control": isChallenge ? CACHE_CHALLENGE : CACHE_FALLBACK } }
   );
 }
