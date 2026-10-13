@@ -82,10 +82,10 @@ export default function WalletSignInButton({ onDone }: { onDone?: () => void }) 
           cursor: busy ? "default" : "pointer", opacity: busy ? 0.7 : 1,
         }}
       >
-        {busy ? "Check your wallet…" : "Sign in with a Solana wallet"}
+        {busy ? "Check your wallet…" : "Continue with a wallet"}
       </button>
       <p style={{ margin: "6px 2px 0", fontSize: 12, lineHeight: 1.5, color: "#8a80b0" }}>
-        Free and instant — one signature, no payment, nothing sent.
+        Free · one signature · nothing sent
       </p>
       {err && <p style={{ margin: "6px 2px 0", fontSize: 12, color: "#ff9b9b" }}>{err}</p>}
     </>
