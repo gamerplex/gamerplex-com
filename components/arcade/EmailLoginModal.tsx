@@ -18,7 +18,9 @@ export default function EmailLoginModal({
   onClose,
   title = "Save your score & streak",
   subtitle = "Flipcash is the fastest way in — no password, nothing to install.",
-  allowEmail = false,
+  // Email is offered at the front door again, as one of three equal choices. If a send
+  // fails the modal says so immediately rather than faking a 'check your inbox'.
+  allowEmail = true,
 }: {
   open: boolean;
   onClose: () => void;
@@ -266,7 +268,7 @@ export default function EmailLoginModal({
                     It survives as an OPTIONAL recovery address in Profile, where someone
                     already signed in can add one and the page can be honest about whether
                     the mail actually went. */}
-                <AuthPanel onEmail={allowEmail ? () => setEmailStep(true) : null} busy={state === "sending"} />
+                <AuthPanel onEmail={allowEmail ? () => setEmailStep(true) : null} busy={state === "sending"} onDone={onClose} />
               </>
             )}
           </>

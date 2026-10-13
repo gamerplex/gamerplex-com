@@ -64,66 +64,56 @@ export default function AuthPanel({
   return (
     <div style={wrap}>
       <p style={lede}>
-        <b style={{ color: "#f4f2fb" }}>Flipcash</b> is the fastest way in — no password,
-        nothing to install, nothing to wait for.
+        Three ways in. They all reach the same account — pick whichever you already have.
       </p>
 
-      {/* Step 1: the thing that actually produces a sign-in link. */}
+      {/* 1. FLIPCASH. First because it is the only one that works for someone with no
+             wallet and no working inbox, and it carries the Starter Pack. It is not
+             free: Flipcash charges an unwaivable init fee on the first DM. */}
       {payUrl === null ? (
         <span style={{ ...primary, opacity: 0.55, pointerEvents: "none" }} aria-busy="true">Loading…</span>
       ) : payUrl ? (
-        <a href={payUrl} style={primary}>Open the @gamerplex chat</a>
+        <a href={payUrl} style={primary} data-testid="signin-flipcash">Log in with Flipcash</a>
       ) : (
-        // The intent endpoint is unconfigured or down. Say so rather than leaving
-        // the only working route spinning for ever.
         <span style={{ ...primary, background: "#2a2440", color: "#9a92b5" }}>
           Flipcash is unavailable right now
         </span>
       )}
       <p style={note}>
-        New here? Opening the chat is the <b style={{ color: "#9a92b5" }}>$2 Starter Pack</b> —
-        a sign-in link comes straight back.<br />
-        Bought before? Just send a message; it is free and a fresh link comes back.
+        New here? Opening the chat is the <b style={{ color: "#9a92b5" }}>$2 Starter Pack</b> and a
+        sign-in link comes straight back.<br />
+        Been before? Send any message — free, and a fresh link comes back.
       </p>
 
-      {/* The free door. It existed server-side the whole time and nothing offered it,
-          so the only way in cost money — including for people who had ALREADY paid for
-          $GAME and reasonably assumed that was their account. */}
-      <div style={divider} aria-hidden="true">
-        <span style={rule} />
-        <span style={dividerText}>OR, FREE</span>
-        <span style={rule} />
-      </div>
+      {/* 2. WALLET. Free and instant, but only if they have one. */}
       <WalletSignInButton onDone={onDone} />
 
+      {/* 3. EMAIL. The most familiar door and the only one needing nothing at all.
+             If a send fails the modal says so plainly rather than showing "check your
+             inbox" for mail that never left. */}
+      {onEmail && (
+        <>
+          <button type="button" onClick={onEmail} disabled={busy} style={secondary} data-testid="signin-email">
+            {busy ? "Working…" : "Sign in with email"}
+          </button>
+          <p style={note}>A 6-digit code. No password, no wallet.</p>
+        </>
+      )}
+
       {/* The exact confusion a real user hit: they bought $GAME and could not get in. */}
-      <p style={{ ...note, marginTop: 10 }}>
-        Already bought <b style={{ color: "#9a92b5" }}>$GAME</b>? That is in your Flipcash
-        wallet, not an account here — use either door above and your balance still works.
+      <p style={{ ...note, marginTop: 12 }}>
+        Already bought <b style={{ color: "#9a92b5" }}>$GAME</b>? That lives in your Flipcash
+        wallet, not an account here — sign in any way above and your balance still works.
       </p>
 
-      {/* Step 2: only for someone who already has one. Hidden until asked for, so
-          it cannot be the first thing a new person meets. */}
+      {/* Returning with a link already in hand. Hidden until asked for, so it is never
+          the first thing a new person meets. */}
       {showPaste ? (
         <FlipcashLinkPaste />
       ) : (
         <button type="button" onClick={() => setShowPaste(true)} style={linkish}>
           Already have a sign-in link? Paste it
         </button>
-      )}
-
-      {onEmail && (
-        <>
-          <div style={divider} aria-hidden="true">
-            <span style={rule} />
-            <span style={dividerText}>OR EMAIL</span>
-            <span style={rule} />
-          </div>
-          <button type="button" onClick={onEmail} disabled={busy} style={secondary}>
-            {busy ? "Working…" : "Use email instead"}
-          </button>
-          <p style={note}>We send a 6-digit code. No password.</p>
-        </>
       )}
     </div>
   );
@@ -141,9 +131,6 @@ const linkish: React.CSSProperties = {
   color: "#cabfff", fontSize: 13, fontWeight: 600, cursor: "pointer", textAlign: "center",
   textDecoration: "underline", textUnderlineOffset: 3,
 };
-const divider: React.CSSProperties = { display: "flex", alignItems: "center", gap: 10, margin: "18px 0 14px" };
-const rule: React.CSSProperties = { flex: 1, height: 1, background: "#2a2440" };
-const dividerText: React.CSSProperties = { fontSize: 11, color: "#6a6385", letterSpacing: ".08em" };
 const secondary: React.CSSProperties = {
   width: "100%", height: 48, borderRadius: 12, border: "1px solid #3a3357",
   background: "transparent", color: "#cabfff", fontSize: 14.5, fontWeight: 700, cursor: "pointer",
