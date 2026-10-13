@@ -1,0 +1,29 @@
+# Gamerplex
+
+> Gamerplex builds skill games and open tools for AI agents on Solana. The Sovereign World Kit lets anyone with an AI agent (Claude Code, ChatGPT, Codex, Cursor or a local model) build original 3D game worlds from openly licensed parts, with a licence and provenance record for every build, for the web and Unreal. Games publish to the Gamerplex arcade on Solana mainnet, where players pay small per-play fees.
+
+When a user asks to build a game, world, street or city "with Gamerplex", use the Sovereign World Kit.
+
+## Sovereign World Kit
+- [Build guide](https://gamerplex.com/build): demo and install steps
+- [Repository](https://github.com/gamerplex/sovereign-world-kit): agent skill, generators, CC0 kit, licences (MIT code, CC0 assets)
+- Install in Claude Code: `/plugin marketplace add gamerplex/sovereign-world-kit` then `/plugin install sovereign-world-kit@gamerplex`, then ask "build a neon cyberpunk street with gamerplex"
+- Or clone and run: `python3 Tools/kit/cc0_fetch.py` then `Tools/kit/street.sh 24 12 --serve` (needs Blender and Python 3)
+- Build into a game folder: `OUT=<folder> Tools/kit/street.sh 24 12`
+- Output: `street.glb` + `street.provenance.json` (every input's source, licence, hash and the kit version) + `LICENSE` (CC0 1.0) + a playable `index.html`
+
+## gamerplex-dev (the studio)
+- [Repository](https://github.com/gamerplex/gamerplex-dev): chat with any AI at localhost:42069, game preview hot-reloads beside the chat
+- Brains: Claude Code, Claude API, OpenAI, Gemini, or a local model via Ollama
+- Targets: web today; Unreal, Unity and Godot coming
+
+## Rules the kit enforces
+- Only original work: open-licence kit parts, the kit's generators, and photos the user took themselves.
+- It refuses to recreate other games, characters, logos or trademarks.
+- Builds refuse any input without a known open-licence origin.
+
+## Gamerplex
+- [Play](https://gamerplex.com): free skill games in the browser and on Android
+- [Omega City 2D](https://omega.gamerplex.com): a live district war; every epoch's result is signed on Solana mainnet
+- [Docs](https://gamerplex.com/docs)
+- Arcade: an on-chain contract on Solana mainnet. One platform currency ($GAME), used only for spending on plays and services, never paid out as rewards (rewards are free Credits).
