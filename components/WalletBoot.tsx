@@ -8,6 +8,8 @@ import {
 } from "@solana/wallet-adapter-react";
 import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
 import { PhantomWalletAdapter } from "@solana/wallet-adapter-phantom";
+import { SolflareWalletAdapter } from "@solana/wallet-adapter-solflare";
+import { BackpackWalletAdapter } from "@solana/wallet-adapter-backpack";
 
 import { track } from "../lib/analytics";
 
@@ -46,7 +48,14 @@ function WalletConnectTracker() {
 }
 
 export default function WalletBoot({ children }: { children: React.ReactNode }) {
-  const wallets = useMemo(() => [new PhantomWalletAdapter()], []);
+  // Solflare and Backpack were already dependencies but never registered, so only
+  // Phantom users could sign in by wallet. Wallet Standard auto-detects modern builds
+  // of all three, but registering them explicitly also covers older versions and gives
+  // Solflare's mobile deeplink path, which is the only way a phone browser connects.
+  const wallets = useMemo(
+    () => [new PhantomWalletAdapter(), new SolflareWalletAdapter(), new BackpackWalletAdapter()],
+    [],
+  );
 
   return (
     <ConnectionProvider endpoint={RPC_ENDPOINT}>
