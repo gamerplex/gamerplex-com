@@ -23,6 +23,15 @@ import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { useIdentity } from "../../lib/identity/useIdentity";
 import { isNativeApp } from "../../lib/identity/client";
 
+type Injected = { isConnected?: boolean; connect(): Promise<unknown> };
+type WindowWithSolana = Window & {
+  phantom?: { solana?: Injected };
+  solana?: Injected;
+  braveSolana?: Injected;
+  solflare?: Injected;
+  backpack?: Injected;
+};
+
 export default function WalletSignInButton({ onDone }: { onDone?: () => void }) {
   const { connected, signMessage, wallets } = useWallet();
   const { setVisible, visible } = useWalletModal();
@@ -67,13 +76,41 @@ export default function WalletSignInButton({ onDone }: { onDone?: () => void }) 
     if (!visible && !connected) pending.current = false;
   }, [visible, connected]);
 
-  const onClick = () => {
-    if (!connected) {
-      pending.current = true;
-      setVisible(true);
-      return;
+  const onClick = async () => {
+    if (connected) { void doSignIn(); return; }
+
+    // Inside a wallet's own in-app browser the provider is ALREADY injected and there is
+    // nothing to choose, so opening the adapter's picker can leave the user staring at a
+    // modal that never resolves — reported as "I click connect wallet and nothing
+    // happens", with no SIWS challenge ever reaching the server. Connect the injected
+    // provider directly in that case and skip the chooser entirely.
+    const injected = typeof window !== "undefined"
+      ? (window as WindowWithSolana).phantom?.solana
+        ?? (window as WindowWithSolana).braveSolana
+        ?? (window as WindowWithSolana).solflare
+        ?? (window as WindowWithSolana).backpack
+        ?? (window as WindowWithSolana).solana
+      : null;
+
+    if (injected?.isConnected || injected?.connect) {
+      setBusy(true);
+      setErr(null);
+      try {
+        await injected.connect();
+        // The adapter now sees a connected provider; hand off to the normal SIWS path.
+        pending.current = true;
+        setVisible(true);
+        return;
+      } catch {
+        setErr("You cancelled the wallet connection.");
+        return;
+      } finally {
+        setBusy(false);
+      }
     }
-    void doSignIn();
+
+    pending.current = true;
+    setVisible(true);
   };
 
   // The Expo shell is a WebView with no injected wallet, and its native bridge signs
