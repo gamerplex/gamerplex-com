@@ -35,14 +35,18 @@
 import { useEffect, useState } from "react";
 
 import FlipcashLinkPaste from "../arcade/FlipcashLinkPaste";
+import WalletSignInButton from "./WalletSignInButton";
 
 export default function AuthPanel({
   onEmail,
   busy = false,
+  onDone,
 }: {
   /** Opens the email step. Null hides it entirely. */
   onEmail: (() => void) | null;
   busy?: boolean;
+  /** Called once a session exists, so the host can close itself. */
+  onDone?: () => void;
 }) {
   // null = still asking, '' = asked and unavailable, string = ready.
   const [payUrl, setPayUrl] = useState<string | null>(null);
@@ -80,6 +84,22 @@ export default function AuthPanel({
         New here? Opening the chat is the <b style={{ color: "#9a92b5" }}>$2 Starter Pack</b> —
         a sign-in link comes straight back.<br />
         Bought before? Just send a message; it is free and a fresh link comes back.
+      </p>
+
+      {/* The free door. It existed server-side the whole time and nothing offered it,
+          so the only way in cost money — including for people who had ALREADY paid for
+          $GAME and reasonably assumed that was their account. */}
+      <div style={divider} aria-hidden="true">
+        <span style={rule} />
+        <span style={dividerText}>OR, FREE</span>
+        <span style={rule} />
+      </div>
+      <WalletSignInButton onDone={onDone} />
+
+      {/* The exact confusion a real user hit: they bought $GAME and could not get in. */}
+      <p style={{ ...note, marginTop: 10 }}>
+        Already bought <b style={{ color: "#9a92b5" }}>$GAME</b>? That is in your Flipcash
+        wallet, not an account here — use either door above and your balance still works.
       </p>
 
       {/* Step 2: only for someone who already has one. Hidden until asked for, so
