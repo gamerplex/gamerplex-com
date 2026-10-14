@@ -11,7 +11,9 @@
     "test:unit:cov": "vitest run --config vitest.config.ts --coverage",
     "e2e": "playwright test",
     "e2e:ui": "playwright test --ui",
-    "e2e:report": "playwright show-report"
+    "e2e:report": "playwright show-report",
+    "sync:auth": "bash scripts/sync-auth-core.sh",
+    "check:auth": "bash scripts/sync-auth-core.sh --check"
   },
   "dependencies": {
     "@babylonjs/core": "^8.47.0",
@@ -36,8 +38,7 @@
     "posthog-js": "^1.386.6",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "three": "^0.183.2",
-    "@dimforge/rapier3d-compat": "^0.19.3"
+    "three": "^0.183.2"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",
