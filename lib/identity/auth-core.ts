@@ -55,6 +55,91 @@ export function isNativeApp(): boolean {
     && (window as { __GAMERPLEX_NATIVE__?: boolean }).__GAMERPLEX_NATIVE__ === true;
 }
 
+export interface MeResult {
+  signedIn: boolean;
+  id?: string;
+  email?: string;
+  walletAddress?: string;
+  handle?: string;
+}
+
+/** What the Expo shell reports back after a native wallet round-trip. */
+export interface NativeWalletResult {
+  pubkey?: string;
+  /** 'created' | 'login' | 'linked' when the shell completed SIWS; absent on older shells. */
+  status?: string | null;
+  error?: string;
+}
+
+type RNBridge = { postMessage: (m: string) => void };
+
+/**
+ * The Expo shell's message channel. A WebView cannot reach a wallet — there is no
+ * injected provider and Mobile Wallet Adapter is a native protocol — so the page asks
+ * the shell to run the signature and the shell injects the result back.
+ */
+export function nativeWalletBridge(): RNBridge | null {
+  if (typeof window === 'undefined') return null;
+  return (window as { ReactNativeWebView?: RNBridge }).ReactNativeWebView ?? null;
+}
+
+export function hasNativeWalletBridge(): boolean {
+  return nativeWalletBridge() !== null;
+}
+
+/**
+ * What the installed shell build can do. Absent on builds that predate the flag, which
+ * is the case that matters: a page must never post a message the app has never heard of
+ * and then wait out its timeout.
+ */
+function nativeCaps(): string[] {
+  if (typeof window === 'undefined') return [];
+  const c = (window as { __GAMERPLEX_CAPS__?: unknown }).__GAMERPLEX_CAPS__;
+  return Array.isArray(c) ? c.filter((x): x is string => typeof x === 'string') : [];
+}
+
+/**
+ * Ask the shell to connect a wallet and sign in, and resolve with what it reports.
+ *
+ * The result is a HINT, never proof: an injected event is page-level script and the
+ * session lives in an HttpOnly cookie the server sets. Always confirm with `me()`
+ * afterwards — that is what makes a stale or spoofed event harmless.
+ *
+ * The timeout is generous on purpose: the user is thrown out to their wallet app,
+ * approves there, and comes back. A short timeout would report failure on a flow that
+ * is about to succeed. It exists only so the button can never spin for ever, which is
+ * exactly what "I click connect wallet and nothing happens" looked like.
+ */
+export function requestNativeWallet(opts?: { timeoutMs?: number }): Promise<NativeWalletResult> {
+  const b = nativeWalletBridge();
+  if (!b) return Promise.resolve({ error: 'no_bridge' });
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = (r: NativeWalletResult) => {
+      if (done) return;
+      done = true;
+      window.removeEventListener('gamerplex:wallet-linked', onLinked);
+      clearTimeout(timer);
+      resolve(r);
+    };
+    const onLinked = (e: Event) => finish(((e as CustomEvent).detail ?? {}) as NativeWalletResult);
+    const timer = setTimeout(() => finish({ error: 'timeout' }), opts?.timeoutMs ?? 120_000);
+    window.addEventListener('gamerplex:wallet-linked', onLinked);
+    // 'gpx-wallet-signin' performs the SIWS on every screen. The legacy
+    // 'gpx-connect-wallet' means sign-in only on the external-game screen; in a tab it
+    // authorizes a wallet and stops, which is correct for the arcade save flow and
+    // useless for signing in. So ask for the new message when the shell declares it, and
+    // fall back to the legacy one otherwise — where it works, it works, and where it
+    // does not, `me()` comes back signed out and the caller says so plainly.
+    const type = nativeCaps().includes('wallet-signin') ? 'gpx-wallet-signin' : 'gpx-connect-wallet';
+    try {
+      b.postMessage(JSON.stringify({ type }));
+    } catch {
+      finish({ error: 'bridge_post_failed' });
+    }
+  });
+}
+
 const post = (url: string, body: unknown): Promise<Response> =>
   fetch(url, {
     method: 'POST',
@@ -110,6 +195,22 @@ export function makeAuthClient({ identityUrl }: AuthCoreConfig) {
         return { ok: false, error: r.status === 429 ? 'rate_limited' : j.error || `verify_${r.status}` };
       } catch {
         return { ok: false, error: 'network' };
+      }
+    },
+
+    /**
+     * Who the session cookie says you are. The ONLY trustworthy answer to "am I signed
+     * in" — every other signal in this file is a hint. Never throws.
+     */
+    async me(): Promise<MeResult> {
+      try {
+        const r = await fetch(`${base}/api/auth/me`, { credentials: 'include' });
+        if (!r.ok) return { signedIn: false };
+        const j = (await r.json().catch(() => ({}))) as { user?: MeResult | null };
+        const u = j.user;
+        return u ? { ...u, signedIn: true } : { signedIn: false };
+      } catch {
+        return { signedIn: false };
       }
     },
 
