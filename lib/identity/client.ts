@@ -10,6 +10,24 @@ import { track } from '../analytics';
 const IDENTITY_URL =
   process.env.NEXT_PUBLIC_IDENTITY_URL || 'https://auth.gamerplex.com';
 
+// Auth (email + SIWS) now lives in the SHARED core so all three apps cannot drift apart
+// again — one dropped field there previously became three different bugs. Everything
+// below this import is gamerplex-specific: credits, streaks, handles, referrals.
+import { makeAuthClient, type AuthClient } from './auth-core';
+
+const auth: AuthClient = makeAuthClient({ identityUrl: IDENTITY_URL });
+
+export { isNativeApp } from './auth-core';
+export type { EmailSignupResult, OtpResult, SiwsChallenge } from './auth-core';
+
+export const emailSignup = (e: string) => auth.emailSignup(e);
+export const requestEmailOtp = (e: string) => auth.requestEmailOtp(e);
+export const verifyEmailOtp = (e: string, c: string) => auth.verifyEmailOtp(e, c);
+export const buildSiwsMessage = auth.buildSiwsMessage;
+export const requestSiwsChallenge = () => auth.requestSiwsChallenge();
+export const submitSiws = (pk: string, sig: string) => auth.submitSiws(pk, sig);
+
+
 export interface IdentityUser {
   id: string;
   email: string | null;
@@ -53,134 +71,24 @@ export async function logout(): Promise<boolean> {
   }
 }
 
-export interface SiwsChallenge {
-  domain: string;
-  nonce: string;
-  issuedAt: string;
-}
 
 // MUST match the server's canonical message byte-for-byte (lib/siws.ts).
-export function buildSiwsMessage(p: {
-  domain: string;
-  pubkey: string;
-  nonce: string;
-  issuedAt: string;
-}): string {
-  return (
-    `${p.domain} wants you to sign in with your Solana account:\n` +
-    `${p.pubkey}\n\n` +
-    `Nonce: ${p.nonce}\n` +
-    `Issued At: ${p.issuedAt}`
-  );
-}
 
-export async function requestSiwsChallenge(): Promise<SiwsChallenge> {
-  const r = await fetch(`${IDENTITY_URL}/api/auth/wallet/siws`, {
-    credentials: 'include',
-  });
-  if (!r.ok) throw new Error(`siws challenge failed: ${r.status}`);
-  return r.json();
-}
 
-export async function submitSiws(
-  pubkey: string,
-  signatureB58: string,
-): Promise<{ status: 'created' | 'login' | 'linked'; walletAddress: string }> {
-  const r = await fetch(`${IDENTITY_URL}/api/auth/wallet/siws`, {
-    method: 'POST',
-    credentials: 'include',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ pubkey, signature: signatureB58 }),
-  });
-  if (!r.ok) {
-    const e = await r.json().catch(() => ({}));
-    throw new Error(e.error || `siws sign-in failed: ${r.status}`);
-  }
-  return r.json();
-}
 
 // Email magic-link sign-in/up — the ecosystem-standard web2 entry point (same identity-service
 // the wallet SIWS flow uses). POSTs the email; the service emails a sign-in link, and
 // /verify-email issues the shared `.gamerplex.com` session. Origin-scoped server-side.
-export interface EmailSignupResult {
-  ok: boolean;
-  error?: string;
-  status?: string;
-  throttled?: boolean;
-  /** Whether the mail actually left our server. The API has always returned this;
-   *  it was dropped here, so a provider outage looked like a successful signup. */
-  verificationEmailSent?: boolean;
-}
 
-export async function emailSignup(email: string): Promise<EmailSignupResult> {
-  try {
-    const r = await fetch(`${IDENTITY_URL}/api/auth/email-signup`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ email: email.trim().toLowerCase() }),
-    });
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok) return { ok: false, error: r.status === 429 ? 'rate_limited' : j.error || `email_${r.status}` };
-    // verificationEmailSent MUST be forwarded. Dropping it made the modal's
-    // delivery check read `undefined !== false` — always "delivered" — so a 550 from
-    // the provider still rendered "check your email". Absent stays undefined, which
-    // the modal treats as sent, so an older service never invents a failure.
-    return {
-      ok: true,
-      status: j.status,
-      throttled: j.throttled === true,
-      verificationEmailSent: j.verificationEmailSent,
-    };
-  } catch {
-    return { ok: false, error: 'network' };
-  }
-}
 
 // True when the page runs inside the Gamerplex native (Expo) WebView, which sets
 // this flag before the page loads. Used to show the email-OTP flow there (magic
 // links don't return to the app), while normal browsers keep the magic link.
-export function isNativeApp(): boolean {
-  return typeof window !== 'undefined' && (window as { __GAMERPLEX_NATIVE__?: boolean }).__GAMERPLEX_NATIVE__ === true;
-}
 
 // Email OTP — the native-app sign-in. Request a 6-digit code, then verify it.
 // verify is credentialed so the service sets the shared `.gamerplex.com` session
 // cookie directly into this (WebView) origin — no cookie copying.
-export async function requestEmailOtp(
-  email: string,
-): Promise<{ ok: boolean; error?: string; sent?: boolean }> {
-  try {
-    const r = await fetch(`${IDENTITY_URL}/api/auth/email/otp`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ email: email.trim().toLowerCase() }),
-    });
-    if (!r.ok) return { ok: false, error: r.status === 429 ? 'rate_limited' : `otp_${r.status}` };
-    // `sent` is absent on an older identity-service; treat that as "assume sent"
-    // rather than showing a failure that may not have happened.
-    const j = (await r.json().catch(() => ({}))) as { sent?: boolean };
-    return { ok: true, sent: j.sent };
-  } catch {
-    return { ok: false, error: 'network' };
-  }
-}
 
-export async function verifyEmailOtp(email: string, code: string): Promise<{ ok: boolean; error?: string }> {
-  try {
-    const r = await fetch(`${IDENTITY_URL}/api/auth/email/otp/verify`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ email: email.trim().toLowerCase(), code: code.trim() }),
-    });
-    if (!r.ok) return { ok: false, error: r.status === 429 ? 'rate_limited' : r.status === 401 ? 'invalid_code' : `otp_${r.status}` };
-    return { ok: true };
-  } catch {
-    return { ok: false, error: 'network' };
-  }
-}
 
 export interface SetHandleResult {
   ok: boolean;
