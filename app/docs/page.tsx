@@ -124,7 +124,7 @@ export default function DocsPage() {
               <Link href="/build" style={{color:"#14F195",fontWeight:600}}>Step-by-step guide with the demo: gamerplex.com/build →</Link>
             </P>
             <P style={{fontSize:13,color:"#888"}}>
-              Provenance is not an NFT: nothing is traded. It records where an asset came from and what you may do with it.
+              Provenance is not a token and nothing is traded. It records where an asset came from and what you may do with it. // copy-guard-allow: states what we do NOT do
             </P>
           </Section>
 
@@ -149,7 +149,7 @@ export default function DocsPage() {
             <List items={[
               <><strong>MCP server</strong> (<code>@gamerplex/mcp-server</code>) — 12 tools: pattern library, juice layer, smoke test, REAL devnet deploy executor (runs <code>anchor build</code> + <code>anchor deploy</code>, not instructions).</>,
               <><strong>Dev server</strong> (<code>localhost:42069</code>) — chat + live game preview + compare mode + session logging. Starts with <code>npx @gamerplex/dev</code>.</>,
-              <><strong>Sovereign agent</strong> (custom 300-line runtime) — works with Claude, Ollama, OpenAI, Gemini, OpenXAI. One dropdown swaps the brain. Fully local if you want.</>,
+              <><strong>Sovereign agent</strong> (custom 300-line runtime) — works with Claude, Ollama, OpenAI, Gemini, or any OpenAI-compatible endpoint. One dropdown swaps the brain. Fully local if you want.</>,
               <><strong>21 skill files</strong> — game feel, engines, genres, security, web3. Your AI learns before it writes.</>,
               <><strong>Templates</strong> — arcade-onchain (Anchor + frontend, deploys cleanly) and platformer-2d (single HTML, full juice).</>,
             ]} />
@@ -298,7 +298,7 @@ $GAME Token (issued by Flipcash)       7TTBUfDomCKBMemv7FF37Tg3y52cRkAxn8vJnvKD4
             <Table cols={["Version", "Encoding", "Use Case"]} rows={[
               ["GPX1", "Plain text memo", "Public games — chess, pet legends. All moves readable by anyone."],
               ["GPX2", "Encrypted memo (ECDH/PER)", "Hidden information games — blockwords hidden word. Only players can decrypt."],
-              ["GPX3", "cNFT-backed", "Collectible replays. Player mints their game as a tradeable NFT."],
+              ["GPX3", "receipt", "A run receipt held in the player's own account. Never traded."],
               ["GPX4+", "Reserved", "Future Solana innovations — state compression, DA layers, etc."],
             ]} />
             <P>Examples for our three launch games:</P>
@@ -432,7 +432,7 @@ Pet Legends: GPX1|pla|BEzD...|GYYw...|w|12|8|15|atk,blk,spc,atk,...`}</CodeBlock
               "Human-readable player name tied to your wallet",
               "Portable identity across all Solana dApps",
               "Reverse lookups — anyone can see your gaming profile",
-              "Tradeable on secondary markets (if you want to sell your legendary name)",
+              "Yours for as long as you hold it — names are not traded",
             ]} />
             <P>
               Future state: connect your wallet → your <code>parzival.sol</code> name shows on the leaderboard →

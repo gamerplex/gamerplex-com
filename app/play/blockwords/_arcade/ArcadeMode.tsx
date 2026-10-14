@@ -238,13 +238,13 @@ export default function ArcadeMode() {
   const [muted, setMutedState] = useState(true);
   useEffect(() => { setMutedState(isMuted()); }, []);
   const toggleMute = useCallback(() => { const m = !isMuted(); setMuted(m); setMutedState(m); }, []);
-  // Spoiler-free share = the organic growth engine (Wordle model): a challenge
+  // Spoiler-free share = the organic growth engine: a challenge
   // that carries the game link, no referral-code / MLM mechanics. Native share
   // sheet on mobile, clipboard fallback on desktop.
   const [showShare, setShowShare] = useState(false);
-  // Spoiler-free emoji grid (Wordle's viral engine): each rung is a row where the
-  // ONE changed square lights up — shows the SHAPE of your climb without revealing
-  // the words. This is what made Wordle grow 90→3M on $0 marketing.
+  // Spoiler-free emoji grid: each rung is a row where the ONE changed square lights
+  // up — shows the SHAPE of your climb without revealing the words. A share that gives
+  // nothing away is what makes a daily word game spread with no marketing spend.
   const buildShareText = (run: RunState) => {
     const rungs = run.ladder.length - 1;
     const secs = secondsUsed(run);
@@ -896,7 +896,7 @@ export default function ArcadeMode() {
                           onSave={onSaveOnChain}
                           onVerify={onVerifyRun}
                           onMintReceipt={onMintReceipt}
-                          onWrapCnft={() => setOnchainError("T4 cNFT wrap ships in v1.3 — Metaplex Bubblegum integration pending.")}
+                          onWrapCnft={() => setOnchainError("Not available.")}
                           onRestart={() => startNewRun(r.mode)}
                         />
                       </>
@@ -993,7 +993,6 @@ export default function ArcadeMode() {
               <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}><span style={{ color: "#4fc3f7" }}>💾 Save score</span><b>$0.05</b></div>
               <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}><span style={{ color: "#ffd740" }}>🏆 Save replay (verified)</span><b>$0.15</b></div>
               <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}><span style={{ color: "#c99aff" }}>🎴 Claim ownership</span><b>$0.25</b></div>
-              <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}><span style={{ color: ACCENT }}>✨ Wrap as cNFT (v1.3)</span><b>$0.50</b></div>
               <div style={{ fontSize: 10, color: "#7a7a7a", marginTop: 8, lineHeight: 1.5 }}>
                 Paid in USDC. ~$0.001/tx Solana gas. PlayerProfile setup ~$0.41 refundable rent (one-time per wallet).
               </div>
@@ -1319,7 +1318,7 @@ function LadderView({
   return (
     <div style={{ padding: "12px 16px 10px", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
       {/* The LADDER: rungs stacked between two rails, climbing down toward the input
-          you type. Distinct at a glance from a Wordle guess-grid. */}
+          you type. Distinct at a glance from a plain guess-grid. */}
       <div style={{ position: "relative", padding: "8px 0" }}>
         {/* side rails */}
         <div aria-hidden style={{ position: "absolute", left: 18, top: 0, bottom: 0, width: 4, borderRadius: 3, background: "linear-gradient(180deg, rgba(153,69,255,0.5), rgba(153,69,255,0.15))" }} />
@@ -1530,19 +1529,11 @@ function ProgressiveUpgradeStack(p: StackProps) {
     },
     3: {
       label: p.busy === "receipt" ? "Minting receipt…" : "Claim ownership · $0.25 + ~$0.33 rent",
-      why: "A transferable on-chain certificate of your run. Keep it, sell it on marketplaces later, or refund the rent by closing it. Your name as original player stays forever.",
+      why: "An on-chain certificate of your run, held in your own account. Close it any time to refund the rent. Your name as original player stays forever.",
       action: p.onMintReceipt,
       disabled: p.busy !== null,
       busy: p.busy === "receipt",
       accent: "#c99aff",
-    },
-    4: {
-      label: "Wrap as cNFT · $0.50 (v1.3)",
-      why: "Your run as a tradeable Solana NFT on Magic Eden / Tensor. Ships in v1.3 with Metaplex Bubblegum integration.",
-      action: p.onWrapCnft,
-      disabled: true,
-      busy: false,
-      accent: ACCENT,
     },
   }[nextTier];
 
@@ -1555,7 +1546,6 @@ function ProgressiveUpgradeStack(p: StackProps) {
         <span style={{ color: "#2a2a40" }}>›</span>
         <TierPill done={p.ownedThisRun} busy={p.busy === "receipt"} label="3· Owned" pending={!p.verifiedThisRun} />
         <span style={{ color: "#2a2a40" }}>›</span>
-        <TierPill done={false} busy={false} label="4· cNFT" pending={true} />
       </div>
 
       <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 8, alignItems: "center" }}>
@@ -1623,8 +1613,7 @@ function ProgressiveUpgradeStack(p: StackProps) {
           </div>
           <AdvancedRow done={p.savedThisRun} tier="T1" label="Save score" fee="$0.05" detail="GPX5 memo, global leaderboard" />
           <AdvancedRow done={p.verifiedThisRun} tier="T2" label="Save replay" fee="$0.15" detail="GPX5R memo, cryptographic proof, 🏆 VERIFIED" />
-          <AdvancedRow done={p.ownedThisRun} tier="T3" label="Claim ownership" fee="$0.25 + ~$0.33 rent" detail="Transferable PDA receipt, sellable, rent-refundable on close" />
-          <AdvancedRow done={false} tier="T4" label="Wrap as cNFT" fee="$0.50 (v1.3)" detail="Metaplex Bubblegum — Magic Eden tradeable" pending />
+          <AdvancedRow done={p.ownedThisRun} tier="T3" label="Claim ownership" fee="$0.25 + ~$0.33 rent" detail="PDA receipt in your account, rent-refundable on close" />
           <div style={{ borderTop: "1px solid #1a1a28", marginTop: 10, paddingTop: 10, fontSize: 11, color: "#a8a8c0", display: "flex", justifyContent: "space-between" }}>
             <span>Total Gamerplex fees spent this run:</span>
             <span style={{ color: ACCENT, fontFamily: "monospace", fontWeight: 700 }}>

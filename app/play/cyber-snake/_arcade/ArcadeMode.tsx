@@ -1633,21 +1633,12 @@ function ProgressiveUpgradeStack(p: StackProps) {
     },
     3: {
       label: p.busy === "receipt" ? "Minting receipt…" : "Claim ownership · $0.25 + ~$0.33 rent",
-      why: "A transferable on-chain certificate of your run. Keep it, sell it on marketplaces later, or refund the rent by closing it. Your name as original player stays forever.",
+      why: "An on-chain certificate of your run, held in your own account. Close it any time to refund the rent. Your name as original player stays forever.",
       action: p.onMintReceipt,
       disabled: p.busy !== null,
       busy: p.busy === "receipt",
       accent: "#c99aff",
-      valueLine: "Owned, tradeable, refundable",
-    },
-    4: {
-      label: "Mint as cNFT · $0.50 (v1.3)",
-      why: "Your run as a tradeable Solana NFT on Magic Eden / Tensor. Ships in v1.3 with Metaplex Bubblegum integration.",
-      action: p.onWrapCnft,
-      disabled: true,
-      busy: false,
-      accent: "#9C4BFF",
-      valueLine: "Coming in v1.3",
+      valueLine: "Yours, refundable",
     },
   }[nextTier ?? 1];
 
@@ -1660,7 +1651,6 @@ function ProgressiveUpgradeStack(p: StackProps) {
         <span style={{ color: "#2a2a40" }}>›</span>
         <TierPill done={p.ownedThisRun} busy={p.busy === "receipt"} label="3· Owned" pending={!p.verifiedThisRun} />
         <span style={{ color: "#2a2a40" }}>›</span>
-        <TierPill done={false} busy={false} label="4· cNFT" pending={true} />
       </div>
 
       {nextTier !== null && nextTier <= 4 && (
@@ -1728,8 +1718,7 @@ function ProgressiveUpgradeStack(p: StackProps) {
           </div>
           <AdvancedRow done={p.savedThisRun} tier="T1" label="Save score" fee="$0.05" detail="GPX5 memo, global leaderboard" />
           <AdvancedRow done={p.verifiedThisRun} tier="T2" label="Save replay" fee="$0.15" detail="GPX5R memo, cryptographic proof, 🏆 VERIFIED" />
-          <AdvancedRow done={p.ownedThisRun} tier="T3" label="Claim ownership" fee="$0.25 + ~$0.33 rent" detail="Transferable PDA receipt, sellable, rent-refundable on close" />
-          <AdvancedRow done={false} tier="T4" label="Wrap as cNFT" fee="$0.50 (v1.3)" detail="Metaplex Bubblegum — Magic Eden tradeable" pending />
+          <AdvancedRow done={p.ownedThisRun} tier="T3" label="Claim ownership" fee="$0.25 + ~$0.33 rent" detail="PDA receipt in your account, rent-refundable on close" />
           <div style={{ borderTop: "1px solid #1a1a28", marginTop: 10, paddingTop: 10, fontSize: 11, color: "#a8a8c0", display: "flex", justifyContent: "space-between" }}>
             <span>Total Gamerplex fees spent this run:</span>
             <span style={{ color: "#ffd24a", fontFamily: "monospace", fontWeight: 700 }}>

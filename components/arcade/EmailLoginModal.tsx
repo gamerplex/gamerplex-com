@@ -1,7 +1,7 @@
 "use client";
 
 // Compact, play-first email sign-in modal — the web2 entry point for the arcade.
-// Pattern from the 12-portal UX benchmark (Wordle/Duolingo): never a wall before
+// Pattern from the 12-portal UX benchmark (daily word + language apps): never a wall before
 // play; surfaced only to SAVE a score/streak, framed as loss-aversion ("keep your
 // streak"), email magic-link (no password, no wallet). Wallet is a separate,
 // optional "save on-chain" step elsewhere.

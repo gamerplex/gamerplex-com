@@ -296,7 +296,7 @@ function TermsBody() {
             $0.25 USDC + refundable network rent (~$0.33)
           </li>
           <li>
-            Wrapping a Replay Receipt as a compressed NFT (planned v1.3):
+            Replay Receipt rent (refunded when you close it):
             $0.50 USDC
           </li>
         </ul>

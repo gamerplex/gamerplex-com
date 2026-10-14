@@ -16,17 +16,16 @@ const ROOT = path.resolve(__dirname, '../..');
  * being removed from the list. The number only goes down.
  */
 const KNOWN: Record<string, number> = {
-  // Measured 2026-10-14, not guessed. 5 files, 15 lines.
+  // EMPTY, and it should stay that way.
   //
-  // 🔴 The one that matters: cyber-snake and blockwords advertise a run as "a tradeable
-  // Solana NFT on Magic Eden / Tensor", and docs L435 says "Tradeable". That is against R3
-  // (items are soulbound) AND R4 (no marketplace, no trading). Flagged to the owner rather
-  // than silently rewritten — product copy is their call.
-  'app/play/blockwords/_arcade/ArcadeMode.tsx': 6, // 4x outside name in comments + 2
-  'app/docs/page.tsx': 4,                          // NFT x2, outside brand, "Tradeable"
-  'app/play/cyber-snake/_arcade/ArcadeMode.tsx': 3, // tradeable x2 + NFT
-  'app/terms/page.tsx': 1,                         // cNFT wrapping, planned v1.3
-  'components/arcade/EmailLoginModal.tsx': 1,      // outside name in a comment
+  // The baseline was 5 files / 15 lines when this guard was written on 2026-10-14, all of it
+  // cleared the same day: the arcade's "transferable… sell it on marketplaces later" and
+  // "tradeable Solana NFT on Magic Eden / Tensor" tiers, a never-shipped cNFT tier, two docs
+  // lines and a terms line, plus five comments naming an outside word game and one naming an
+  // outside brand.
+  //
+  // Adding an entry here is allowed but it is a debt, not a pass. Prefer fixing the copy or
+  // justifying the line with a `copy-guard-allow:` comment and a reason.
 };
 
 function userFacingFiles(): string[] {
