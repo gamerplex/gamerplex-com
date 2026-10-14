@@ -5,19 +5,52 @@ import { useEffect, useState } from "react";
 
 import { GAMES } from "../_data/games";
 
-// Games grid ordered by all-time play volume, with cumulative play counts (PostHog, cached).
+// Games grid ordered by all-time play volume.
+//
+// The order and counts used to arrive AFTER first paint — a client fetch that proxies to
+// own1 (~1-3s) — so the grid rendered in one order and then rearranged itself under the
+// reader. That reads as broken even though nothing is wrong.
+//
+// So: never re-sort while someone is looking. Paint immediately from the last known
+// order (localStorage), fetch in the background, and apply what comes back to the NEXT
+// visit. A first-ever visitor sees the static order, which is a defensible order anyway;
+// everyone else sees the real one instantly. Counts render into reserved space so even
+// the badge appearing does not move a card.
+const CACHE_KEY = "gamerplex:game-order:v1";
+
+type Cached = { order: string[]; plays: Record<string, number> };
+
+function readCache(): Cached | null {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    return raw ? (JSON.parse(raw) as Cached) : null;
+  } catch {
+    return null; // private window, blocked storage — fall back to the static order
+  }
+}
+
+function applyOrder(order: string[]) {
+  if (!order.length) return GAMES;
+  const rank = new Map(order.map((slug, i) => [slug, i] as const));
+  return [...GAMES].sort((a, b) => (rank.get(a.slug) ?? 999) - (rank.get(b.slug) ?? 999));
+}
+
 export default function GameGrid() {
-  const [ordered, setOrdered] = useState(GAMES);
-  const [plays, setPlays] = useState<Record<string, number>>({});
+  // Initialised from cache during the first render, so there is no second paint.
+  const [cached] = useState<Cached | null>(() => (typeof window === "undefined" ? null : readCache()));
+  const ordered = cached ? applyOrder(cached.order) : GAMES;
+  const plays = cached?.plays ?? {};
 
   useEffect(() => {
+    // Refresh for next time. Deliberately does NOT touch what is on screen.
     fetch("/api/games/trending")
       .then((r) => r.json())
       .then((d: { order?: string[]; plays?: Record<string, number> }) => {
-        setPlays(d.plays ?? {});
-        if (Array.isArray(d.order) && d.order.length) {
-          const rank = new Map(d.order.map((slug, i) => [slug, i] as const));
-          setOrdered([...GAMES].sort((a, b) => (rank.get(a.slug) ?? 999) - (rank.get(b.slug) ?? 999)));
+        if (!Array.isArray(d.order) || !d.order.length) return;
+        try {
+          localStorage.setItem(CACHE_KEY, JSON.stringify({ order: d.order, plays: d.plays ?? {} }));
+        } catch {
+          // Storage unavailable; the grid simply stays on the static order.
         }
       })
       .catch(() => undefined);
