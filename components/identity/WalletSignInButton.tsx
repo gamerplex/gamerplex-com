@@ -21,7 +21,11 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 
 import { useIdentity } from "../../lib/identity/useIdentity";
-import { isNativeApp } from "../../lib/identity/client";
+import { hasNativeWalletBridge, requestNativeWallet } from "../../lib/identity/auth-core";
+import { makeAuthClient } from "../../lib/identity/auth-core";
+
+const IDENTITY_URL = process.env.NEXT_PUBLIC_IDENTITY_URL || "https://auth.gamerplex.com";
+const authCore = makeAuthClient({ identityUrl: IDENTITY_URL });
 
 type Injected = { isConnected?: boolean; connect(): Promise<unknown> };
 type WindowWithSolana = Window & {
@@ -76,6 +80,27 @@ export default function WalletSignInButton({ onDone }: { onDone?: () => void }) 
     if (!visible && !connected) pending.current = false;
   }, [visible, connected]);
 
+  // Inside the Expo shell there is no injected provider and Mobile Wallet Adapter is a
+  // native protocol, so wallet-adapter has nothing to connect to — the picker would open
+  // empty, which is precisely what "I click connect wallet and nothing happens" was. The
+  // shell runs the identical SIWS natively instead (authorize + signMessages in ONE MWA
+  // transact; two throw on Android) and we then ask the SERVER who we are. The injected
+  // result is page script and proves nothing; the HttpOnly session cookie does.
+  const onNativeClick = useCallback(async () => {
+    setBusy(true);
+    setErr(null);
+    const r = await requestNativeWallet();
+    const who = await authCore.me();
+    setBusy(false);
+    if (who.signedIn) { onDone?.(); return; }
+    setErr(
+      r.error === "timeout" ? "Your wallet did not come back. Try again."
+        : r.error?.startsWith("connect_") ? "Your wallet did not connect. Open it, then try again."
+        : r.pubkey ? "Wallet connected, but this app version cannot finish sign-in. Update Gamerplex, or use Flipcash or email below."
+        : "That didn't go through. Try again.",
+    );
+  }, [onDone]);
+
   const onClick = async () => {
     if (connected) { void doSignIn(); return; }
 
@@ -113,16 +138,13 @@ export default function WalletSignInButton({ onDone }: { onDone?: () => void }) 
     setVisible(true);
   };
 
-  // The Expo shell is a WebView with no injected wallet, and its native bridge signs
-  // TRANSACTIONS only (gamerplex:tx-result) — there is no message-signing channel, which
-  // SIWS requires. Offering the door there would open an empty picker, so don't: Flipcash
-  // is the native path until the shell gains a sign-message bridge.
-  if (isNativeApp()) return null;
+  const native = hasNativeWalletBridge();
 
   // Nothing installed — on a phone browser this is the common case. Say so instead of
-  // opening a picker with no entries in it.
+  // opening a picker with no entries in it. In the shell there is never an injected
+  // wallet and never needs to be, so this check does not apply there.
   const haveWallet = wallets.some((w) => w.readyState === "Installed" || w.readyState === "Loadable");
-  if (!haveWallet) {
+  if (!native && !haveWallet) {
     return (
       <p style={{ margin: "12px 2px 0", fontSize: 12, lineHeight: 1.5, color: "#8a80b0" }}>
         No Solana wallet found in this browser.{" "}
@@ -138,8 +160,8 @@ export default function WalletSignInButton({ onDone }: { onDone?: () => void }) 
     <>
       <button
         type="button"
-        onClick={onClick}
-        disabled={busy || (connected && !signMessage)}
+        onClick={() => void (native ? onNativeClick() : onClick())}
+        disabled={busy || (!native && connected && !signMessage)}
         data-testid="wallet-signin"
         style={{
           width: "100%", height: 48, marginTop: 12, borderRadius: 12,
@@ -148,7 +170,7 @@ export default function WalletSignInButton({ onDone }: { onDone?: () => void }) 
           cursor: busy ? "default" : "pointer", opacity: busy ? 0.7 : 1,
         }}
       >
-        {busy ? "Check your wallet…" : "Continue with a wallet"}
+        {busy ? (native ? "Opening your wallet…" : "Check your wallet…") : "Continue with a wallet"}
       </button>
       <p style={{ margin: "6px 2px 0", fontSize: 12, lineHeight: 1.5, color: "#8a80b0" }}>
         Free · one signature · nothing sent
