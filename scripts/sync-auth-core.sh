@@ -13,9 +13,13 @@ HERE="$(cd "$(dirname "$0")/.." && pwd)"
 SRC="$HERE/lib/identity/auth-core.ts"
 [ -f "$SRC" ] || { echo "canonical not found: $SRC"; exit 2; }
 
+# Every app with a login. pet-legends-global went through @gamerplex/sdk instead of a
+# hand-written client, which is why it was missed the first time and shipped the same
+# bug a FIFTH way. If a new site gets a login, it goes here.
 DESTS="
 ${SLEDGIT_DIR:-$HERE/../sledgit}/app/nextjs-app/lib/auth-core.ts
 ${OMEGA_DIR:-$HERE/../omega-city}/src/shell/auth-core.ts
+${PLG_DIR:-$HERE/../pet-legends-global}/app/_lib/identity/auth-core.ts
 "
 
 drift=0
