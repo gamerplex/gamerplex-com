@@ -9,8 +9,8 @@ import { useEffect, useState } from "react";
 
 const APK_URL =
   "https://github.com/gamerplex/gamerplex-downloads/releases/latest/download/Gamerplex.apk";
-const VERSION = "1.0.19";
-const FILE_SHA = "292eae9f3757c8ae7f09acfdca2f2eca0f8bb6cfdb1c0253682ffef4f35197e5";
+const VERSION = "1.0.20";
+const FILE_SHA = "53c0889ddd6fe4f0c52b7a4be98cb16c86910a8474dc26141434555559e5ebed";
 const CERT_SHA =
   "58:0F:82:51:11:E7:A5:62:A2:A7:C9:93:4D:EF:4C:ED:6D:F7:9D:A1:04:27:4D:98:00:C4:BD:54:F7:08:79:01";
 
