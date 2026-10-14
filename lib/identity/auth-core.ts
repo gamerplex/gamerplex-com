@@ -83,6 +83,33 @@ export function nativeWalletBridge(): RNBridge | null {
   return (window as { ReactNativeWebView?: RNBridge }).ReactNativeWebView ?? null;
 }
 
+/**
+ * Ask the Expo shell to show its Profile tab. Returns true if the shell took it.
+ *
+ * **INVARIANT: only ever call this from a SIGNED-IN account chip.**
+ *
+ * A signed-OUT "Sign in" control must open the auth panel where the user already is, on
+ * every surface including inside the app. Posting this from a signed-out chip throws the
+ * user out of the thing they were doing into a different tab, and it is how sledgit ended up
+ * with no reachable sign-in inside the app at all: the chip navigated away and the property's
+ * own doors were never shown. gamerplex-com's AccountChip is the reference — signed out opens
+ * the panel, signed in calls this.
+ *
+ * Fails soft: the bridge has been observed present but unusable ("postMessage is not a
+ * function"), and a dead bridge must never take the page down.
+ */
+export function openNativeProfile(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    const rn = (window as { ReactNativeWebView?: { postMessage?: (m: string) => void } }).ReactNativeWebView;
+    if (typeof rn?.postMessage === 'function') {
+      rn.postMessage(JSON.stringify({ type: 'gpx-open-profile' }));
+      return true;
+    }
+  } catch { /* fall through to the caller's web route */ }
+  return false;
+}
+
 export function hasNativeWalletBridge(): boolean {
   return nativeWalletBridge() !== null;
 }
