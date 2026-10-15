@@ -5,30 +5,15 @@ import { useEffect, useState } from "react";
 import GlassShell from "../../../components/GlassShell";
 import { glassPanel } from "../../../components/glass";
 import AssetViewer from "../_components/AssetViewer";
-import EmailLoginModal from "../../../components/arcade/EmailLoginModal";
-import { useIdentity } from "../../../lib/identity/useIdentity";
 import { type Asset, files, mb } from "../_data/assets";
 
 export default function AssetDetail({ a }: { a: Asset }) {
   const f = files(a.slug);
   const [prov, setProv] = useState<Record<string, unknown> | null>(null);
-  const { isSignedIn, backendOffline, refresh } = useIdentity();
-  const [showLogin, setShowLogin] = useState(false);
-  const [wantDownload, setWantDownload] = useState(false);
-  const download = () => {
-    if (isSignedIn) {
-      window.location.href = f.download;
-    } else {
-      setWantDownload(true);
-      setShowLogin(true);
-    }
-  };
-  useEffect(() => {
-    if (isSignedIn && wantDownload) {
-      setWantDownload(false);
-      window.location.href = f.download;
-    }
-  }, [isSignedIn, wantDownload, f.download]);
+  // No sign-in. The asset is CC0 — no attribution, no restriction, commercial use fine — so
+  // there is no entitlement to check and a login bought us nothing but friction. It also
+  // locked out the audience the page exists for: an AI agent cannot sign in.
+  const download = () => { window.location.href = f.download; };
   useEffect(() => {
     fetch(f.provenance).then((r) => r.json()).then(setProv).catch(() => setProv(null));
   }, [f.provenance]);
@@ -49,13 +34,12 @@ export default function AssetDetail({ a }: { a: Asset }) {
             <p style={{ color: "#bbb", lineHeight: 1.6, marginBottom: 16 }}>{a.description}</p>
             <button
               onClick={download}
-              disabled={backendOffline}
               style={{ display: "inline-block", padding: "12px 22px", borderRadius: 12, border: "none", cursor: "pointer", background: "linear-gradient(90deg,#9945FF,#14F195)", color: "#0a0a12", fontWeight: 800, fontSize: 16, marginBottom: 8 }}
             >
               Download GLB ({mb(a.glb_bytes)})
             </button>
             <p style={{ fontSize: 13, color: "var(--dim)", margin: "0 0 16px" }}>
-              {backendOffline ? "Sign-in is unreachable right now; try again in a minute." : isSignedIn ? "Full quality, 2K textures." : "Free account required for the full-quality download. The preview above is a lighter copy."}
+              Full quality, 2K textures. No account, no key, no attribution required.
             </p>
             <dl style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "6px 14px", fontSize: 14, color: "var(--dim)" }}>
               <dt>Licence</dt>
@@ -99,12 +83,6 @@ export default function AssetDetail({ a }: { a: Asset }) {
           </div>
         </div>
       </div>
-      <EmailLoginModal
-        open={showLogin}
-        onClose={() => { setShowLogin(false); void refresh(); }}
-        title="Sign in to download"
-        subtitle="Free account. Flipcash is the fastest way in: no password, nothing to install."
-      />
       <style>{`@media (max-width: 760px) { .asset-grid { grid-template-columns: 1fr !important; } }`}</style>
     </GlassShell>
   );

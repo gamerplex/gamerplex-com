@@ -1,5 +1,13 @@
-// GET /api/assets/<slug>/download — the full-quality GLB, for signed-in users only.
-// The public preview lives in /public/assets/<slug>/preview.glb; the full file is outside /public.
+// GET /api/assets/<slug>/download — the full-quality GLB. KEYLESS, on purpose.
+//
+// This used to require a signed-in session. That defeats the page: /assets exists so AI
+// agents can fetch licensed geometry, and an agent cannot sign in. A CC0 asset behind a
+// login is a CC0 asset nobody automated can use, and "keyless wins for agents" was already
+// the decision — the gate just predated it.
+//
+// Nothing is lost by removing it. The licence is CC0-1.0: no attribution, no restriction,
+// commercial use fine. There is no entitlement to check, so the only thing a session bought
+// us was friction. Abuse is handled by rate limiting on the client key instead.
 
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -10,21 +18,13 @@ import { rateLimited, clientKey } from '../../../_lib/ratelimit';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-const IDENTITY_URL =
-  process.env.IDENTITY_URL || process.env.NEXT_PUBLIC_IDENTITY_URL || 'https://auth.gamerplex.com';
-
 export async function GET(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const a = asset((await params).slug);
   if (!a) return NextResponse.json({ error: 'not_found' }, { status: 404 });
 
-  const cookie = req.headers.get('cookie') ?? '';
-  const meRes = await fetch(`${IDENTITY_URL}/api/auth/me`, { headers: { cookie }, cache: 'no-store' }).catch(() => null);
-  if (!meRes) return NextResponse.json({ error: 'identity_unreachable' }, { status: 503 });
-  const me = await meRes.json().catch(() => ({}));
-  const userId: string | undefined = me?.user?.id;
-  if (!userId) return NextResponse.json({ error: 'not_signed_in' }, { status: 401 });
-
-  if (rateLimited(`asset-dl:${clientKey(userId, req)}`, 60, 60_000)) {
+  // Per-client, not per-user: there is no user. Generous enough that a crawler or an agent
+  // pulling a pack never trips it, tight enough that nobody serves their own CDN from ours.
+  if (rateLimited(`asset-dl:${clientKey(undefined, req)}`, 120, 60_000)) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }
 
@@ -34,7 +34,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
     headers: {
       'content-type': 'model/gltf-binary',
       'content-disposition': `attachment; filename="${a.slug}.glb"`,
-      'cache-control': 'private, no-store',
+      // CC0 and immutable per slug: let anyone cache it, including the edge.
+      'cache-control': 'public, max-age=31536000, immutable',
+      'x-licence': 'CC0-1.0',
     },
   });
 }
