@@ -1,0 +1,17 @@
+{
+ "output": "model.glb",
+ "sha256": "d7ea9d9b7cf6627ca6fe04fbe9070e5d7ec25ba9f589e4c962bc259b1c3f65e9",
+ "licence": "CC0-1.0",
+ "asset": "hatch",
+ "family": "street_vehicles",
+ "pipeline": {
+  "cleanup": "Blender (GPL tool; outputs unencumbered)",
+  "concept": "FLUX.1-schnell (Apache-2.0)",
+  "cutout": "BiRefNet (MIT)",
+  "mesh": "TRELLIS.2 (MIT) + DINOv3 encoder (DINOv3 licence)",
+  "output": "CC0-1.0"
+ },
+ "prompt": "single compact electric city hatchback with boxy armored panels and exposed wheel arches, 2050 cyberpunk street vehicle, matte worn paint, grime and scratches, 3-colour palette: gunmetal grey, cyan accent light strips, magenta accent, three-quarter front view from slightly above, entire vehicle visible, isolated on plain light grey studio background, soft even flat lighting, no shadows, no text, no letters, no logos, game asset concept, 3d render",
+ "seed": 11,
+ "note": "Licence is asserted from the generation chain above, not proven by this build."
+}

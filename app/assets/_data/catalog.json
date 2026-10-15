@@ -1,27 +1,52 @@
 [
- {
-  "slug": "hanging-bulb",
-  "title": "Hanging bulb",
-  "category": "props",
-  "tags": [
-   "ai-assisted",
-   "cyberpunk",
-   "prop"
-  ],
-  "description": "Bare bulb on a taped black cable.",
-  "method": "ai-assisted",
-  "generator": "Asset forge: FLUX.1-schnell concept \u2192 BiRefNet cutout \u2192 TRELLIS.2 mesh \u2192 Blender cleanup",
-  "licence": "CC0-1.0",
-  "source_sha256": "4b60dfb3fff6abc503e08bc7f3483da358b6755b1ddedada580f4b2ebfe108c4",
-  "glb_bytes": 394960,
-  "preview_bytes": 225056,
-  "concept": true,
-  "tris": 7995,
-  "rigged": false,
-  "size_m": [
-   0.86,
-   0.18,
-   0.6
-  ]
- }
+  {
+    "slug": "hanging-bulb",
+    "title": "Hanging bulb",
+    "category": "props",
+    "tags": [
+      "ai-assisted",
+      "cyberpunk",
+      "prop"
+    ],
+    "description": "Bare bulb on a taped black cable.",
+    "method": "ai-assisted",
+    "generator": "Asset forge: FLUX.1-schnell concept \u2192 BiRefNet cutout \u2192 TRELLIS.2 mesh \u2192 Blender cleanup",
+    "licence": "CC0-1.0",
+    "source_sha256": "4b60dfb3fff6abc503e08bc7f3483da358b6755b1ddedada580f4b2ebfe108c4",
+    "glb_bytes": 394960,
+    "preview_bytes": 225056,
+    "concept": true,
+    "tris": 7995,
+    "rigged": false,
+    "size_m": [
+      0.86,
+      0.18,
+      0.6
+    ]
+  },
+  {
+    "slug": "city-hatchback",
+    "title": "City hatchback",
+    "category": "vehicles",
+    "tags": [
+      "ai-assisted",
+      "cyberpunk",
+      "vehicle"
+    ],
+    "description": "Compact 2050s city hatchback, matte worn paint with cyan accent strips.",
+    "method": "ai-assisted",
+    "generator": "Asset forge: FLUX.1-schnell concept \u2192 BiRefNet cutout \u2192 TRELLIS.2 mesh \u2192 Blender cleanup",
+    "licence": "CC0-1.0",
+    "source_sha256": "5bcbc7c790930a666427c54ed09791efe379753fb6d78d8004c60af8e7eced96",
+    "glb_bytes": 3340416,
+    "preview_bytes": 580752,
+    "concept": true,
+    "tris": 53287,
+    "rigged": false,
+    "size_m": [
+      2.37,
+      4.0,
+      1.93
+    ]
+  }
 ]
