@@ -1,0 +1,21 @@
+{
+ "asset": "hanging-bulb",
+ "title": "Hanging bulb",
+ "licence": "CC0-1.0",
+ "method": "ai-assisted",
+ "generator": "Asset forge: FLUX.1-schnell concept \u2192 BiRefNet cutout \u2192 TRELLIS.2 mesh \u2192 Blender cleanup",
+ "source_sha256": "4b60dfb3fff6abc503e08bc7f3483da358b6755b1ddedada580f4b2ebfe108c4",
+ "publisher": "Gamerplex",
+ "published_by_tool": "Tools/assets/export_assets.py",
+ "models": {
+  "concept": "FLUX.1-schnell (Apache-2.0)",
+  "cutout": "BiRefNet (MIT)",
+  "mesh": "TRELLIS.2 (MIT) via trellis.cpp (MIT) or trellis-mac (MIT); DINOv3 encoder (DINOv3 licence)",
+  "cleanup": "Blender (GPL tool; outputs unencumbered)",
+  "output": "CC0-1.0"
+ },
+ "seed": "31",
+ "res": "512",
+ "engine": "cpp",
+ "seconds": 273
+}
