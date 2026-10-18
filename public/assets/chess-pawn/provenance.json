@@ -1,0 +1,11 @@
+{
+ "output": "model.glb",
+ "sha256": "f002f72e211556b550325e7eff6ac78f381c9237361f39f40e80a85fc3cd550d",
+ "licence": "CC0-1.0",
+ "asset": "chess-pawn",
+ "family": null,
+ "pipeline": {},
+ "prompt": null,
+ "seed": null,
+ "note": "Licence is asserted from the generation chain above, not proven by this build."
+}

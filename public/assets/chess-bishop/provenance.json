@@ -1,0 +1,11 @@
+{
+ "output": "model.glb",
+ "sha256": "9deb163313cb012a788b94520fcb7daace777cdaf7e8ce757b7f9fbb351e16c6",
+ "licence": "CC0-1.0",
+ "asset": "chess-bishop",
+ "family": null,
+ "pipeline": {},
+ "prompt": null,
+ "seed": null,
+ "note": "Licence is asserted from the generation chain above, not proven by this build."
+}

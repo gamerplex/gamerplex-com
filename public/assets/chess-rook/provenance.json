@@ -1,0 +1,11 @@
+{
+ "output": "model.glb",
+ "sha256": "b02a5c5a05463ea4e19ff805d41e2cc7253d3e00bbbbcc3cf036421f343c83a5",
+ "licence": "CC0-1.0",
+ "asset": "chess-rook",
+ "family": null,
+ "pipeline": {},
+ "prompt": null,
+ "seed": null,
+ "note": "Licence is asserted from the generation chain above, not proven by this build."
+}

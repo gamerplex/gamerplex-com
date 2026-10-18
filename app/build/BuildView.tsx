@@ -1,7 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
+
 import GlassShell from "../../components/GlassShell";
+
+// three.js is heavy and this sits below the fold — never let it block first paint.
+const AssetViewer = dynamic(() => import("../assets/_components/AssetViewer"), { ssr: false });
 import { glassPanel } from "../../components/glass";
 
 const REPO = "https://github.com/gamerplex/sovereign-world-kit";
@@ -44,6 +49,40 @@ export default function BuildView() {
         <Step n={3} title="Walk it, share it">
           <P>Click into the scene, then WASD and mouse (on a phone: drag to look, hold to walk). The folder is a complete web game: drop it on any static host, or keep building on top of it.</P>
         </Step>
+
+        {/*
+          Assets lives HERE rather than in the player nav. It is a game-dev resource and the
+          player menu is for players — mixing them is the Shop/Assets confusion we are trying
+          to avoid. Prominent within Build, invisible to someone who just wants to play.
+        */}
+        <section style={{ ...glassPanel, borderRadius: 18, padding: 20, marginBottom: 34 }}>
+          <p style={{ fontFamily: "monospace", fontSize: 12, letterSpacing: 2.4, color: "#14F195", textTransform: "uppercase", margin: "0 0 8px" }}>
+            Free assets · CC0
+          </p>
+          <div style={{ display: "flex", gap: 20, flexWrap: "wrap", alignItems: "center" }}>
+            <div style={{ flex: "1 1 260px", minWidth: 240 }}>
+              <h2 style={{ fontSize: 26, fontWeight: 800, color: "#fff", margin: "0 0 8px" }}>
+                Spin it. Download it. Ship it.
+              </h2>
+              <p style={{ fontSize: 15.5, color: "#bbb", lineHeight: 1.6, margin: "0 0 14px" }}>
+                Every model is <strong style={{ color: "#fff" }}>CC0</strong> — no attribution, no
+                licence, no catch. Each one carries a provenance record saying exactly how it was
+                made and what went into it.
+              </p>
+              <a href="/assets" style={{ display: "inline-block", padding: "12px 20px", borderRadius: 12, background: "linear-gradient(90deg,#9945FF,#14F195)", color: "#07070c", fontWeight: 800, fontSize: 15, textDecoration: "none" }}>
+                Browse all assets →
+              </a>
+            </div>
+            <div style={{ flex: "1 1 280px", minWidth: 260 }}>
+              <div style={{ borderRadius: 14, overflow: "hidden", background: "rgba(255,255,255,.03)", aspectRatio: "4 / 3" }}>
+                <AssetViewer src="/assets/city-hatchback/preview.glb" />
+              </div>
+              <p style={{ fontSize: 12, color: "#8a8aa0", margin: "8px 2px 0", textAlign: "center" }}>
+                City hatchback · drag to spin
+              </p>
+            </div>
+          </div>
+        </section>
 
         <h2 style={h2}>Prefer a chat window with a live preview?</h2>
         <P>

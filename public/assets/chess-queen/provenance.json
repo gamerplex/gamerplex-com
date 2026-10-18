@@ -1,0 +1,11 @@
+{
+ "output": "model.glb",
+ "sha256": "3ca022f2a65d4990d80df6e5a04a4dc20770c2cf8e3948fd870d8ccc72d05c50",
+ "licence": "CC0-1.0",
+ "asset": "chess-queen",
+ "family": null,
+ "pipeline": {},
+ "prompt": null,
+ "seed": null,
+ "note": "Licence is asserted from the generation chain above, not proven by this build."
+}

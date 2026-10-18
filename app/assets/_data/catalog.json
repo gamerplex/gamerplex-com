@@ -1,52 +1,227 @@
 [
-  {
-    "slug": "hanging-bulb",
-    "title": "Hanging bulb",
-    "category": "props",
-    "tags": [
-      "ai-assisted",
-      "cyberpunk",
-      "prop"
-    ],
-    "description": "Bare bulb on a taped black cable.",
-    "method": "ai-assisted",
-    "generator": "Asset forge: FLUX.1-schnell concept \u2192 BiRefNet cutout \u2192 TRELLIS.2 mesh \u2192 Blender cleanup",
-    "licence": "CC0-1.0",
-    "source_sha256": "4b60dfb3fff6abc503e08bc7f3483da358b6755b1ddedada580f4b2ebfe108c4",
-    "glb_bytes": 394960,
-    "preview_bytes": 225056,
-    "concept": true,
-    "tris": 7995,
-    "rigged": false,
-    "size_m": [
-      0.86,
-      0.18,
-      0.6
-    ]
-  },
-  {
-    "slug": "city-hatchback",
-    "title": "City hatchback",
-    "category": "vehicles",
-    "tags": [
-      "ai-assisted",
-      "cyberpunk",
-      "vehicle"
-    ],
-    "description": "Compact 2050s city hatchback, matte worn paint with cyan accent strips.",
-    "method": "ai-assisted",
-    "generator": "Asset forge: FLUX.1-schnell concept \u2192 BiRefNet cutout \u2192 TRELLIS.2 mesh \u2192 Blender cleanup",
-    "licence": "CC0-1.0",
-    "source_sha256": "5bcbc7c790930a666427c54ed09791efe379753fb6d78d8004c60af8e7eced96",
-    "glb_bytes": 3340416,
-    "preview_bytes": 580752,
-    "concept": true,
-    "tris": 53287,
-    "rigged": false,
-    "size_m": [
-      2.37,
-      4.0,
-      1.93
-    ]
-  }
+ {
+  "slug": "hanging-bulb",
+  "title": "Hanging bulb",
+  "category": "props",
+  "tags": [
+   "ai-assisted",
+   "cyberpunk",
+   "prop"
+  ],
+  "description": "Bare bulb on a taped black cable.",
+  "method": "ai-assisted",
+  "generator": "Asset forge: FLUX.1-schnell concept \u2192 BiRefNet cutout \u2192 TRELLIS.2 mesh \u2192 Blender cleanup",
+  "licence": "CC0-1.0",
+  "source_sha256": "4b60dfb3fff6abc503e08bc7f3483da358b6755b1ddedada580f4b2ebfe108c4",
+  "glb_bytes": 394960,
+  "preview_bytes": 225056,
+  "concept": true,
+  "tris": 7995,
+  "rigged": false,
+  "size_m": [
+   0.86,
+   0.18,
+   0.6
+  ]
+ },
+ {
+  "slug": "city-hatchback",
+  "title": "City hatchback",
+  "category": "vehicles",
+  "tags": [
+   "ai-assisted",
+   "cyberpunk",
+   "vehicle"
+  ],
+  "description": "Compact 2050s city hatchback, matte worn paint with cyan accent strips.",
+  "method": "ai-assisted",
+  "generator": "Asset forge: FLUX.1-schnell concept \u2192 BiRefNet cutout \u2192 TRELLIS.2 mesh \u2192 Blender cleanup",
+  "licence": "CC0-1.0",
+  "source_sha256": "5bcbc7c790930a666427c54ed09791efe379753fb6d78d8004c60af8e7eced96",
+  "glb_bytes": 3340416,
+  "preview_bytes": 580752,
+  "concept": true,
+  "tris": 53287,
+  "rigged": false,
+  "size_m": [
+   2.37,
+   4.0,
+   1.93
+  ]
+ },
+ {
+  "slug": "chess-pawn",
+  "title": "Pawn chess piece",
+  "category": "props",
+  "tags": [
+   "scripted",
+   "chess",
+   "prop"
+  ],
+  "description": "Low-poly chess pawn, turned profile.",
+  "method": "scripted",
+  "generator": "Lathed in Blender from profiles in gamerplex-games/magic-chess (our own source). No generated or third-party geometry.",
+  "licence": "CC0-1.0",
+  "source_sha256": "ccc1477e22a6dc0da6a0c9d32fe4367da2003020698030969cf67b6d777a4b00",
+  "glb_bytes": 3948,
+  "preview_bytes": 3948,
+  "concept": false,
+  "tris": 408,
+  "rigged": false,
+  "size_m": [
+   0.68,
+   0.68,
+   1.0
+  ]
+ },
+ {
+  "slug": "chess-knight",
+  "title": "Knight chess piece",
+  "category": "props",
+  "tags": [
+   "scripted",
+   "chess",
+   "prop"
+  ],
+  "description": "Low-poly chess knight.",
+  "method": "scripted",
+  "generator": "Lathed in Blender from profiles in gamerplex-games/magic-chess (our own source). No generated or third-party geometry.",
+  "licence": "CC0-1.0",
+  "source_sha256": "b7c6bc0e11968826f0cfa904841e42ab7abd20cf28709ed5a2f6fca1d1fe6473",
+  "glb_bytes": 4440,
+  "preview_bytes": 4440,
+  "concept": false,
+  "tris": 340,
+  "rigged": false,
+  "size_m": [
+   0.7205,
+   0.72,
+   1.305
+  ]
+ },
+ {
+  "slug": "chess-bishop",
+  "title": "Bishop chess piece",
+  "category": "props",
+  "tags": [
+   "scripted",
+   "chess",
+   "prop"
+  ],
+  "description": "Low-poly chess bishop with mitre slit.",
+  "method": "scripted",
+  "generator": "Lathed in Blender from profiles in gamerplex-games/magic-chess (our own source). No generated or third-party geometry.",
+  "licence": "CC0-1.0",
+  "source_sha256": "b8080888bf2cd2a7433f2b45e701e9c5537cd118d3e5c006841a1005d7173fea",
+  "glb_bytes": 7352,
+  "preview_bytes": 7352,
+  "concept": false,
+  "tris": 542,
+  "rigged": false,
+  "size_m": [
+   0.72,
+   0.72,
+   1.33
+  ]
+ },
+ {
+  "slug": "chess-rook",
+  "title": "Rook chess piece",
+  "category": "props",
+  "tags": [
+   "scripted",
+   "chess",
+   "prop"
+  ],
+  "description": "Low-poly chess rook, square tower.",
+  "method": "scripted",
+  "generator": "Lathed in Blender from profiles in gamerplex-games/magic-chess (our own source). No generated or third-party geometry.",
+  "licence": "CC0-1.0",
+  "source_sha256": "aaa2c4b4e4e4f47ace5f75829ab86e73d116f507940335899513b4ec7a862172",
+  "glb_bytes": 1824,
+  "preview_bytes": 1824,
+  "concept": false,
+  "tris": 76,
+  "rigged": false,
+  "size_m": [
+   0.76,
+   0.76,
+   1.12
+  ]
+ },
+ {
+  "slug": "chess-queen",
+  "title": "Queen chess piece",
+  "category": "props",
+  "tags": [
+   "scripted",
+   "chess",
+   "prop"
+  ],
+  "description": "Low-poly chess queen with orb and gems.",
+  "method": "scripted",
+  "generator": "Lathed in Blender from profiles in gamerplex-games/magic-chess (our own source). No generated or third-party geometry.",
+  "licence": "CC0-1.0",
+  "source_sha256": "d07dc13e94bc96a91c63b1a5a7ef4644a8f01e07481dd2a8a9eeb1310758bb4d",
+  "glb_bytes": 6060,
+  "preview_bytes": 6060,
+  "concept": false,
+  "tris": 318,
+  "rigged": false,
+  "size_m": [
+   0.8,
+   0.8,
+   1.39
+  ]
+ },
+ {
+  "slug": "chess-king",
+  "title": "King chess piece",
+  "category": "props",
+  "tags": [
+   "scripted",
+   "chess",
+   "prop"
+  ],
+  "description": "Low-poly chess king with cross.",
+  "method": "scripted",
+  "generator": "Lathed in Blender from profiles in gamerplex-games/magic-chess (our own source). No generated or third-party geometry.",
+  "licence": "CC0-1.0",
+  "source_sha256": "36413448de06e7b3759228a933348ec099f23e24afae55c2bfd2d1300adb2965",
+  "glb_bytes": 3208,
+  "preview_bytes": 3208,
+  "concept": false,
+  "tris": 200,
+  "rigged": false,
+  "size_m": [
+   0.84,
+   0.84,
+   1.59
+  ]
+ },
+ {
+  "slug": "chess-board",
+  "title": "Chess board",
+  "category": "props",
+  "tags": [
+   "scripted",
+   "chess",
+   "prop"
+  ],
+  "description": "8x8 two-tone chess board, one quad per square.",
+  "method": "scripted",
+  "generator": "Lathed in Blender from profiles in gamerplex-games/magic-chess (our own source). No generated or third-party geometry.",
+  "licence": "CC0-1.0",
+  "source_sha256": "cd9e02064891811ed9ddcb9decbd01b3e41290d43698772b7a9994885600fb21",
+  "glb_bytes": 2632,
+  "preview_bytes": 2632,
+  "concept": false,
+  "tris": 65,
+  "rigged": false,
+  "size_m": [
+   8.0,
+   8.0,
+   0.25
+  ]
+ }
 ]
