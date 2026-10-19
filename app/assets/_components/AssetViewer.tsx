@@ -15,6 +15,7 @@ export default function AssetViewer({ src }: { src: string }) {
       const { GLTFLoader } = await import("three/examples/jsm/loaders/GLTFLoader.js");
       const { OrbitControls } = await import("three/examples/jsm/controls/OrbitControls.js");
       const { MeshoptDecoder } = await import("three/examples/jsm/libs/meshopt_decoder.module.js");
+      const { DRACOLoader } = await import("three/examples/jsm/loaders/DRACOLoader.js");
       const { RoomEnvironment } = await import("three/examples/jsm/environments/RoomEnvironment.js");
       if (stop) return;
       const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -32,8 +33,12 @@ export default function AssetViewer({ src }: { src: string }) {
       controls.autoRotateSpeed = 1.2;
       const loader = new GLTFLoader();
       loader.setMeshoptDecoder(MeshoptDecoder);
+      const draco = new DRACOLoader().setDecoderPath("/draco/"); // the publisher Draco-compresses meshes
+      loader.setDRACOLoader(draco);
+      el.dataset.state = "loading";
       loader.load(src, (gltf) => {
         if (stop) return;
+        el.dataset.state = "loaded";
         const root = gltf.scene;
         scene.add(root);
         const box = new THREE.Box3().setFromObject(root);
@@ -44,6 +49,14 @@ export default function AssetViewer({ src }: { src: string }) {
         camera.near = size / 100;
         camera.far = size * 100;
         camera.updateProjectionMatrix();
+      }, undefined, (err) => {
+        if (stop) return;
+        el.dataset.state = "error";
+        console.error("asset viewer: could not load", src, err);
+        const note = document.createElement("p");
+        note.textContent = "3D preview unavailable";
+        note.style.cssText = "position:absolute;inset:auto 0 12px 0;text-align:center;color:#9a92b5;font-size:13px";
+        el.appendChild(note);
       });
       const onResize = () => {
         camera.aspect = el.clientWidth / el.clientHeight;
@@ -62,6 +75,7 @@ export default function AssetViewer({ src }: { src: string }) {
         renderer.setAnimationLoop(null);
         renderer.dispose();
         pmrem.dispose();
+        draco.dispose();
         el.removeChild(renderer.domElement);
       };
     })();
@@ -71,5 +85,5 @@ export default function AssetViewer({ src }: { src: string }) {
     };
   }, [src]);
 
-  return <div ref={host} style={{ width: "100%", height: "100%", touchAction: "none" }} />;
+  return <div ref={host} style={{ position: "relative", width: "100%", height: "100%", touchAction: "none" }} />;
 }
