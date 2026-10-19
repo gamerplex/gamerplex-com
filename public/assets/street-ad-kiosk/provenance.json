@@ -1,0 +1,68 @@
+{
+ "output": "model.glb",
+ "sha256": "a2ad49cb95db9d7ac4a2b81b00d589a64be06d07651e95fb0302325ddb64ec5b",
+ "licence": "CC0-1.0",
+ "asset": "street-ad-kiosk",
+ "source": "SM_OCK_StandingSignAd_A.glb",
+ "source_sha256": "676069f61b920f099df32d884b3a6a861116fed719899206c6995e533c6612d4",
+ "family": "omega_city_kit_props_hq",
+ "method": "scripted",
+ "pipeline": {
+  "geometry": "Blender 4.2.3 LTS script Tools/blender/kit/hq_standing_sign.py (our own source)",
+  "textures": "ambientCG (CC0-1.0), baked at 2048 px",
+  "output": "CC0-1.0",
+  "posters": "original poster art (procedural, fictional brands) from Tools/kit/poster_art.py; fonts Bungee, Orbitron, Anton, Barlow Condensed, JetBrains Mono (SIL OFL 1.1) rendered into images only"
+ },
+ "script_sha256": "7f3bc58dfa9349596d0055aef3bbedda950c0c8e02ffef0365dd3cc658405fec",
+ "common_sha256": "cdec9f015ad9a77ce91fc8b0528f74687c5170b00fead024bbc447a26098e79d",
+ "texture_sources": [
+  {
+   "source": "ambientCG",
+   "id": "Metal012",
+   "url": "https://ambientcg.com/view?id=Metal012",
+   "licence": "CC0-1.0"
+  },
+  {
+   "source": "ambientCG",
+   "id": "Metal041B",
+   "url": "https://ambientcg.com/view?id=Metal041B",
+   "licence": "CC0-1.0"
+  },
+  {
+   "source": "ambientCG",
+   "id": "PaintedMetal004",
+   "url": "https://ambientcg.com/view?id=PaintedMetal004",
+   "licence": "CC0-1.0"
+  },
+  {
+   "source": "ambientCG",
+   "id": "PaintedMetal006",
+   "url": "https://ambientcg.com/view?id=PaintedMetal006",
+   "licence": "CC0-1.0"
+  },
+  {
+   "source": "ambientCG",
+   "id": "Rubber004",
+   "url": "https://ambientcg.com/view?id=Rubber004",
+   "licence": "CC0-1.0"
+  },
+  {
+   "source": "ambientCG",
+   "id": "Scratches005",
+   "url": "https://ambientcg.com/view?id=Scratches005",
+   "licence": "CC0-1.0"
+  },
+  {
+   "source": "ambientCG",
+   "id": "SurfaceImperfections015",
+   "url": "https://ambientcg.com/view?id=SurfaceImperfections015",
+   "licence": "CC0-1.0"
+  }
+ ],
+ "posters": {
+  "brothline": "7051bd4b5a9eba913e341206d1a369765c259154f58ac7fe4169c0033ca91f12",
+  "zynth": "e687449285b5faa52e686e505d62af13a5d09355ac72b25a95ed9b11d5781c18",
+  "fixbay": "4b938a5a51ed0fa47eb08826f128016550b0594fe5280bbdb4e302086a667211"
+ },
+ "note": "Licence is asserted from the generation chain above, not proven by this build."
+}

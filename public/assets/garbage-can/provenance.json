@@ -1,0 +1,34 @@
+{
+ "output": "model.glb",
+ "sha256": "729cf6df5647cb0560ded4866a9b988cd60552a17a6c36abbff7e8b7172ae1ca",
+ "licence": "CC0-1.0",
+ "asset": "garbage-can",
+ "source": "SM_AI_garbage_can_fin.glb",
+ "source_sha256": "50a17210a478f5d289ad1b8271bbc9c2d9538a534ed41e641d649e2a7e6c2007",
+ "family": "street_props_v1",
+ "method": "ai-assisted",
+ "pipeline": {
+  "concept": "Qwen-Image-2512 (Apache-2.0), Mac mflux 8-bit",
+  "cutout": "BiRefNet (MIT)",
+  "mesh": "TRELLIS.2 (MIT) via trellis.cpp (MIT) or trellis-mac (MIT); DINOv3 encoder (DINOv3 licence)",
+  "cleanup": "Blender (GPL tool; outputs unencumbered)",
+  "finish": "Blender concept re-projection (Tools/aigen/blender_finish.py), 2048 px bake",
+  "output": "CC0-1.0"
+ },
+ "prompt": "single round dented steel public garbage bin with a domed lid, cyberpunk megacity street furniture from the 2070s, realistic detailed game asset, worn and grimy, scratches, stickers removed, three-quarter view from slightly above, entire object visible, isolated on plain light grey studio background, soft even flat lighting, no shadows, original design not resembling any real product or brand, no text, no letters, no logos, game asset concept, 3d render",
+ "seed": 31,
+ "concept": {
+  "model": "mlx-community/Qwen-Image-2512-8bit",
+  "revision": "5f756d3e8cc11878c6c131571d1b904202b788b7",
+  "steps": 20,
+  "size": 512,
+  "tool": "mflux 0.20.0",
+  "sha256": "971e9703d70ac79e244be68147471358e9ece597bdb55726b4e0efcccbb88ae9"
+ },
+ "mesh": {
+  "tool": "trellis.cpp c0bed38c1578",
+  "res": "512",
+  "seed": 42
+ },
+ "note": "Licence is asserted from the generation chain above, not proven by this build."
+}

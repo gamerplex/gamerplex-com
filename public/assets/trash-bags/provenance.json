@@ -1,0 +1,34 @@
+{
+ "output": "model.glb",
+ "sha256": "fb780cf26727d0f97ba285a2988dfa54bfe5a946d29ea17022398ca48f703975",
+ "licence": "CC0-1.0",
+ "asset": "trash-bags",
+ "source": "SM_AI_trash_bag_fin.glb",
+ "source_sha256": "6875163b4b37fff9a976b6e2f49c55f8adb41e5ccb744e51709de0afebab4231",
+ "family": "street_props_v1",
+ "method": "ai-assisted",
+ "pipeline": {
+  "concept": "Qwen-Image-2512 (Apache-2.0), Mac mflux 8-bit",
+  "cutout": "BiRefNet (MIT)",
+  "mesh": "TRELLIS.2 (MIT) via trellis.cpp (MIT) or trellis-mac (MIT); DINOv3 encoder (DINOv3 licence)",
+  "cleanup": "Blender (GPL tool; outputs unencumbered)",
+  "finish": "Blender concept re-projection (Tools/aigen/blender_finish.py), 2048 px bake",
+  "output": "CC0-1.0"
+ },
+ "prompt": "single pile of three black plastic rubbish bags tied at the top, cyberpunk megacity street furniture from the 2070s, realistic detailed game asset, worn and grimy, scratches, stickers removed, three-quarter view from slightly above, entire object visible, isolated on plain light grey studio background, soft even flat lighting, no shadows, original design not resembling any real product or brand, no text, no letters, no logos, game asset concept, 3d render",
+ "seed": 21,
+ "concept": {
+  "model": "mlx-community/Qwen-Image-2512-8bit",
+  "revision": "5f756d3e8cc11878c6c131571d1b904202b788b7",
+  "steps": 20,
+  "size": 512,
+  "tool": "mflux 0.20.0",
+  "sha256": "76a0ef2c0d4a77c2b4df2ac5578b7067333af99620538a72c33f0a34f641ead4"
+ },
+ "mesh": {
+  "tool": "trellis.cpp c0bed38c1578",
+  "res": "512",
+  "seed": 42
+ },
+ "note": "Licence is asserted from the generation chain above, not proven by this build."
+}

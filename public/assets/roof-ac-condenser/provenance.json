@@ -1,0 +1,62 @@
+{
+ "output": "model.glb",
+ "sha256": "40e8280860f7403cd6e534a99156be6d62821d69c3acd5a01f657c8e38c7d24c",
+ "licence": "CC0-1.0",
+ "asset": "roof-ac-condenser",
+ "source": "SM_OCK_RoofAC_B.glb",
+ "source_sha256": "d5786d54ead8d3c8b6983f5064d039f618dcfe9220b58194331fa27d2ee5f3d1",
+ "family": "omega_city_kit_props_hq",
+ "method": "scripted",
+ "pipeline": {
+  "geometry": "Blender 4.2.3 LTS script Tools/blender/kit/hq_roof_ac.py (our own source)",
+  "textures": "ambientCG (CC0-1.0), baked at 2048 px",
+  "output": "CC0-1.0"
+ },
+ "script_sha256": "6ddcb9eda268418a369648ce2c731fdb77f773955ba010300ef0b27e30df84a7",
+ "common_sha256": "cdec9f015ad9a77ce91fc8b0528f74687c5170b00fead024bbc447a26098e79d",
+ "texture_sources": [
+  {
+   "source": "ambientCG",
+   "id": "Metal012",
+   "url": "https://ambientcg.com/view?id=Metal012",
+   "licence": "CC0-1.0"
+  },
+  {
+   "source": "ambientCG",
+   "id": "Metal041B",
+   "url": "https://ambientcg.com/view?id=Metal041B",
+   "licence": "CC0-1.0"
+  },
+  {
+   "source": "ambientCG",
+   "id": "PaintedMetal004",
+   "url": "https://ambientcg.com/view?id=PaintedMetal004",
+   "licence": "CC0-1.0"
+  },
+  {
+   "source": "ambientCG",
+   "id": "PaintedMetal006",
+   "url": "https://ambientcg.com/view?id=PaintedMetal006",
+   "licence": "CC0-1.0"
+  },
+  {
+   "source": "ambientCG",
+   "id": "Rubber004",
+   "url": "https://ambientcg.com/view?id=Rubber004",
+   "licence": "CC0-1.0"
+  },
+  {
+   "source": "ambientCG",
+   "id": "Scratches005",
+   "url": "https://ambientcg.com/view?id=Scratches005",
+   "licence": "CC0-1.0"
+  },
+  {
+   "source": "ambientCG",
+   "id": "SurfaceImperfections015",
+   "url": "https://ambientcg.com/view?id=SurfaceImperfections015",
+   "licence": "CC0-1.0"
+  }
+ ],
+ "note": "Licence is asserted from the generation chain above, not proven by this build."
+}

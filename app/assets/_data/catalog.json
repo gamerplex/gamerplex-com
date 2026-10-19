@@ -223,5 +223,180 @@
    8.0,
    0.25
   ]
+ },
+ {
+  "slug": "street-ad-sign",
+  "title": "Street ad sign",
+  "category": "props",
+  "tags": [
+   "scripted",
+   "cyberpunk",
+   "prop"
+  ],
+  "description": "Open-frame street advertising stand with three backlit posters for fictional brands.",
+  "method": "scripted",
+  "generator": "Built by Blender script Tools/blender/kit/hq_standing_sign_frame.py with ambientCG CC0 textures and original poster art (procedural, fictional brands). No generated or third-party geometry.",
+  "licence": "CC0-1.0",
+  "source_sha256": "cd56f3f16a89ae045362d1a3546d222688c8c3f166ae9b101cdf5e4db546d4e2",
+  "glb_bytes": 11458000,
+  "preview_bytes": 999908,
+  "concept": false,
+  "tris": 62874,
+  "rigged": false,
+  "size_m": [
+   1.68,
+   1.77,
+   2.4
+  ]
+ },
+ {
+  "slug": "roof-exhaust-fan",
+  "title": "Roof exhaust fan",
+  "category": "props",
+  "tags": [
+   "scripted",
+   "cyberpunk",
+   "prop"
+  ],
+  "description": "Rooftop exhaust fan housing on a raised curb, worn painted metal.",
+  "method": "scripted",
+  "generator": "Built by Blender script Tools/blender/kit/hq_roof_exhaust_fan.py with ambientCG CC0 textures. No generated or third-party geometry.",
+  "licence": "CC0-1.0",
+  "source_sha256": "2a38962b95bc239f9e3c86ee24cfb8f0d144d12b3defd895d3d92707674fc364",
+  "glb_bytes": 6310096,
+  "preview_bytes": 606568,
+  "concept": false,
+  "tris": 40912,
+  "rigged": false,
+  "size_m": [
+   0.94,
+   0.95,
+   1.03
+  ]
+ },
+ {
+  "slug": "street-ad-kiosk",
+  "title": "Street ad kiosk",
+  "category": "props",
+  "tags": [
+   "scripted",
+   "cyberpunk",
+   "prop"
+  ],
+  "description": "Freestanding lightbox advertising kiosk with backlit posters for fictional brands.",
+  "method": "scripted",
+  "generator": "Built by Blender script Tools/blender/kit/hq_standing_sign.py with ambientCG CC0 textures and original poster art (procedural, fictional brands). No generated or third-party geometry.",
+  "licence": "CC0-1.0",
+  "source_sha256": "676069f61b920f099df32d884b3a6a861116fed719899206c6995e533c6612d4",
+  "glb_bytes": 10268976,
+  "preview_bytes": 822752,
+  "concept": false,
+  "tris": 59823,
+  "rigged": false,
+  "size_m": [
+   1.71,
+   1.78,
+   2.4
+  ]
+ },
+ {
+  "slug": "roof-ac-condenser",
+  "title": "Roof AC condenser",
+  "category": "props",
+  "tags": [
+   "scripted",
+   "cyberpunk",
+   "prop"
+  ],
+  "description": "Rooftop air-conditioning condenser with louvred coil sides, worn painted metal.",
+  "method": "scripted",
+  "generator": "Built by Blender script Tools/blender/kit/hq_roof_ac.py with ambientCG CC0 textures. No generated or third-party geometry.",
+  "licence": "CC0-1.0",
+  "source_sha256": "d5786d54ead8d3c8b6983f5064d039f618dcfe9220b58194331fa27d2ee5f3d1",
+  "glb_bytes": 5979316,
+  "preview_bytes": 573844,
+  "concept": false,
+  "tris": 44819,
+  "rigged": false,
+  "size_m": [
+   0.93,
+   0.97,
+   1.03
+  ]
+ },
+ {
+  "slug": "fire-hydrant",
+  "title": "Fire hydrant",
+  "category": "props",
+  "tags": [
+   "ai-assisted",
+   "cyberpunk",
+   "prop"
+  ],
+  "description": "Heavy cast-iron street hydrant, chipped dark red paint with a cyan status ring.",
+  "method": "ai-assisted",
+  "generator": "Asset forge: Qwen-Image-2512 concept \u2192 BiRefNet cutout \u2192 TRELLIS.2 mesh \u2192 Blender cleanup + concept re-projection",
+  "licence": "CC0-1.0",
+  "source_sha256": "6f1d03d35a616830f0635926967ddcc850c49dd7f244ddae33e2fef00b82712c",
+  "glb_bytes": 854616,
+  "preview_bytes": 266924,
+  "concept": true,
+  "tris": 14999,
+  "rigged": false,
+  "size_m": [
+   0.58,
+   0.47,
+   0.9
+  ]
+ },
+ {
+  "slug": "garbage-can",
+  "title": "Garbage can",
+  "category": "props",
+  "tags": [
+   "ai-assisted",
+   "cyberpunk",
+   "prop"
+  ],
+  "description": "Round dented steel public bin with a lid.",
+  "method": "ai-assisted",
+  "generator": "Asset forge: Qwen-Image-2512 concept \u2192 BiRefNet cutout \u2192 TRELLIS.2 mesh \u2192 Blender cleanup + concept re-projection",
+  "licence": "CC0-1.0",
+  "source_sha256": "50a17210a478f5d289ad1b8271bbc9c2d9538a534ed41e641d649e2a7e6c2007",
+  "glb_bytes": 745360,
+  "preview_bytes": 230264,
+  "concept": true,
+  "tris": 11998,
+  "rigged": false,
+  "size_m": [
+   0.59,
+   0.59,
+   1.0
+  ]
+ },
+ {
+  "slug": "trash-bags",
+  "title": "Trash bags",
+  "category": "props",
+  "tags": [
+   "ai-assisted",
+   "cyberpunk",
+   "prop"
+  ],
+  "description": "Pile of three tied black plastic rubbish bags.",
+  "method": "ai-assisted",
+  "generator": "Asset forge: Qwen-Image-2512 concept \u2192 BiRefNet cutout \u2192 TRELLIS.2 mesh \u2192 Blender cleanup + concept re-projection",
+  "licence": "CC0-1.0",
+  "source_sha256": "6875163b4b37fff9a976b6e2f49c55f8adb41e5ccb744e51709de0afebab4231",
+  "glb_bytes": 537276,
+  "preview_bytes": 205560,
+  "concept": true,
+  "tris": 11990,
+  "rigged": false,
+  "size_m": [
+   1.0,
+   0.82,
+   0.65
+  ]
  }
 ]
