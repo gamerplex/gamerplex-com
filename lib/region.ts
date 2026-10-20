@@ -17,7 +17,7 @@ export interface RegionCapabilities {
 }
 
 // ISO-3166 alpha-2. Absent from all lists => tier 3 (crypto-full).
-const BLOCKED = new Set(["CU", "IR", "KP", "SY", "RU", "BY"]); // tier 0 — sanctions
+const BLOCKED = new Set(["CU", "IR", "KP", "RU", "BY"]); // tier 0 — sanctions
 const WEB2_ONLY = new Set(["CN"]); // tier 1 — crypto banned
 const CRYPTO_LITE = new Set(["US", "GB"]); // tier 2 — securities / promotion caution
 
