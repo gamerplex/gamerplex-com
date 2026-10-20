@@ -22,7 +22,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 // OFAC comprehensive sanctions — any token movement is prohibited.
-const SANCTIONED_COUNTRIES = new Set(["CU", "IR", "KP", "SY"]);
+const SANCTIONED_COUNTRIES = new Set(["CU", "IR", "KP"]);
 
 // Money-PRIZE (pay-to-play cash-prize) restrictions — money-prize routes only.
 const WAGER_BLOCKED_COUNTRIES = new Set(["SG"]);
